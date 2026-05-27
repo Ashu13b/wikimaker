@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Runtime outputs
+sessions/
+wiki/
+*.json
+
+# Node / frontend
+node_modules/
+*.log
