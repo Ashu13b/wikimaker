@@ -25,8 +25,23 @@ class ClaudeProvider:
 
 
 class GeminiProvider:
+    def __init__(self) -> None:
+        import google.generativeai as genai
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        model_name = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+        self._model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=None,  # injected per-call
+        )
+        self._genai = genai
+
     def complete(self, system: str, user: str) -> str:
-        raise NotImplementedError("Gemini provider not yet wired")
+        model = self._genai.GenerativeModel(
+            model_name=self._model.model_name,
+            system_instruction=system,
+        )
+        resp = model.generate_content(user)
+        return resp.text
 
 
 class LocalProvider:
@@ -233,7 +248,12 @@ def get_provider() -> LLMProvider:
                 pass
         return StubProvider()
     if backend == "gemini":
-        return GeminiProvider()
+        if not os.environ.get("GEMINI_API_KEY"):
+            return StubProvider()
+        try:
+            return GeminiProvider()
+        except Exception:
+            return StubProvider()
     if backend == "local":
         return LocalProvider()
     raise ValueError(f"Unknown WIKIMAKER_LLM value: {backend}")

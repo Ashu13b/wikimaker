@@ -107,6 +107,13 @@ def crawl(
                 if link not in visited and _is_relevant_link(link, html, person_name, keywords):
                     queue.append((link, depth + 1))
 
+            # Temporal variants — if this PDF mentions the person, try adjacent years
+            is_pdf = url.lower().split("?")[0].endswith(".pdf") or not result.raw_html
+            if is_pdf and mentions > 0:
+                for variant in _temporal_variants(url):
+                    if variant not in visited:
+                        queue.append((variant, depth + 1))
+
             # Follow DOIs via Semantic Scholar
             for doi in dois[:5]:
                 doi_sources = _expand_doi(doi, person_name)
@@ -262,6 +269,22 @@ def _search_entity(entity: str, person_name: str) -> list[str]:
         return urls
     except Exception:
         return []
+
+
+def _temporal_variants(url: str) -> list[str]:
+    """If the URL contains a 4-digit year, return variants for the 3 preceding years.
+
+    Example: .../annual-report-2026.pdf → [...2025.pdf, ...2024.pdf, ...2023.pdf]
+    """
+    match = re.search(r'(20\d\d|19\d\d)', url)
+    if not match:
+        return []
+    year = int(match.group(1))
+    variants = []
+    for delta in range(1, 4):
+        prior = year - delta
+        variants.append(url[:match.start()] + str(prior) + url[match.end():])
+    return variants
 
 
 def _expand_doi(doi: str, person_name: str) -> list[str]:

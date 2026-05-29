@@ -109,10 +109,42 @@ def _direct_fetch(url: str) -> tuple[str, str] | None:
         if resp.status_code in (401, 403, 407, 429):
             return None
         resp.raise_for_status()
+        ct = resp.headers.get("content-type", "")
+        if "application/pdf" in ct or url.lower().split("?")[0].endswith(".pdf"):
+            text = _pdf_extract(resp.content)
+            return text, ""  # no raw HTML for PDFs
         raw = resp.text
         return _extract_text(raw), raw
     except Exception:
         return None
+
+
+def _pdf_extract(data: bytes) -> str:
+    """Extract text from PDF bytes — tries pdfminer.six first, falls back to pypdf."""
+    # pdfminer.six
+    try:
+        from pdfminer.high_level import extract_text_to_fp
+        from pdfminer.layout import LAParams
+        import io
+        out = io.StringIO()
+        extract_text_to_fp(io.BytesIO(data), out, laparams=LAParams())
+        text = out.getvalue().strip()
+        if text:
+            return text[:8000]
+    except Exception:
+        pass
+    # pypdf fallback
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        pages = [p.extract_text() or "" for p in reader.pages[:20]]
+        text = "\n".join(pages).strip()
+        if text:
+            return text[:8000]
+    except Exception:
+        pass
+    return ""
 
 
 def _wayback_fetch(url: str) -> str | None:

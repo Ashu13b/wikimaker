@@ -838,7 +838,7 @@ def fetch_from_browser(body: dict) -> dict:
         "source": source.model_dump(),
         "blocked": False,
         "sent_to_browser": False,
-        "new_claims": [c.model_dump() for c in new_claims],
+        "new_claims": [],
         "notability": profile.notability.model_dump(),
         "researcher_ids": profile.researcher_ids,
         "confirmed_ids": profile.confirmed_ids,
