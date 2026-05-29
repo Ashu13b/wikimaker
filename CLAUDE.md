@@ -217,7 +217,7 @@ browser_server has a "Wiki+" button. When clicked on a page, it opens:
 
 ## Known issues / gotchas
 
-- `CORSMiddleware` in `backend/main.py` only allows `localhost:5173` — update if frontend port changes (currently 3890 in `start.sh`, 5173 in middleware). **TODO: align these.**
+- `CORSMiddleware` in `backend/main.py` allows `localhost:3890` (start.sh) and `localhost:5173` (Vite default). Add new origins here if the port changes.
 - `sessions/` directory is gitignored — session data is local only.
 - browser_server starts Xvfb on display `:99`. If another Xvfb is already running on `:99`, it reuses it (checks `/tmp/.X99-lock`).
 - Temporal crawling only triggers during `deep_crawl` (manual crawl), not during auto-research. Could be added to `fetch_auto_sources` later.

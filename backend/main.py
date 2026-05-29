@@ -34,7 +34,7 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="wikimaker")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:3890", "http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
