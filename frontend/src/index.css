@@ -168,6 +168,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
 }
 
 .workspace-tabs > button { flex: 0 0 auto; }
