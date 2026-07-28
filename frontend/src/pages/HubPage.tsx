@@ -1341,10 +1341,25 @@ function ClaimsSection({ claims, allClaims, profile, onProfileUpdate, emptyMessa
           }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--muted)" }}>
                     {claim.field}
                   </span>
+                  {claim.provenance_status === "verified_independent" && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>
+                      Independent Secondary
+                    </span>
+                  )}
+                  {claim.provenance_status === "primary_sourced" && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
+                      Primary Sourced
+                    </span>
+                  )}
+                  {claim.trust_score !== undefined && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: claim.trust_score >= 0.7 ? "var(--success)" : "var(--muted)" }}>
+                      · {Math.round(claim.trust_score * 100)}% Trust
+                    </span>
+                  )}
                   {claim.verification !== "unverified" && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: verificationColor[claim.verification] }}>
                       · {claim.verification}

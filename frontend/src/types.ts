@@ -23,6 +23,9 @@ export interface Source {
   date: string | null;
   user_provided: boolean;
   human_verified: boolean;
+  is_independent?: boolean;
+  domain_trust?: "high" | "medium" | "low" | "untrusted";
+  provenance_category?: "independent_secondary" | "authored_publication" | "institutional_bio" | "self_published" | "general_web";
   fetched_by: SourceFetchedBy;
   author_match_status: "confirmed" | "possible" | "wrong_person" | "not_found" | "no_data" | null;
   author_match_name: string | null;
@@ -40,6 +43,9 @@ export interface Claim {
   user_provided: boolean;
   auto_source_attempted: boolean;
   date_context?: string | null;
+  trust_score?: number;
+  provenance_status?: "verified_independent" | "primary_sourced" | "unverified";
+  is_independent?: boolean;
 }
 
 export interface NotabilityResult {

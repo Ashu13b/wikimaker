@@ -28,6 +28,11 @@ class Source(BaseModel):
     user_provided: bool = False   # True = user pasted this URL manually
     human_verified: bool = False  # True = user explicitly checked this source
 
+    # Provenance and Trust scoring
+    is_independent: bool = True
+    domain_trust: str = "medium"             # high|medium|low|untrusted
+    provenance_category: str = "general_web" # independent_secondary|authored_publication|institutional_bio|self_published|general_web
+
     # Where this source came from
     fetched_by: Optional[str] = None  # semantic_scholar|google_search|duckduckgo|crawl|user
 
@@ -52,6 +57,11 @@ class Claim(BaseModel):
     user_provided: bool = False        # True = user typed this fact directly
     auto_source_attempted: bool = False  # True = we tried to find a source, failed
     date_context: Optional[str] = None  # e.g. "2005", "2005–2015", "since 2020" — only if verbatim in source
+
+    # Strict Provenance & Trust Scoring
+    trust_score: float = 0.5            # 0.0–1.0 trust score
+    provenance_status: str = "unverified" # verified_independent|primary_sourced|unverified
+    is_independent: bool = False
 
 
 class NotabilityResult(BaseModel):

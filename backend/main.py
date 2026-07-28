@@ -122,10 +122,24 @@ def _session_path(name: str) -> Path:
     return SESSIONS_DIR / f"{safe}.json"
 
 
+def _apply_provenance(profile: PersonProfile) -> None:
+    source_map = {}
+    for s in profile.sources:
+        classified = classify_source_provenance(s, profile.name)
+        source_map[s.url] = classified
+    
+    for i, c in enumerate(profile.claims):
+        src = source_map.get(c.source_url) if c.source_url else None
+        profile.claims[i] = evaluate_claim_trust(c, src, profile)
+    
+    profile.notability = score_notability(profile.name, profile.sources)
+
+
 def _save_session(name: str) -> None:
     profile = _sessions.get(name)
     if not profile:
         return
+    _apply_provenance(profile)
     data = {
         "profile": json.loads(profile.model_dump_json()),
         "wiki_status": _wiki_statuses.get(name, {"status": "clear", "url": None, "note": None}),

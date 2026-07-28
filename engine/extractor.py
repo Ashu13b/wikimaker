@@ -122,7 +122,10 @@ def _validate_and_filter_claims(claims: list[Claim], profile: PersonProfile) -> 
 
 
 def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvider) -> list[Claim]:
+    from .provenance import classify_source_provenance, evaluate_claim_trust
+
     all_claims: list[Claim] = []
+    source_map = {s.url: classify_source_provenance(s, profile.name) for s in sources}
 
     # prioritise RS sources, then process all with a source
     ordered = sorted(sources, key=lambda s: s.reliability != SourceReliability.reliable_secondary)
@@ -131,6 +134,8 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
         # Skip sources flagged as the wrong person
         if source.relevance_flag == "likely_wrong":
             continue
+
+        classified_source = source_map.get(source.url, source)
 
         # Build content block: prefer snippet; fall back to title as surrogate
         content = source.snippet or ""
@@ -157,13 +162,15 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
             raw = llm.complete(SYSTEM, prompt)
             data = json.loads(raw)
             for c in data.get("claims", []):
-                all_claims.append(Claim(
+                claim_obj = Claim(
                     text=c["text"],
                     field=c["field"],
                     source_url=source.url,
                     verification=VerificationState.unverified,
                     date_context=c.get("date_context") or None,
-                ))
+                )
+                evaluated = evaluate_claim_trust(claim_obj, classified_source, profile)
+                all_claims.append(evaluated)
         except Exception:
             continue
 

@@ -2,15 +2,25 @@
 from __future__ import annotations
 import requests
 from .models import Source, SourceReliability, NotabilityResult
+from .provenance import classify_source_provenance
 
 S2_API = "https://api.semanticscholar.org/graph/v1"
 
 
 def score_notability(name: str, sources: list[Source]) -> NotabilityResult:
-    rs = [s for s in sources if s.reliability == SourceReliability.reliable_secondary and s.human_verified]
+    classified_sources = [classify_source_provenance(s, name) for s in sources]
+    rs = [
+        s for s in classified_sources
+        if s.is_independent and s.reliability == SourceReliability.reliable_secondary and s.human_verified
+    ]
     rs_count = len(rs)
 
     wp_prof_signals: list[str] = []
+    # Include count of authored publications as WP:PROF signal
+    authored_pubs = [s for s in classified_sources if s.provenance_category == "authored_publication"]
+    if authored_pubs:
+        wp_prof_signals.append(f"{len(authored_pubs)} authored publications in sources")
+
     s2 = _semantic_scholar_signals(name)
     if s2.get("citation_count", 0) >= 50:
         wp_prof_signals.append(f"{s2['citation_count']} citations (Semantic Scholar)")
@@ -26,16 +36,16 @@ def score_notability(name: str, sources: list[Source]) -> NotabilityResult:
 
     if score >= 0.8:
         label = "Strong"
-        reason = f"{rs_count} reliable secondary sources. Likely to pass AfC."
+        reason = f"{rs_count} independent reliable secondary sources. Likely to pass AfC."
     elif score >= 0.5:
         label = "Moderate"
-        reason = f"{rs_count} reliable secondary sources. Borderline — AfC reviewers may request more coverage."
+        reason = f"{rs_count} independent reliable secondary sources. Borderline — AfC reviewers may request more coverage."
     elif score >= 0.2:
         label = "Weak"
-        reason = f"Only {rs_count} reliable secondary source(s). Add more independent news or academic coverage."
+        reason = f"Only {rs_count} independent reliable secondary source(s). Add more independent news or academic coverage."
     else:
         label = "Insufficient"
-        reason = "No reliable secondary sources found yet. AfC will decline without independent coverage."
+        reason = "No independent reliable secondary sources found yet. AfC will decline without independent coverage."
 
     return NotabilityResult(
         score=score,
