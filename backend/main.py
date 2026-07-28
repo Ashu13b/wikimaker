@@ -301,6 +301,11 @@ def add_source(req: AddSourceRequest) -> dict:
     for id_type, id_val in new_ids.items():
         profile.researcher_ids.setdefault(id_type, id_val)
 
+    if url in profile.rejected_sources:
+        profile.rejected_sources.remove(url)
+    if url in profile.skipped_sources:
+        profile.skipped_sources.remove(url)
+
     profile.sources.append(source)
     # Claims are extracted on confirmation, not on add
     profile.notability = score_notability(profile.name, profile.sources)
@@ -561,10 +566,15 @@ def deep_crawl(req: CrawlRequest) -> dict:
     new_sources = graph.to_sources(None)
     new_sources = classify_sources(new_sources, llm())
 
-    # Only keep sources that mention the person at least once
+    # Only keep sources that mention the person at least once and are not rejected/skipped
+    existing_urls = {s.url for s in profile.sources}
+    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
+    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    excluded = existing_urls | rejected_urls | skipped_urls
+
     relevant = [
         s for s in new_sources
-        if graph.relevance_hits.get(s.url, 0) > 0
+        if graph.relevance_hits.get(s.url, 0) > 0 and s.url not in excluded
     ]
 
     new_claims = []
@@ -592,9 +602,13 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
         affiliation=profile.affiliation,
         hint=req.hint,
     )
-    # Deduplicate against existing sources
+    # Deduplicate against existing, rejected, or skipped sources
     existing_urls = {s.url for s in profile.sources}
-    new_sources = [s for s in sources if s.url not in existing_urls]
+    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
+    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    excluded = existing_urls | rejected_urls | skipped_urls
+
+    new_sources = [s for s in sources if s.url not in excluded]
     new_sources = classify_sources(new_sources, llm())
     flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
     new_claims = []
