@@ -61,12 +61,12 @@ class StubProvider:
 
     def complete(self, system: str, user: str) -> str:
         import json, re
+        if "wikipedia editor" in system.lower() or "draft" in system.lower():
+            return self._draft(user)
         if "reliability" in system:
             return self._classify(user)
         if "claims" in system.lower():
             return self._extract(user)
-        if "wikipedia editor" in system.lower():
-            return self._draft(user)
         return "{}"
 
     # ── classifier ────────────────────────────────────────────────────────────
