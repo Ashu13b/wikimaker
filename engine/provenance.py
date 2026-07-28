@@ -3,6 +3,18 @@ from __future__ import annotations
 from urllib.parse import urlparse
 from .models import Source, Claim, SourceReliability, PersonProfile, VerificationState
 
+def normalize_url(url: str | None) -> str:
+    if not url:
+        return ""
+    u = url.strip().lower()
+    if u.startswith("https://"): u = u[8:]
+    elif u.startswith("http://"): u = u[7:]
+    if u.startswith("www."): u = u[4:]
+    if "#" in u: u = u.split("#", 1)[0]
+    if "?" in u: u = u.split("?", 1)[0]
+    if u.endswith("/"): u = u[:-1]
+    return u
+
 HIGH_TRUST_DOMAINS = {
     "nature.com", "science.org", "sciencedirect.com", "bbc.com", "bbc.co.uk",
     "nytimes.com", "theguardian.com", "washingtonpost.com", "reuters.com",

@@ -138,11 +138,11 @@ class StubProvider:
             claims.append({"field": "publication", "text": pub_text})
             return json.dumps({"claims": claims})
 
-        sentences = [s.strip() for s in re.split(r'[.!?]', content) if len(s.strip()) > 20]
+        sentences = [s.strip() for s in re.split(r'[.!?]', content) if len(s.strip()) > 15]
         for sent in sentences:
             sl = sent.lower()
             first_word = sl.split()[0] if sl.split() else ""
-            mentions_person = any(p in sl for p in name_parts) or first_word in _PRONOUNS
+            mentions_person = any(p in sl for p in name_parts) or first_word in _PRONOUNS or len(sentences) <= 3
             if not mentions_person:
                 continue
             field = "known_for"

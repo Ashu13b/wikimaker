@@ -25,7 +25,7 @@ from engine.researcher_ids import (
     extract_sd_pii, _SD_AUTHOR_RE,
 )
 from engine.author_check import check_doi_authors, extract_doi
-from engine.provenance import classify_source_provenance, evaluate_claim_trust
+from engine.provenance import classify_source_provenance, evaluate_claim_trust, normalize_url
 from wiki.wiki_check import check_existing_page, draft_generation_allowed
 from wiki.wikitext import render_en, render_hi
 
@@ -644,15 +644,21 @@ def verify_source(body: dict) -> dict:
         return {"ok": True, "new_claims": [], "missing_slots": profile.missing_slots}
 
     source.human_verified = verified
+    norm_target = normalize_url(url)
     new_claims: list = []
 
-    if verified and source.snippet and source.relevance_flag != "likely_wrong":
-        already_sourced = {c.source_url for c in profile.claims}
-        if url not in already_sourced:
-            new_claims = extract_claims(profile, [source], llm())
-            profile.claims.extend(new_claims)
-            profile.missing_slots = find_missing_slots(profile, profile.claims)
+    if verified and source.relevance_flag != "likely_wrong":
+        existing_for_url = [c for c in profile.claims if c.source_url and normalize_url(c.source_url) == norm_target]
+        if not existing_for_url:
+            extracted = extract_claims(profile, [source], llm())
+            if extracted:
+                profile.claims.extend(extracted)
+                profile.missing_slots = find_missing_slots(profile, profile.claims)
+                new_claims = extracted
+        else:
+            new_claims = existing_for_url
 
+    profile.notability = score_notability(profile.name, profile.sources)
     _save_session(profile.name)
     return {
         "ok": True,

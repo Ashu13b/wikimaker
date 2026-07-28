@@ -1,16 +1,16 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:02 UTC · sha 9541d53 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:20 UTC · sha ce51dd1 · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 26 files · 269 symbols
+- Python — 26 files · 270 symbols
 - TypeScript — 16 files · 132 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 401 symbols across 5 languages._
+_Total: 45 files · 402 symbols across 5 languages._
 
 
 ## Compartments
@@ -35,7 +35,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/llm.py` — class LLMProvider(complete), class ClaudeProvider(__init__, complete), class GeminiProvider(__init__, complete), class LocalProvider(complete), class NullProvider(complete), class StubProvider(complete, _classify, _extract, _draft), def get_provider
 - `engine/models.py` — class SourceReliability, class VerificationState, class Source, class Claim, class NotabilityResult, class PersonCandidate, class PersonProfile
 - `engine/notability.py` — S2_API, def score_notability, def _semantic_scholar_signals
-- `engine/provenance.py` — HIGH_TRUST_DOMAINS, MEDIUM_TRUST_DOMAINS, UNTRUSTED_DOMAINS, def get_domain_trust, def classify_source_provenance, def evaluate_claim_trust
+- `engine/provenance.py` — def normalize_url, HIGH_TRUST_DOMAINS, MEDIUM_TRUST_DOMAINS, UNTRUSTED_DOMAINS, def get_domain_trust, def classify_source_provenance, def evaluate_claim_trust
 - `engine/relevance.py` — _WRONG_PERSON_SIGNALS, _ACADEMIC_FETCHED_BY, _DOI_PATTERNS, def _significant_name_tokens, def flag_source, def flag_sources
 - `engine/researcher.py` — HEADERS, S2_API, GOOGLE_CSE_URL, def fetch_auto_sources, def fetch_url_source, def fetch_url_source_with_paste, def _semantic_scholar, def _pick_author_id, def _google_cse, def _duckduckgo_html, def _extract_publisher, _SLOT_QUERIES, def _search_web, def targeted_slot_search, def _find_institution_url, def fetch_institution_sources
 - `engine/researcher_ids.py` — HEADERS, OA_HEADERS, _ORCID_RE, _SCHOLAR_RE, _SCOPUS_RE, _SD_AUTHOR_RE, _RESEARCHGATE_RE, _S2_AUTHOR_RE, _SD_PII_RE, def extract_ids_from_sources, def search_researcher_ids, def validate_orcid, def fetch_orcid_works, def extract_sd_pii, def is_sd_article_url, def is_sd_author_url, def resolve_sd_article, def find_openalex_id_for_person, def fetch_openalex_works, def fetch_s2_author_papers

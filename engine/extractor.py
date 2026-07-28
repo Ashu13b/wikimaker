@@ -160,7 +160,14 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
 
         try:
             raw = llm.complete(SYSTEM, prompt)
-            data = json.loads(raw)
+            clean_raw = raw.strip()
+            if clean_raw.startswith("```"):
+                parts = clean_raw.split("```")
+                if len(parts) >= 2:
+                    clean_raw = parts[1]
+                    if clean_raw.startswith("json"):
+                        clean_raw = clean_raw[4:].strip()
+            data = json.loads(clean_raw)
             for c in data.get("claims", []):
                 claim_obj = Claim(
                     text=c["text"],
