@@ -372,6 +372,24 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
     finally { setCrawlLoading(false); }
   }
 
+  async function handleFetchFromBrowser() {
+    setBrowserFetchLoading(true);
+    try {
+      const resp = await fetchFromBrowser(profile.name);
+      const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
+      onProfileUpdate({
+        ...profile,
+        sources: newSources,
+        claims: [...profile.claims, ...resp.new_claims],
+        notability: resp.notability,
+        ...(resp.researcher_ids !== undefined && { researcher_ids: resp.researcher_ids }),
+        ...(resp.confirmed_ids !== undefined && { confirmed_ids: resp.confirmed_ids }),
+      });
+      setSentToBrowser(false);
+    } catch (e) { setUrlError(String(e)); }
+    finally { setBrowserFetchLoading(false); }
+  }
+
   async function handleFindIds() {
     setIdsLoading(true); setIdsError(null);
     try {
