@@ -210,8 +210,22 @@ def _normalize_url(url: str) -> str:
     return url
 
 
+def _generate_multiyear_report_urls(url: str) -> list[str]:
+    import re
+    m = re.search(r'\b(19\d\d|20[0-2]\d)\b', url)
+    if not m:
+        return []
+    year = int(m.group(1))
+    results = []
+    for y in range(year - 2, year + 3):
+        if y != year and 1990 <= y <= 2026:
+            new_url = url[:m.start(1)] + str(y) + url[m.end(1):]
+            results.append(new_url)
+    return results
+
+
 def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict]:
-    """Return ranked URL suggestions — profile links first, then web searches."""
+    """Return ranked URL suggestions — profile links & multi-year reports first, then web searches."""
     from .researcher import _search_web
     from .llm import get_provider
 
@@ -245,6 +259,26 @@ def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict
                 "completion_value": _completion_value(expected, missing),
             })
             seen_normalized.add(_normalize_url(link_url))
+
+    # ── Pass 1.5: multi-year institutional report expansion ─────────────────
+    for src in profile.sources:
+        for report_url in _generate_multiyear_report_urls(src.url):
+            if _normalize_url(report_url) in seen_normalized:
+                continue
+            expected = ["position", "award", "known_for"]
+            suggestions.append({
+                "url": report_url,
+                "title": report_url,
+                "snippet": f"Multi-year report series derived from {src.publisher or src.url}",
+                "reason": f"Sequential institutional report derived from {src.publisher or 'source'}",
+                "expected_slots": expected,
+                "priority": 1,
+                "source_type": "profile",
+                "fetchable": _fetchability(report_url),
+                "relevance": "high",
+                "completion_value": _completion_value(expected, missing),
+            })
+            seen_normalized.add(_normalize_url(report_url))
 
     # ── Pass 2: LLM-generated web searches ────────────────────────────────────
     if len(suggestions) < max_results:

@@ -1,16 +1,16 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:20 UTC · sha ce51dd1 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:25 UTC · sha 9cb2efe · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 26 files · 270 symbols
+- Python — 26 files · 271 symbols
 - TypeScript — 16 files · 132 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 402 symbols across 5 languages._
+_Total: 45 files · 403 symbols across 5 languages._
 
 
 ## Compartments
@@ -39,7 +39,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/relevance.py` — _WRONG_PERSON_SIGNALS, _ACADEMIC_FETCHED_BY, _DOI_PATTERNS, def _significant_name_tokens, def flag_source, def flag_sources
 - `engine/researcher.py` — HEADERS, S2_API, GOOGLE_CSE_URL, def fetch_auto_sources, def fetch_url_source, def fetch_url_source_with_paste, def _semantic_scholar, def _pick_author_id, def _google_cse, def _duckduckgo_html, def _extract_publisher, _SLOT_QUERIES, def _search_web, def targeted_slot_search, def _find_institution_url, def fetch_institution_sources
 - `engine/researcher_ids.py` — HEADERS, OA_HEADERS, _ORCID_RE, _SCHOLAR_RE, _SCOPUS_RE, _SD_AUTHOR_RE, _RESEARCHGATE_RE, _S2_AUTHOR_RE, _SD_PII_RE, def extract_ids_from_sources, def search_researcher_ids, def validate_orcid, def fetch_orcid_works, def extract_sd_pii, def is_sd_article_url, def is_sd_author_url, def resolve_sd_article, def find_openalex_id_for_person, def fetch_openalex_works, def fetch_s2_author_papers
-- `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def suggest_next_urls
+- `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def _generate_multiyear_report_urls, def suggest_next_urls
 ### frontend/
 - `frontend/src/App.tsx` — ErrorBoundaryProps, ErrorBoundaryState, ErrorBoundary, constructor, getDerivedStateFromError, componentDidCatch, render, Stage, MainApp, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset, App
 - `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, SessionSummary, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls
