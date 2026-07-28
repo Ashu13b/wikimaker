@@ -25,6 +25,7 @@ from engine.researcher_ids import (
     extract_sd_pii, _SD_AUTHOR_RE,
 )
 from engine.author_check import check_doi_authors, extract_doi
+from engine.provenance import classify_source_provenance, evaluate_claim_trust
 from wiki.wiki_check import check_existing_page, draft_generation_allowed
 from wiki.wikitext import render_en, render_hi
 
