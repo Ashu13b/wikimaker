@@ -14,6 +14,11 @@ class WikiStatus(BaseModel):
     note: Optional[str] = None
 
 
+def draft_generation_allowed(status: str) -> bool:
+    """Whether status permits producing new or revised AfC wikitext."""
+    return status in {"clear", "draft"}
+
+
 def check_existing_page(title: str) -> WikiStatus:
     if _page_exists(title):
         return WikiStatus(

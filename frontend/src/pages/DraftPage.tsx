@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { PersonProfile, WikiStatus, Source } from "../types";
+import { getDraftDestination } from "../workflow";
 
 interface Props {
   profile: PersonProfile;
@@ -28,6 +29,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
 
   const notability = profile.notability;
   const rsCount = notability?.rs_count ?? 0;
+  const draftDestination = getDraftDestination(wikiStatus);
 
   return (
     <div style={{ maxWidth: 900, margin: "40px auto", padding: "0 20px 60px" }}>
@@ -49,7 +51,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
           <button className="btn-ghost" onClick={onBackToHub} style={{ fontSize: 13 }}>
             ← Back to research
           </button>
-          <button className="btn-ghost" onClick={onReset} style={{ fontSize: 13 }}>New search</button>
+          <button className="btn-ghost" onClick={onReset} style={{ fontSize: 13 }}>New subject</button>
         </div>
       </div>
 
@@ -73,7 +75,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 272px", gap: 20, alignItems: "start" }}>
+      <div className="hub-grid" style={{ gridTemplateColumns: "1fr 272px" }}>
         {/* Draft */}
         <div className="card" style={{ padding: 0 }}>
           <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
@@ -94,11 +96,11 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
                 {copied ? "Copied!" : "Copy wikitext"}
               </button>
               <a
-                href="https://en.wikipedia.org/wiki/Wikipedia:Articles_for_creation/submissions"
+                href={draftDestination.href}
                 target="_blank" rel="noreferrer"
                 style={{ display: "inline-flex", alignItems: "center" }}
               >
-                <button className="btn-ghost">Submit to AfC →</button>
+                <button className="btn-ghost">{draftDestination.label}</button>
               </a>
             </div>
           </div>

@@ -90,11 +90,11 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
   }
 
   return (
-    <div style={{ maxWidth: 580, margin: "60px auto", padding: "0 20px" }}>
+    <main className="subject-start-page">
       <div style={{ textAlign: "center", marginBottom: 36 }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Wikimaker</h1>
         <p style={{ color: "var(--muted)", fontSize: 15 }}>
-          Research a person and generate a Wikipedia AfC draft.
+          Research a person, check their Wikimedia status, and build the right output.
         </p>
       </div>
 
@@ -159,7 +159,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
           ))}
           <div style={{ borderTop: "1px solid var(--border)", marginTop: 20, paddingTop: 20 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 }}>
-              New research
+              New subject research
             </p>
           </div>
         </div>
@@ -171,7 +171,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 14 }}>Name</label>
             <input value={name} onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. Prem Singh Yadav" autoFocus />
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -179,7 +179,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
               Field / profession <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span>
             </label>
             <input value={field} onChange={e => setField(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. Animal biotechnology, Buffalo cloning" />
           </div>
           <div style={{ marginBottom: 14 }}>
@@ -187,30 +187,38 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
               Institution <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional — helps find the right person)</span>
             </label>
             <input value={affiliation} onChange={e => setAffiliation(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
+              onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. ICAR-CIRB, Hisar, Haryana" />
           </div>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-              Nationality <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span>
-            </label>
-            <input value={nationality} onChange={e => setNationality(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
-              placeholder="e.g. Indian" />
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-              Photo URL <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span>
-            </label>
-            <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
-              placeholder="https://…/photo.jpg" />
-          </div>
+          <details className="optional-subject-details">
+            <summary>More optional details</summary>
+            <div style={{ marginTop: 14, marginBottom: 14 }}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Nationality</label>
+              <input value={nationality} onChange={e => setNationality(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleConfirm()}
+                placeholder="e.g. Indian" />
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photo URL</label>
+              <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleConfirm()}
+                placeholder="https://…/photo.jpg" />
+            </div>
+          </details>
           {searchError && <p style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{searchError}</p>}
-          <button className="btn-primary" onClick={handleSearch}
-            disabled={searching || !name.trim()} style={{ width: "100%" }}>
-            {searching ? "Searching…" : "Find person →"}
-          </button>
+          <div className="subject-actions">
+            <button className="btn-primary" onClick={handleConfirm}
+              disabled={!name.trim()} style={{ flex: 1 }}>
+              Start research →
+            </button>
+            <button className="btn-ghost" onClick={handleSearch}
+              disabled={searching || !name.trim()} style={{ flex: 1 }}>
+              {searching ? "Searching…" : "Preview identity clues"}
+            </button>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, lineHeight: 1.45 }}>
+            An existing Wikipedia article or Wikidata item is not required. Web matches are optional clues for avoiding same-name mistakes.
+          </p>
         </div>
       )}
 
@@ -232,14 +240,14 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
           {previewResults.length === 0 ? (
             <div className="card" style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: "var(--muted)" }}>
-                No web results found yet — this person may not have a strong online presence.
-                You can still start research and add sources manually.
+                No identity clues found yet. This does not prevent research or mean the subject is ineligible for Wikipedia.
+                You can continue and add authoritative sources manually.
               </p>
             </div>
           ) : (
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Web results found for this person
+                Possible identity clues — confirm independently
               </p>
               {previewResults.map((r, i) => (
                 <div key={i} className="card" style={{ marginBottom: 10, padding: "12px 16px" }}>
@@ -262,14 +270,14 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
 
           <div style={{ display: "flex", gap: 10 }}>
             <button className="btn-primary" onClick={handleConfirm} style={{ flex: 1 }}>
-              Yes, research {name} →
+              Start research for {name} →
             </button>
           </div>
           <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
-            These sources will be included in the research automatically.
+            These preview results are clues only. Research will discover and classify candidate sources separately.
           </p>
         </div>
       )}
-    </div>
+    </main>
   );
 }

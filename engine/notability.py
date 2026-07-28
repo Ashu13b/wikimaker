@@ -7,7 +7,7 @@ S2_API = "https://api.semanticscholar.org/graph/v1"
 
 
 def score_notability(name: str, sources: list[Source]) -> NotabilityResult:
-    rs = [s for s in sources if s.reliability == SourceReliability.reliable_secondary]
+    rs = [s for s in sources if s.reliability == SourceReliability.reliable_secondary and s.human_verified]
     rs_count = len(rs)
 
     wp_prof_signals: list[str] = []

@@ -87,6 +87,10 @@ export async function fetchFromBrowser(profileName: string): Promise<AddSourceRe
   return apiPost("/research/fetch-from-browser", { profile_name: profileName });
 }
 
+export async function skipSuggestion(profileName: string, url: string): Promise<{ ok: boolean }> {
+  return apiPost("/research/skip-suggestion", { profile_name: profileName, url });
+}
+
 export async function addSourcePaste(
   profileName: string,
   url: string,

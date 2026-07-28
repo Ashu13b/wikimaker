@@ -48,7 +48,7 @@ Valid fields: full_name, birth_date, birth_place, death_date, nationality,
 field, affiliation, education, position, known_for, award, publication.
 
 Field definitions (be strict):
-- birth_date: the PERSON's own date or year of birth — NOT birth of an animal, technology, institution, or idea mentioned in the source
+- birth_date: the PERSON's own date or year of birth — NOT birth of an animal, technology, institution, or idea mentioned in the source. Crucially, DO NOT extract the birth date/year of a cloned animal, offspring, calf, or breed (e.g. Garima, Samrupa, Dolly) as the person's birth date, even if the person participated in or led the cloning project.
 - birth_place: the PERSON's own birthplace — not a location in a paper title or abstract
 - publication: a paper or book authored BY this person — not a citation or reference to others' work
 - award: an honour received BY this person — not an award mentioned in passing
@@ -59,6 +59,66 @@ date_context rules (critical):
 - Valid examples: "2005", "2005–2015", "since 2020", "1990s", "July 2008"
 - If no year is explicitly stated for this fact in the source, omit date_context entirely.
 - NEVER infer or guess a date from context. "received the award" → no date_context."""
+
+
+def _validate_and_filter_claims(claims: list[Claim], profile: PersonProfile) -> list[Claim]:
+    import re
+    
+    def get_year(text: str | None) -> int | None:
+        if not text:
+            return None
+        m = re.search(r'\b(1[89]\d\d|20\d\d)\b', text)
+        return int(m.group(1)) if m else None
+
+    # Find the earliest year from non-birth claims in the profile or in the new claims
+    all_other_years = []
+    for c in profile.claims:
+        if c.field != "birth_date":
+            y = get_year(c.date_context) or get_year(c.text)
+            if y:
+                all_other_years.append(y)
+    for c in claims:
+        if c.field != "birth_date":
+            y = get_year(c.date_context) or get_year(c.text)
+            if y:
+                all_other_years.append(y)
+
+    earliest_other_year = min(all_other_years) if all_other_years else None
+
+    animal_kws = {
+        "cloned", "cloning", "animal", "buffalo", "calf", "cow", "bull", "sheep", "goat",
+        "offspring", "garima", "samrupa", "ganga", "dolly", "litter", "breed", "species", "surrogate"
+    }
+
+    result = []
+    for c in claims:
+        if c.field == "birth_date":
+            text_lower = c.text.lower()
+            # Check for animal cloning keywords
+            has_animal_kw = any(kw in text_lower for kw in animal_kws)
+            
+            # Check for logical date inconsistency
+            birth_year = get_year(c.date_context) or get_year(c.text)
+            is_inconsistent = False
+            if birth_year:
+                if earliest_other_year and birth_year >= earliest_other_year - 15:
+                    is_inconsistent = True
+                elif birth_year >= 2000:
+                    # Unreasonably recent for a senior/practicing scientist
+                    is_inconsistent = True
+
+            if has_animal_kw:
+                # Re-classify as known_for since animal cloning birth is a key scientific achievement
+                if len(c.text) > 30:
+                    c.field = "known_for"
+                    result.append(c)
+                continue
+            elif is_inconsistent:
+                # If logically inconsistent and no animal keywords, discard it as a faulty birth date
+                continue
+                
+        result.append(c)
+    return result
 
 
 def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvider) -> list[Claim]:
@@ -107,7 +167,8 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
         except Exception:
             continue
 
-    return _deduplicate(all_claims)
+    validated = _validate_and_filter_claims(all_claims, profile)
+    return _deduplicate(validated)
 
 
 def _deduplicate(claims: list[Claim]) -> list[Claim]:

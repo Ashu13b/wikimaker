@@ -71,6 +71,8 @@ export interface PersonProfile {
   awards: string[];
   sources: Source[];
   claims: Claim[];
+  skipped_sources: string[];
+  rejected_sources: string[];
   missing_slots: string[];
   researcher_ids: Record<string, string>;
   confirmed_ids: Record<string, boolean>;
@@ -132,6 +134,7 @@ export interface UrlSuggestion {
   query?: string;
   expected_slots: string[];
   priority: number;
+  source_type?: "profile" | "publication" | "news";
   fetchable: "open" | "needs_browser" | "paywalled";
   relevance: "high" | "medium" | "low";
   completion_value: number;

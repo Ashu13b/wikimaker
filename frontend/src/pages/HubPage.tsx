@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 import type { PersonProfile, WikiStatus, Source, Claim, NotabilityResult } from "../types";
-import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls } from "../api";
+import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion } from "../api";
 import type { UrlSuggestion } from "../types";
+import WorkspaceStatusBanner from "../components/WorkspaceStatusBanner";
+import BookmarkletCard from "../components/BookmarkletCard";
+import ResearchOperationsCard from "../components/ResearchOperationsCard";
+import TimelineTab from "../components/TimelineTab";
+import { canGenerateDraft, getWorkspaceRoute } from "../workflow";
+import { normalizeUrl } from "../url";
 
 interface Props {
   initialProfile: PersonProfile;
@@ -19,9 +25,22 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
   const [profile, setProfile] = useState(initialProfile);
   const [tab, setTab] = useState<Tab>("sources");
   const [drafting, setDrafting] = useState(false);
+  const [activeOperations, setActiveOperations] = useState<Record<string, boolean>>({});
   const [draftError, setDraftError] = useState<string | null>(null);
   // Track which source links the user has opened (session-local, not persisted)
   const [openedLinks, setOpenedLinks] = useState<Set<string>>(new Set());
+  const [showBrowser, setShowBrowser] = useState(false);
+
+  const hasVerifiedSources = profile.sources.some(s => s.human_verified);
+  const workspaceRoute = getWorkspaceRoute(wikiStatus.status);
+  const draftAvailable = canGenerateDraft(wikiStatus.status, hasVerifiedSources);
+
+  // Force sources tab if none verified
+  useEffect(() => {
+    if (!hasVerifiedSources) {
+      setTab("sources");
+    }
+  }, [hasVerifiedSources]);
 
   // Switch to sources tab when Wiki+ relay content arrives
   useEffect(() => {
@@ -49,9 +68,9 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
   const skippedClaims = profile.claims.filter(c => c.verification === "skipped");
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 20px 60px" }}>
+    <div style={{ maxWidth: showBrowser ? 1500 : 1100, margin: "0 auto", padding: "20px 20px 60px", transition: "max-width 0.2s" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
+      <div className="workspace-header">
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {profile.photo_url ? (
             <img src={profile.photo_url} alt={profile.name}
@@ -70,14 +89,19 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
             <p style={{ fontSize: 13, color: "var(--muted)" }}>
               {[profile.field, profile.affiliation, profile.nationality].filter(Boolean).join(" · ")}
             </p>
-            {profile.notability && <NotabilityBadge n={profile.notability} />}
+            {hasVerifiedSources && profile.notability && <NotabilityBadge n={profile.notability} />}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-ghost" onClick={onReset} style={{ fontSize: 13 }}>New search</button>
-          <button className="btn-primary" onClick={handleGenerateDraft} disabled={drafting}>
-            {drafting ? "Generating…" : "Generate draft →"}
+        <div className="workspace-actions">
+          <button className="btn-ghost" onClick={() => setShowBrowser(!showBrowser)} style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+            🖥️ {showBrowser ? "Hide Remote Browser" : "Show Remote Browser"}
           </button>
+          <button className="btn-ghost" onClick={onReset} style={{ fontSize: 13 }}>New subject</button>
+          {workspaceRoute.draftLabel && (
+            <button className="btn-primary" onClick={handleGenerateDraft} disabled={drafting || !draftAvailable}>
+              {drafting ? "Generating…" : workspaceRoute.draftLabel}
+            </button>
+          )}
         </div>
       </div>
 
@@ -87,40 +111,47 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
         </div>
       )}
 
-      {(wikiStatus.status === "deleted" || wikiStatus.status === "draft") && wikiStatus.note && (
-        <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13 }}>
-          <strong>Note:</strong> {wikiStatus.note}
-        </div>
-      )}
+      <WorkspaceStatusBanner wikiStatus={wikiStatus} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 272px", gap: 20, alignItems: "start" }}>
+      <div className="hub-grid" style={{ gridTemplateColumns: showBrowser ? "1fr 272px 420px" : "1fr 272px" }}>
         {/* Main panel */}
         <div>
           {/* Tabs */}
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-            <TabBtn active={tab === "sources"} onClick={() => setTab("sources")}>
-              Sources ({profile.sources.length})
-            </TabBtn>
-            <TabBtn active={tab === "profile"} onClick={() => setTab("profile")}>
-              Wikipedia Profile
-              {(profile.missing_slots ?? []).length > 0 && (
-                <span style={{ marginLeft: 6, background: "var(--warning)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
-                  {(profile.missing_slots ?? []).length} missing
-                </span>
-              )}
-            </TabBtn>
-            <TabBtn active={tab === "timeline"} onClick={() => setTab("timeline")}>
-              Timeline
-            </TabBtn>
-            <TabBtn active={tab === "pending"} onClick={() => setTab("pending")}>
-              Review ({pendingClaims.length})
-              {pendingClaims.length > 0 && (
-                <span style={{ marginLeft: 6, background: "var(--primary)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
-                  {pendingClaims.length}
-                </span>
-              )}
-            </TabBtn>
-          </div>
+          {hasVerifiedSources ? (
+            <div className="workspace-tabs">
+              <TabBtn active={tab === "sources"} onClick={() => setTab("sources")}>
+                Sources ({profile.sources.length})
+              </TabBtn>
+              <TabBtn active={tab === "profile"} onClick={() => setTab("profile")}>
+                Subject Profile
+                {(profile.missing_slots ?? []).length > 0 && (
+                  <span style={{ marginLeft: 6, background: "var(--warning)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
+                    {(profile.missing_slots ?? []).length} missing
+                  </span>
+                )}
+              </TabBtn>
+              <TabBtn active={tab === "timeline"} onClick={() => setTab("timeline")}>
+                Timeline
+              </TabBtn>
+              <TabBtn active={tab === "pending"} onClick={() => setTab("pending")}>
+                Review ({pendingClaims.length})
+                {pendingClaims.length > 0 && (
+                  <span style={{ marginLeft: 6, background: "var(--primary)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
+                    {pendingClaims.length}
+                  </span>
+                )}
+              </TabBtn>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: "18px 24px", marginBottom: 20, background: "linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)", borderLeft: "4px solid var(--primary)", borderRadius: 12, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 6px 0", color: "#1e3a8a", display: "flex", alignItems: "center", gap: 8 }}>
+                🔍 Verify Discovered Sources
+              </h2>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+                Wikimaker has fetched candidate sources for <strong>{profile.name}</strong>. Please confirm which sources actually correspond to your target person. Once confirmed, their facts will be automatically extracted to unlock the profile slots, timeline, and draft generator.
+              </p>
+            </div>
+          )}
 
           {tab === "sources" && (
             <SourcesPanel
@@ -130,13 +161,16 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
               onProfileUpdate={setProfile}
               relayPending={relayPending}
               onRelayConsumed={onRelayConsumed}
+              onOperationStatusChange={(op, active) => {
+                setActiveOperations(prev => ({ ...prev, [op]: active }));
+              }}
             />
           )}
           {tab === "profile" && (
             <ProfileTab profile={profile} onProfileUpdate={setProfile} />
           )}
           {tab === "timeline" && (
-            <TimelineTab profile={profile} />
+            <TimelineTab profile={profile} onProfileUpdate={setProfile} onLoadSuggestions={loadSuggestions} />
           )}
           {tab === "pending" && (
             <ClaimsSection
@@ -151,12 +185,48 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
 
         {/* Sidebar */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {profile.notability && <NotabilityCard n={profile.notability} />}
-          <ChecklistCard profile={profile} wikiStatus={wikiStatus} />
-          <button className="btn-primary" onClick={handleGenerateDraft} disabled={drafting} style={{ width: "100%" }}>
-            {drafting ? "Generating…" : "Generate draft →"}
-          </button>
+          <ResearchOperationsCard ops={activeOperations} drafting={drafting} />
+          {hasVerifiedSources ? (
+            <>
+              {profile.notability && <NotabilityCard n={profile.notability} />}
+              <ChecklistCard profile={profile} wikiStatus={wikiStatus} />
+              {workspaceRoute.draftLabel ? (
+                <button className="btn-primary" onClick={handleGenerateDraft} disabled={drafting || !draftAvailable} style={{ width: "100%" }}>
+                  {drafting ? "Generating…" : workspaceRoute.draftLabel}
+                </button>
+              ) : (
+                <div className="card" style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Draft generation is unavailable in {workspaceRoute.label.toLowerCase()} mode. Continue researching and use verified findings to plan improvements.
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="card" style={{ padding: "24px 16px", textAlign: "center", color: "var(--muted)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 32, filter: "grayscale(10%)" }}>🛡️</span>
+              <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--text)" }}>Verify one source to continue</p>
+              <p style={{ fontSize: 12, margin: 0, lineHeight: 1.5, color: "var(--muted)" }}>
+                Confirm at least one source to extract facts and unlock the Subject Profile, Timeline, and available output tools.
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* Companion Remote Browser */}
+        {showBrowser && (
+          <div className="card companion-browser">
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>Companion Remote Browser</span>
+              <button onClick={() => setShowBrowser(false)} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)", cursor: "pointer", fontSize: 12, padding: "6px 12px" }}>
+                Close ✕
+              </button>
+            </div>
+            <iframe
+              src="/browser/"
+              style={{ width: "100%", flex: 1, border: "none" }}
+              title="Companion Remote Browser"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -199,13 +269,14 @@ function categorizeSource(s: Source): SourceCategory {
   return "news";
 }
 
-function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relayPending, onRelayConsumed }: {
+function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relayPending, onRelayConsumed, onOperationStatusChange }: {
   profile: PersonProfile;
   openedLinks: Set<string>;
   onLinkOpen: (url: string) => void;
   onProfileUpdate: (p: PersonProfile) => void;
   relayPending?: { url: string; text: string } | null;
   onRelayConsumed?: () => void;
+  onOperationStatusChange?: (op: string, active: boolean) => void;
 }) {
   const [srcTab, setSrcTab] = useState<SourceCategory | "all">("all");
   const [urlInput, setUrlInput] = useState("");
@@ -234,6 +305,28 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
+
+  const [verifyingUrls, setVerifyingUrls] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    onOperationStatusChange?.("suggester", suggestionsLoading);
+  }, [suggestionsLoading]);
+
+  useEffect(() => {
+    onOperationStatusChange?.("classifier", urlLoading || pasteLoading || browserFetchLoading);
+  }, [urlLoading, pasteLoading, browserFetchLoading]);
+
+  useEffect(() => {
+    onOperationStatusChange?.("crawler", crawlLoading);
+  }, [crawlLoading]);
+
+  useEffect(() => {
+    onOperationStatusChange?.("idSync", idsLoading || refreshingId !== null);
+  }, [idsLoading, refreshingId]);
+
+  useEffect(() => {
+    onOperationStatusChange?.("extractor", verifyingUrls.size > 0);
+  }, [verifyingUrls]);
 
   async function loadSuggestions() {
     setSuggestionsLoading(true); setSuggestionsError(null);
@@ -310,7 +403,7 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
 
   const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
 
-  const isDuplicate = urlInput.trim() !== "" && profile.sources.some(s => s.url === urlInput.trim());
+  const isDuplicate = urlInput.trim() !== "" && profile.sources.some(s => normalizeUrl(s.url) === normalizeUrl(urlInput));
 
   async function handleAddUrl() {
     if (!urlInput.trim() || isDuplicate) return;
@@ -393,7 +486,12 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
     finally { setRefreshingId(null); }
   }
 
-  const visibleSuggestions = suggestions.filter(s => !skipped.has(s.url) && !profile.sources.some(src => src.url === s.url));
+  const visibleSuggestions = suggestions.filter(s => {
+    const normUrl = normalizeUrl(s.url);
+    const isSkipped = Array.from(skipped).some(sk => normalizeUrl(sk) === normUrl);
+    const isAlreadySourced = profile.sources.some(src => normalizeUrl(src.url) === normUrl);
+    return !isSkipped && !isAlreadySourced;
+  });
 
   return (
     <div>
@@ -436,11 +534,13 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
 
             async function viewInBrowser() {
               try {
-                await fetch("http://localhost:7070/navigate", {
+                await fetch("/browser/navigate", {
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ url: s.url }),
                 });
-                window.open("http://localhost:7070", "_blank");
+                if (!showBrowser) {
+                  setShowBrowser(true);
+                }
               } catch { window.open(s.url, "_blank"); }
             }
 
@@ -460,6 +560,19 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
 
                     {/* Badges row */}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 5 }}>
+                      {s.source_type && (() => {
+                        const stConfig: Record<string, { icon: string; color: string; label: string }> = {
+                          profile: { icon: "👤", color: "#8b5cf6", label: "Profile" },
+                          publication: { icon: "📄", color: "#0369a1", label: "Publication" },
+                          news: { icon: "📰", color: "#b45309", label: "News" },
+                        };
+                        const cfg = stConfig[s.source_type] ?? stConfig.news;
+                        return (
+                          <span style={{ fontSize: 10, borderRadius: 4, padding: "1px 6px", fontWeight: 700, background: `${cfg.color}15`, color: cfg.color, border: `1px solid ${cfg.color}35` }}>
+                            {cfg.icon} {cfg.label}
+                          </span>
+                        );
+                      })()}
                       <span style={{ fontSize: 10, borderRadius: 4, padding: "1px 6px", fontWeight: 600, background: `${fetchColor}18`, color: fetchColor, border: `1px solid ${fetchColor}40` }}>
                         {fetchIcon}
                       </span>
@@ -493,12 +606,32 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
                     <button onClick={viewInBrowser} style={{ fontSize: 12, padding: "4px 12px", background: "none", border: "1px solid #93c5fd", borderRadius: 6, cursor: "pointer", color: "#1d4ed8" }}>
                       View
                     </button>
-                    <button onClick={() => setSkipped(sk => new Set([...sk, s.url]))} style={{ fontSize: 12, padding: "4px 12px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
+                    <button onClick={async () => {
+                      setSkipped(sk => new Set([...sk, s.url]));
+                      try {
+                        await skipSuggestion(profile.name, s.url);
+                      } catch (e) {
+                        console.error("Failed to skip suggestion:", e);
+                      }
+                    }} style={{ fontSize: 12, padding: "4px 12px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
                       Skip
                     </button>
                   </div>
                 </div>
-                {s.snippet && <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{s.snippet}</p>}
+                {s.snippet && (
+                  <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {s.snippet.startsWith("Found on: ") ? (
+                      <>
+                        Found on:{" "}
+                        <a href={s.snippet.replace("Found on: ", "")} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", textDecoration: "underline" }}>
+                          {s.snippet.replace("Found on: ", "")}
+                        </a>
+                      </>
+                    ) : (
+                      s.snippet
+                    )}
+                  </p>
+                )}
               </div>
             );
           })}
@@ -532,6 +665,7 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
         <div style={{ marginTop: 8 }}>
           <Expander label="Paste text from blocked page / PDF" open={expandPaste} onToggle={() => setExpandPaste(v => !v)}>
             <div style={{ marginTop: 10 }}>
+              <BookmarkletCard />
               <input value={pasteUrl} onChange={e => setPasteUrl(e.target.value)} placeholder="Source URL (for citation)" style={{ marginBottom: 8 }} />
               <textarea value={pasteText} onChange={e => setPasteText(e.target.value)} placeholder="Paste the page text here…" style={{ height: 110, resize: "vertical", fontFamily: "inherit" }} />
               {pasteError && <p style={{ color: "var(--danger)", fontSize: 12, marginTop: 4 }}>{pasteError}</p>}
@@ -629,6 +763,14 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
                 profileName={profile.name}
                 linkOpened={openedLinks.has(s.url)}
                 onLinkOpen={() => onLinkOpen(s.url)}
+                onVerifyingChange={(v) => {
+                  setVerifyingUrls(prev => {
+                    const next = new Set(prev);
+                    if (v) next.add(s.url);
+                    else next.delete(s.url);
+                    return next;
+                  });
+                }}
                 onVerified={(verified, newClaims, missingSlots) => {
                   const sources = profile.sources.map(src => src.url === s.url ? { ...src, human_verified: verified } : src);
                   onProfileUpdate({
@@ -657,7 +799,7 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
   );
 }
 
-function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected }: {
+function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onVerifyingChange }: {
   source: Source;
   sourceNumber: number;
   profileName: string;
@@ -665,6 +807,7 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
   onLinkOpen: () => void;
   onVerified: (v: boolean, newClaims?: Claim[], missingSlots?: string[]) => void;
   onRejected: (result: { sources: Source[]; claims: Claim[]; notability: NotabilityResult }) => void;
+  onVerifyingChange?: (verifying: boolean) => void;
 }) {
   const [verifying, setVerifying] = useState(false);
   const [showReject, setShowReject] = useState(false);
@@ -677,12 +820,16 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
 
   async function handleVerify() {
     setVerifying(true);
+    onVerifyingChange?.(true);
     try {
       const resp = await verifySource(profileName, source.url, !source.human_verified);
       if (resp.new_claims?.length) setClaimsExtracted(resp.new_claims.length);
       onVerified(!source.human_verified, resp.new_claims ?? [], resp.missing_slots ?? []);
     } catch { /* silently ignore */ }
-    finally { setVerifying(false); }
+    finally {
+      setVerifying(false);
+      onVerifyingChange?.(false);
+    }
   }
 
   async function handleReject() {
@@ -807,155 +954,6 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
 
 // ── Timeline tab ─────────────────────────────────────────────────────────────
 
-const TIMELINE_FIELDS = ["birth_date", "education", "affiliation", "position", "award", "death_date"];
-
-const FIELD_COLOR: Record<string, string> = {
-  birth_date:  "#6366f1",
-  death_date:  "#6b7280",
-  education:   "#8b5cf6",
-  affiliation: "#0891b2",
-  position:    "#0d9488",
-  award:       "#d97706",
-  known_for:   "#16a34a",
-};
-
-const FIELD_LABEL: Record<string, string> = {
-  birth_date:  "Birth",
-  death_date:  "Death",
-  education:   "Education",
-  affiliation: "Affiliation",
-  position:    "Position",
-  award:       "Award",
-  known_for:   "Known for",
-};
-
-function parseFirstYear(s: string | null | undefined): number | null {
-  if (!s) return null;
-  const m = s.match(/\b(1[89]\d\d|20\d\d)\b/);
-  return m ? parseInt(m[1]) : null;
-}
-
-function TimelineTab({ profile }: { profile: PersonProfile }) {
-  // Build event list from temporal claims
-  interface TLEvent {
-    year: number | null;
-    period: string;
-    text: string;
-    field: string;
-    source: Source | null;
-    source_url: string | null;
-  }
-
-  const events: TLEvent[] = [];
-
-  // Birth from profile-level field (may not have a claim)
-  if (profile.birth_date && !profile.claims.some(c => c.field === "birth_date")) {
-    events.push({
-      year: parseFirstYear(profile.birth_date),
-      period: profile.birth_date,
-      text: `Born ${profile.birth_date}`,
-      field: "birth_date",
-      source: null,
-      source_url: null,
-    });
-  }
-
-  for (const claim of profile.claims) {
-    if (!TIMELINE_FIELDS.includes(claim.field)) continue;
-    const src = claim.source_url ? profile.sources.find(s => s.url === claim.source_url) ?? null : null;
-    const year = parseFirstYear(claim.date_context) ?? parseFirstYear(claim.text);
-    events.push({
-      year,
-      period: claim.date_context || "",
-      text: claim.text,
-      field: claim.field,
-      source: src,
-      source_url: claim.source_url ?? null,
-    });
-  }
-
-  const dated   = events.filter(e => e.year !== null).sort((a, b) => a.year! - b.year!);
-  const undated = events.filter(e => e.year === null);
-
-  if (events.length === 0) {
-    return (
-      <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-        No timeline events yet. Confirm sources to extract claims with dates.
-      </div>
-    );
-  }
-
-  function EventRow({ ev }: { ev: TLEvent }) {
-    const color = FIELD_COLOR[ev.field] ?? "#6b7280";
-    const dotStyle: string = ev.source?.reliability === "reliable_secondary"
-      ? "solid"
-      : ev.source ? "primary" : "empty";
-    return (
-      <div style={{ display: "flex", gap: 0, marginBottom: 10, position: "relative" }}>
-        {/* Year column */}
-        <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: ev.year ? color : "var(--muted)" }}>
-            {ev.period || "—"}
-          </span>
-        </div>
-        {/* Dot + line */}
-        <div style={{ width: 20, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
-            marginTop: 3,
-            background: dotStyle === "solid" ? color : dotStyle === "primary" ? "white" : "var(--bg)",
-            border: `2px solid ${dotStyle === "empty" ? "var(--muted)" : color}`,
-            boxShadow: dotStyle === "solid" ? `0 0 0 2px ${color}30` : "none",
-          }} />
-          <div style={{ flex: 1, width: 2, background: "var(--border)", minHeight: 8 }} />
-        </div>
-        {/* Content */}
-        <div style={{ flex: 1, paddingLeft: 8, paddingBottom: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color, background: `${color}15`, borderRadius: 4, padding: "1px 5px" }}>
-              {FIELD_LABEL[ev.field] ?? ev.field}
-            </span>
-            {!ev.source && ev.source_url === null && (
-              <span style={{ fontSize: 10, color: "var(--warning)", fontWeight: 600 }}>no source</span>
-            )}
-          </div>
-          <p style={{ fontSize: 13, margin: 0, lineHeight: 1.4 }}>{ev.text}</p>
-          {ev.source && (
-            <a href={ev.source_url!} target="_blank" rel="noreferrer"
-              style={{ fontSize: 11, color: "var(--primary)", marginTop: 2, display: "inline-block" }}>
-              {ev.source.publisher || new URL(ev.source_url!).hostname.replace("www.", "")} ↗
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ paddingTop: 20 }}>
-      <div style={{ position: "relative" }}>
-        {dated.map((ev, i) => <EventRow key={i} ev={ev} />)}
-        {undated.length > 0 && (
-          <>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "var(--muted)", margin: "16px 0 10px 72px" }}>
-              Undated
-            </p>
-            {undated.map((ev, i) => <EventRow key={`u${i}`} ev={ev} />)}
-          </>
-        )}
-      </div>
-
-      <div style={{ marginTop: 16, padding: "10px 12px", background: "var(--bg)", borderRadius: 8, fontSize: 11, color: "var(--muted)" }}>
-        <strong>Legend:</strong>&nbsp;
-        <span style={{ marginRight: 10 }}>Filled dot = reliable secondary source</span>
-        <span style={{ marginRight: 10 }}>Outlined dot = primary/self-published</span>
-        <span>Empty dot = no source yet</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Profile tab — Wikipedia slot view ────────────────────────────────────────
 
 const SLOT_LABELS: Record<string, string> = {
   full_name: "Full name",
@@ -1654,16 +1652,24 @@ function ChecklistCard({ profile, wikiStatus }: { profile: PersonProfile; wikiSt
   const rsCount = profile.notability?.rs_count ?? 0;
   const verifiedCount = profile.claims.filter(c => c.verification === "confirmed" || c.verification === "edited").length;
   const humanVerifiedSources = profile.sources.filter(s => s.human_verified).length;
-  const items = [
+  const evidenceItems = [
     { done: rsCount >= 2, label: `2+ RS sources (${rsCount} found)` },
     { done: humanVerifiedSources > 0, label: `Sources checked (${humanVerifiedSources}/${profile.sources.length})` },
     { done: verifiedCount > 0, label: `Claims verified (${verifiedCount}/${profile.claims.length})` },
-    { done: wikiStatus.status !== "exists", label: "No existing Wikipedia article" },
-    { done: wikiStatus.status !== "deleted", label: "No prior deletion" },
   ];
+  const statusItem = wikiStatus.status === "clear"
+    ? { done: true, label: "No existing article or draft found" }
+    : wikiStatus.status === "draft"
+      ? { done: true, label: "Existing draft identified" }
+      : wikiStatus.status === "exists"
+        ? { done: true, label: "Existing article identified" }
+        : { done: false, label: "Prior deletion requires review" };
+  const items = [...evidenceItems, statusItem];
   return (
     <div className="card">
-      <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>AfC checklist</p>
+      <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+        {wikiStatus.status === "clear" || wikiStatus.status === "draft" ? "Draft readiness" : "Research readiness"}
+      </p>
       {items.map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, fontSize: 12 }}>
           <span style={{ color: item.done ? "var(--success)" : "var(--muted)", fontWeight: 700 }}>

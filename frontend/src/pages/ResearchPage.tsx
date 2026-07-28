@@ -9,11 +9,10 @@ interface Props {
 }
 
 const STEPS = [
-  "Checking Wikipedia for existing pages...",
-  "Fetching sources from Semantic Scholar and web...",
+  "Checking Wikipedia, draft, and deletion status...",
+  "Discovering candidate academic and web sources...",
   "Classifying source reliability...",
-  "Scoring notability against WP:GNG...",
-  "Extracting claims with citations...",
+  "Checking sources for same-name conflicts...",
   "Building research workspace...",
 ];
 
@@ -44,7 +43,7 @@ export default function ResearchPage({ candidate, onDone, onBack }: Props) {
   }, []);
 
   return (
-    <div style={{ maxWidth: 520, margin: "80px auto", padding: "0 20px", textAlign: "center" }}>
+    <div style={{ maxWidth: 520, margin: "min(80px, 8vh) auto", padding: "0 20px", textAlign: "center" }}>
       <div className="card">
         <div style={{
           width: 56, height: 56, borderRadius: "50%",

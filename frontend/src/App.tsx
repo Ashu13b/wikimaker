@@ -28,6 +28,17 @@ export default function App() {
     }
   }, []);
 
+  // Listen for WIKIMAKER_RELAY messages from the embedded browser iframe
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === "WIKIMAKER_RELAY") {
+        setRelayPending({ url: event.data.url, text: event.data.text });
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   function handleConfirmed(candidate: PersonCandidate) {
     setConfirmed(candidate);
     setStage("loading");

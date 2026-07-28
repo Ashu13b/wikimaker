@@ -94,6 +94,8 @@ class PersonProfile(BaseModel):
     # Research outputs
     sources: list[Source] = Field(default_factory=list)
     claims: list[Claim] = Field(default_factory=list)
+    skipped_sources: list[str] = Field(default_factory=list)
+    rejected_sources: list[str] = Field(default_factory=list)
 
     # Notability (informational — never a hard gate)
     notability: Optional[NotabilityResult] = None

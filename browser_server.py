@@ -48,6 +48,9 @@ _xvfb: Optional[subprocess.Popen] = None
 
 def _dispatch(action: str, **args) -> Any:
     """Send a command to the browser thread and wait for the result."""
+    global _running
+    if not _running and action != "status":
+        start_browser()
     cmd = _Cmd(action=action, args=args)
     _q.put(cmd)
     if not cmd.done.wait(timeout=35):
@@ -79,11 +82,12 @@ def _try_start_xvfb() -> bool:
 def _browser_thread():
     """Owner of the Playwright context. Processes _q commands sequentially."""
     global _headed, _running
-    _headed = _try_start_xvfb()
+    force_headless = os.environ.get("WIKIMAKER_HEADLESS", "0") == "1"
+    _headed = _try_start_xvfb() if not force_headless else False
     if _headed:
         os.environ["DISPLAY"] = XVFB_DISPLAY
     mode = "headed (Xvfb)" if _headed else "headless"
-    print(f"[browser] {mode} mode — http://localhost:{PORT}")
+    print(f"[browser] {mode} mode")
 
     from playwright.sync_api import sync_playwright
     from playwright_stealth import Stealth
@@ -189,8 +193,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 @app.get("/screenshot")
 def screenshot():
-    if not _running:
-        return Response(content=b"", media_type="image/jpeg", status_code=503)
     data = _dispatch("screenshot")
     return Response(content=data, media_type="image/jpeg",
                     headers={"Cache-Control": "no-store"})
@@ -201,8 +203,6 @@ class NavReq(BaseModel):
 
 @app.post("/navigate")
 def navigate(req: NavReq):
-    if not _running:
-        return {"error": "browser not ready", "url": ""}
     try:
         result = _dispatch("navigate", url=req.url.strip())
         return result
@@ -223,8 +223,6 @@ class ViewportReq(BaseModel):
 
 @app.post("/viewport")
 def set_viewport(req: ViewportReq):
-    if not _running:
-        return {"error": "browser not ready"}
     w = max(320, min(req.width, 1920))
     h = max(400, min(req.height, 1920))
     return _dispatch("set_viewport", width=w, height=h)
@@ -450,7 +448,7 @@ async function syncViewport() {
   const h = Math.round(vp.clientHeight);
   if (w < 50 || h < 50) return;
   try {
-    await fetch('/viewport', {
+    await fetch('./viewport', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ width: w, height: h }),
@@ -468,12 +466,12 @@ function startPoll() {
 
 function refreshShot() {
   const img = document.getElementById('screen');
-  img.src = '/screenshot?' + Date.now();
+  img.src = './screenshot?' + Date.now();
 }
 
 async function refreshInfo() {
   try {
-    const d = await fetch('/info').then(r => r.json());
+    const d = await fetch('./info').then(r => r.json());
     if (d.url && d.url !== 'about:blank') {
       document.getElementById('url-bar').value = d.url;
       document.title = (d.title || 'Remote Browser').slice(0, 60);
@@ -491,7 +489,7 @@ async function navigate() {
   if (!url) return;
   setLoading(true);
   try {
-    const d = await fetch('/navigate', {
+    const d = await fetch('./navigate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
@@ -535,7 +533,7 @@ screen.addEventListener('touchmove', async e => {
   touchStart.x = e.touches[0].clientX;
   touchStart.y = e.touches[0].clientY;
   if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 3) {
-    await fetch('/scroll', {
+    await fetch('./scroll', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ delta: dy * 2.5 }),
@@ -570,7 +568,7 @@ screen.addEventListener('touchend', async e => {
   e.preventDefault();
   const rect = screen.getBoundingClientRect();
   const coords = tapToImageCoords(endX - rect.left, endY - rect.top, screen);
-  await fetch('/click', {
+  await fetch('./click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(coords),
@@ -583,7 +581,7 @@ screen.addEventListener('click', async e => {
   if ('ontouchstart' in window) return; // handled above
   const rect = screen.getBoundingClientRect();
   const coords = tapToImageCoords(e.clientX - rect.left, e.clientY - rect.top, screen);
-  await fetch('/click', {
+  await fetch('./click', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(coords),
@@ -595,13 +593,13 @@ screen.addEventListener('click', async e => {
 async function sendType() {
   const inp = document.getElementById('type-input');
   if (!inp.value) return;
-  await fetch('/type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: inp.value }) });
+  await fetch('./type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: inp.value }) });
   inp.value = '';
   setTimeout(refreshShot, 300);
 }
 
 async function sendKey(key) {
-  await fetch('/key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
+  await fetch('./key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
   setTimeout(() => { refreshShot(); refreshInfo(); }, 350);
 }
 
@@ -609,11 +607,22 @@ async function sendKey(key) {
 async function sendToWikimaker() {
   toast('Reading page content…');
   try {
-    const d = await fetch('/content').then(r => r.json());
+    const d = await fetch('./content').then(r => r.json());
     const params = new URLSearchParams({ relay_url: d.url, relay_text: d.text.slice(0, 30000) });
-    // Wikimaker listens on same machine, port 5173 via Vite / port 8001 via backend
-    window.open('http://localhost:5173/?' + params.toString(), '_blank');
-    toast('Sent to wikimaker — switch to that tab');
+    
+    // Check if we are embedded in an iframe
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'WIKIMAKER_RELAY',
+        url: d.url,
+        text: d.text.slice(0, 30000)
+      }, '*');
+      toast('Sent content directly to wikimaker!');
+    } else {
+      // Unified mode: open root of the same host (same port)
+      window.open('/?' + params.toString(), '_blank');
+      toast('Sent to wikimaker — switch to that tab');
+    }
   } catch (e) {
     toast('Could not reach wikimaker: ' + e.message);
   }
@@ -630,9 +639,9 @@ function toast(msg) {
 }
 
 // ── Wire up buttons ───────────────────────────────────────────────────────────
-document.getElementById('btn-back').addEventListener('click', () => navAction('/back'));
-document.getElementById('btn-fwd').addEventListener('click', () => navAction('/forward'));
-document.getElementById('btn-reload').addEventListener('click', () => navAction('/reload'));
+document.getElementById('btn-back').addEventListener('click', () => navAction('./back'));
+document.getElementById('btn-fwd').addEventListener('click', () => navAction('./forward'));
+document.getElementById('btn-reload').addEventListener('click', () => navAction('./reload'));
 document.getElementById('go-btn').addEventListener('click', navigate);
 document.getElementById('url-bar').addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
 document.getElementById('btn-send').addEventListener('click', sendType);
@@ -649,6 +658,26 @@ setInterval(refreshInfo, 2000);
 </html>
 """
 
+
+def start_browser() -> None:
+    """Start the browser thread if not already running."""
+    global _running
+    if _running:
+        return
+    import threading
+    t = threading.Thread(target=_browser_thread, daemon=True)
+    t.start()
+    for _ in range(40):
+        if _running:
+            break
+        import time
+        time.sleep(0.25)
+
+def stop_browser() -> None:
+    """Stop the browser display server (Xvfb)."""
+    global _xvfb
+    if _xvfb:
+        _xvfb.terminate()
 
 if __name__ == "__main__":
     import uvicorn

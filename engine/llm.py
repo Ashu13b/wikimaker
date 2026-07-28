@@ -150,6 +150,10 @@ class StubProvider:
                 if any(kw in sl for kw in keywords):
                     field = f
                     break
+            if field == "birth_date":
+                animal_kws = ["cloned", "cloning", "animal", "buffalo", "calf", "cow", "bull", "sheep", "goat", "offspring", "garima", "samrupa", "ganga", "dolly"]
+                if any(akw in sl for akw in animal_kws):
+                    field = "known_for"
             claims.append({"field": field, "text": sent.strip()})
             if len(claims) >= 3:
                 break

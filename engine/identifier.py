@@ -33,6 +33,13 @@ def fetch_wikidata_photo(name: str) -> str | None:
     return None
 
 
+def fetch_wikidata_photo_by_id(qid: str) -> str | None:
+    """Return a Wikidata image only after a specific item has been confirmed."""
+    if not re.fullmatch(r"Q[1-9]\d*", qid):
+        return None
+    return _wikidata_detail(qid).get("photo_url")
+
+
 def find_candidates(name: str, hints: str = "") -> list[PersonCandidate]:
     wiki = _search_wikipedia(name, hints)
     wdata = _search_wikidata(name, hints)
@@ -40,9 +47,10 @@ def find_candidates(name: str, hints: str = "") -> list[PersonCandidate]:
     seen_ids = {c.wikidata_id for c in wiki if c.wikidata_id}
     merged = list(wiki)
     for c in wdata:
-        if c.wikidata_id not in seen_ids:
+        qid = c.wikidata_id
+        if qid and qid not in seen_ids:
             merged.append(c)
-            seen_ids.add(c.wikidata_id)
+            seen_ids.add(qid)
     return merged[:5]
 
 

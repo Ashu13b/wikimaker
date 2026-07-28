@@ -25,7 +25,7 @@ from engine.researcher_ids import (
     extract_sd_pii, _SD_AUTHOR_RE,
 )
 from engine.author_check import check_doi_authors, extract_doi
-from wiki.wiki_check import check_existing_page
+from wiki.wiki_check import check_existing_page, draft_generation_allowed
 from wiki.wikitext import render_en, render_hi
 
 SESSIONS_DIR = Path(__file__).parent.parent / "sessions"
@@ -146,11 +146,10 @@ BROWSER_SERVER = "http://localhost:7070"
 def _push_to_browser(url: str) -> bool:
     """Navigate the human browser_server to url. Returns True if browser is running."""
     try:
-        import requests as _req
-        st = _req.get(f"{BROWSER_SERVER}/status", timeout=1).json()
-        if not st.get("running"):
+        from browser_server import _dispatch, _running
+        if not _running:
             return False
-        _req.post(f"{BROWSER_SERVER}/navigate", json={"url": url}, timeout=3)
+        _dispatch("navigate", url=url)
         return True
     except Exception:
         return False
@@ -197,10 +196,12 @@ def research_start(req: ResearchRequest) -> dict:
     """Initialize session, run wiki check, fetch + classify sources, score notability."""
     wiki_status = check_existing_page(req.name)
 
+    # Never choose a Wikidata image from a name alone: same-name people are
+    # common. Enrich from Wikidata only when the user confirmed a specific QID.
     photo_url = req.photo_url
-    if not photo_url:
-        from engine.identifier import fetch_wikidata_photo
-        photo_url = fetch_wikidata_photo(req.name)
+    if not photo_url and req.wikidata_id:
+        from engine.identifier import fetch_wikidata_photo_by_id
+        photo_url = fetch_wikidata_photo_by_id(req.wikidata_id)
 
     profile = PersonProfile(
         name=req.name,
@@ -235,9 +236,10 @@ def research_start(req: ResearchRequest) -> dict:
     # Drop wrong-person sources before saving — keep uncertain ones (may be right, user can judge)
     sources = [s for s in sources if s.relevance_flag != "likely_wrong"]
     profile.sources = sources
-    profile.notability = score_notability(req.name, sources)
-    profile.claims = extract_claims(profile, sources, llm())
-    profile.missing_slots = find_missing_slots(profile, profile.claims)
+    # Do not extract claims or score notability until the user verifies sources!
+    profile.claims = []
+    profile.notability = score_notability(req.name, [])
+    profile.missing_slots = find_missing_slots(profile, [])
 
     _sessions[req.name] = profile
     _wiki_statuses[req.name] = wiki_status.model_dump()
@@ -348,6 +350,7 @@ def _add_sd_article(profile, url: str) -> dict:
             date=str(resolved["year"]) if resolved["year"] else None,
             fetched_by="openalex",
             user_provided=True,
+            human_verified=True,
         )
         [article_source] = classify_sources([article_source], llm())
         _check_doi_sources([article_source], profile.name, profile.affiliation or "")
@@ -362,6 +365,7 @@ def _add_sd_article(profile, url: str) -> dict:
         # Fetch their full works list
         oa_works = fetch_openalex_works(oa_author_id, limit=30)
         for s in oa_works:
+            s.human_verified = True
             if s.url not in existing_urls and s.url not in {ns.url for ns in new_sources}:
                 new_sources.append(s)
         pipeline_msg["openalex_works_added"] = len(new_sources) - (1 if doi_url not in existing_urls else 0)
@@ -408,6 +412,7 @@ def _add_sd_author_profile(profile, url: str) -> dict:
         source.snippet = f"Scopus author ID: {scopus_id}" if scopus_id else "ScienceDirect author profile"
 
     source.user_provided = True
+    source.human_verified = True
     [source] = classify_sources([source], llm())
     flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
     profile.sources.append(source)
@@ -445,6 +450,8 @@ def _add_sd_author_profile(profile, url: str) -> dict:
         profile.researcher_ids["openalex"] = oa_author_id
         existing_urls = {s.url for s in profile.sources}
         oa_works = [s for s in fetch_openalex_works(oa_author_id, limit=30) if s.url not in existing_urls]
+        for s in oa_works:
+            s.human_verified = True
         oa_works = classify_sources(oa_works, llm())
         new_claims = extract_claims(profile, oa_works, llm())
         profile.sources.extend(oa_works)
@@ -508,6 +515,7 @@ def add_source_paste(req: AddSourcePaste) -> dict:
     source = fetch_url_source_with_paste(req.url, req.pasted_text)
     [source] = classify_sources([source], llm())
     flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
+    source.human_verified = True
     new_claims = extract_claims(profile, [source], llm())
     profile.sources.append(source)
     profile.claims.extend(new_claims)
@@ -544,9 +552,8 @@ def deep_crawl(req: CrawlRequest) -> dict:
         if graph.relevance_hits.get(s.url, 0) > 0
     ]
 
-    new_claims = extract_claims(profile, relevant, llm())
+    new_claims = []
     profile.sources.extend(relevant)
-    profile.claims.extend(new_claims)
     profile.notability = score_notability(profile.name, profile.sources)
     _save_session(profile.name)
 
@@ -575,10 +582,8 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     new_sources = [s for s in sources if s.url not in existing_urls]
     new_sources = classify_sources(new_sources, llm())
     flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
-    new_claims = extract_claims(profile, new_sources, llm())
-
+    new_claims = []
     profile.sources.extend(new_sources)
-    profile.claims.extend(new_claims)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
     profile.notability = score_notability(profile.name, profile.sources)
     _save_session(profile.name)
@@ -594,6 +599,14 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
 @app.post("/draft")
 def generate_draft(req: DraftRequest) -> dict:
     profile = req.profile
+    wiki_status = _wiki_statuses.get(profile.name, {"status": "clear"})
+    status = wiki_status.get("status", "clear")
+    if not draft_generation_allowed(status):
+        if status == "exists":
+            detail = "An article already exists. Use research mode to prepare improvements instead of a duplicate draft."
+        else:
+            detail = "This subject has a prior deletion record. Review the deletion history and new coverage before drafting."
+        raise HTTPException(409, detail)
     profile.wikitext_en = render_en(profile, llm())
     if req.generate_hindi:
         profile.wikitext_hi = render_hi(profile, llm())
@@ -748,10 +761,11 @@ def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
 
     existing_urls = {s.url for s in profile.sources}
     new_sources = [s for s in new_sources if s.url not in existing_urls]
+    for s in new_sources:
+        s.human_verified = True
     new_sources = classify_sources(new_sources, llm())
     _check_doi_sources(new_sources, profile.name, profile.affiliation or "")
     new_claims = extract_claims(profile, new_sources, llm())
-
     profile.sources.extend(new_sources)
     profile.claims.extend(new_claims)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
@@ -809,13 +823,15 @@ def resume_session(body: dict) -> dict:
 @app.post("/research/fetch-from-browser")
 def fetch_from_browser(body: dict) -> dict:
     """Pull the current page from browser_server and add it as a source."""
-    import requests as _req
     profile = _get_profile(body["profile_name"])
 
     try:
-        data = _req.get(f"{BROWSER_SERVER}/content", timeout=8).json()
+        from browser_server import _dispatch, _running
+        if not _running:
+            raise HTTPException(503, "Browser server is not running")
+        data = _dispatch("content")
     except Exception as e:
-        raise HTTPException(503, f"Browser server not reachable: {e}")
+        raise HTTPException(503, f"Browser server error: {e}")
 
     url = data.get("url", "")
     text = data.get("text", "")
@@ -852,3 +868,53 @@ def suggest_urls(body: dict) -> dict:
     profile = _get_profile(body["profile_name"])
     suggestions = suggest_next_urls(profile, max_results=body.get("max_results", 8))
     return {"suggestions": suggestions}
+
+
+# ── Unified App setup ───────────────────────────────────────────────────────
+from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from browser_server import start_browser, stop_browser, app as browser_app
+from pathlib import Path
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Remote browser thread is lazily initialized on demand via _dispatch
+    yield
+    # Clean up Xvfb/Playwright processes
+    stop_browser()
+
+# Save API application reference
+api_app = app
+
+# Create unified top-level app
+unified_app = FastAPI(title="wikimaker-unified", lifespan=lifespan)
+
+# Add global CORS middleware to support local Vite dev server proxies
+unified_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount sub-apps
+unified_app.mount("/api", api_app)
+unified_app.mount("/browser", browser_app)
+
+# Serve compiled frontend React SPA statically
+FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    unified_app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+    
+    @unified_app.api_route("/", methods=["GET", "HEAD"])
+    async def serve_index():
+        return FileResponse(FRONTEND_DIST / "index.html")
+        
+    @unified_app.api_route("/{path:path}", methods=["GET", "HEAD"])
+    async def serve_catchall(path: str):
+        # Fallback to index.html for SPA client-side routing (React Router)
+        return FileResponse(FRONTEND_DIST / "index.html")
+
+# Export unified_app as 'app' so existing uvicorn commands work unmodified
+app = unified_app
