@@ -233,3 +233,8 @@ browser_server has a "Wiki+" button. When clicked on a page, it opens:
 - Wikitext generator should use `date_context` for narrative ("served as Director from 2005 to 2015")
 - CORS origins list in `backend/main.py` should match `start.sh` port
 - PDF person-name search: before queuing temporal variants, confirm name appears in the PDF text (already done — `mentions > 0` check in crawler)
+
+<!-- >>> context-kit >>> -->
+This repo uses context-kit. Consult CODE_MAP / DEPS_MAP / ENV_MAP before Grep/Read.
+@AGENTS.md
+<!-- <<< context-kit <<< -->

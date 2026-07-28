@@ -13,3 +13,41 @@ sessions/
 # Node / frontend
 node_modules/
 *.log
+
+# >>> context-kit >>>
+# CODE_MAP/DEPS_MAP are committed (present from clone). Only per-host state is ignored.
+ENV_MAP.md
+.context-kit/last_seen
+# Telemetry is local consent: the opt-in flag and its log stay per-host.
+.context-kit/telemetry
+.context-kit/telemetry.jsonl
+# <<< context-kit <<<
+
+# >>> context-kit >>>
+.context-kit/last_session
+.context-kit/origin
+.context-kit/provenance_hash
+.context-kit/provenance_git_info
+.context-kit/symbol_index.json
+.context-kit/tool_history.json
+.context-kit/telemetry_offset
+.context-kit/consent
+.context-kit/install_id
+.context-kit/share_url
+# <<< context-kit <<<
+
+# >>> context-kit >>>
+.context-kit/scripts/__pycache__/
+.context-kit/last_update
+# <<< context-kit <<<
+
+# >>> context-kit >>>
+.context-kit/*
+!.context-kit/profile
+!.context-kit/boundaries
+!.context-kit/compartments
+!.context-kit/conventions
+!.context-kit/purposes
+!.context-kit/cold
+!.context-kit/references
+# <<< context-kit <<<

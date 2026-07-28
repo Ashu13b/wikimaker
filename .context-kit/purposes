@@ -1,0 +1,5 @@
+.: Process launchers and local browser integration.
+backend: FastAPI transport, session persistence, and workflow orchestration.
+engine: Domain services for identity, discovery, extraction, classification, and evidence analysis.
+frontend: React presentation, client API adapters, and user-workflow interaction.
+wiki: Wikimedia status checks and wikitext rendering policy.

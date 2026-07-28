@@ -1,0 +1,10 @@
+# >>> context-kit >>>
+# Automatically resolve conflicts in maps by rebuilding them
+CODE_MAP.md merge=context-kit-maps
+ARCH_MAP.md merge=context-kit-maps
+DEPS_MAP.md merge=context-kit-maps
+DOCS_MAP.md merge=context-kit-maps
+WORKFLOW.md merge=context-kit-maps
+COMMANDS_MAP.md merge=context-kit-maps
+CONVENTIONS_MAP.md merge=context-kit-maps
+# <<< context-kit <<<
