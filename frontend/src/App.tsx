@@ -1,13 +1,65 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, ReactNode, ErrorInfo } from "react";
 import IdentifyPage from "./pages/IdentifyPage";
 import ResearchPage from "./pages/ResearchPage";
 import HubPage from "./pages/HubPage";
 import DraftPage from "./pages/DraftPage";
 import type { PersonCandidate, PersonProfile, WikiStatus } from "./types";
 
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Wikimaker UI Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ maxWidth: 600, margin: "60px auto", padding: 24, background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 12 }}>
+          <h2 style={{ fontSize: 18, color: "#991b1b", marginBottom: 8 }}>Something went wrong in the workspace</h2>
+          <p style={{ fontSize: 13, color: "#7f1d1d", marginBottom: 16, fontFamily: "monospace", wordBreak: "break-all" }}>
+            {this.state.error?.message || "An unexpected error occurred."}
+          </p>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#b91c1c", color: "#fff", cursor: "pointer", fontWeight: 700 }}
+            >
+              Reload Page
+            </button>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              style={{ padding: "8px 16px", borderRadius: 6, border: "1px solid var(--border)", background: "#fff", color: "#333", cursor: "pointer" }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 type Stage = "identify" | "loading" | "hub" | "draft";
 
-export default function App() {
+function MainApp() {
   const [stage, setStage] = useState<Stage>("identify");
   const [confirmed, setConfirmed] = useState<PersonCandidate | null>(null);
   const [hubProfile, setHubProfile] = useState<PersonProfile | null>(null);
@@ -117,5 +169,13 @@ export default function App() {
         />
       )}
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <MainApp />
+    </ErrorBoundary>
   );
 }

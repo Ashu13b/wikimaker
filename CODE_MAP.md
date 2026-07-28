@@ -1,4 +1,4 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 18:50 UTC · sha 92af1f1 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 18:58 UTC · sha 07f2e6b · host vnic-trading -->
 
 # CODE_MAP
 
@@ -6,11 +6,11 @@ Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
 - Python — 26 files · 269 symbols
-- TypeScript — 16 files · 120 symbols
+- TypeScript — 16 files · 129 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 389 symbols across 5 languages._
+_Total: 45 files · 398 symbols across 5 languages._
 
 
 ## Compartments
@@ -41,7 +41,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/researcher_ids.py` — HEADERS, OA_HEADERS, _ORCID_RE, _SCHOLAR_RE, _SCOPUS_RE, _SD_AUTHOR_RE, _RESEARCHGATE_RE, _S2_AUTHOR_RE, _SD_PII_RE, def extract_ids_from_sources, def search_researcher_ids, def validate_orcid, def fetch_orcid_works, def extract_sd_pii, def is_sd_article_url, def is_sd_author_url, def resolve_sd_article, def find_openalex_id_for_person, def fetch_openalex_works, def fetch_s2_author_papers
 - `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def suggest_next_urls
 ### frontend/
-- `frontend/src/App.tsx` — Stage, App, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset
+- `frontend/src/App.tsx` — ErrorBoundaryProps, ErrorBoundaryState, ErrorBoundary, constructor, getDerivedStateFromError, componentDidCatch, render, Stage, MainApp, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset, App
 - `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, SessionSummary, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls
 - `frontend/src/components/BookmarkletCard.tsx` — BookmarkletCard, handleCopy
 - `frontend/src/components/CandidateCard.tsx` — Props, CandidateCard
@@ -53,7 +53,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `frontend/src/pages/IdentifyPage.tsx` — Props, View, IdentifyPage, handleResume, handleDelete, handleSearch, handleConfirm
 - `frontend/src/pages/ResearchPage.tsx` — Props, ResearchPage, Spinner
 - `frontend/src/types.ts` — PersonCandidate, SourceReliability, VerificationState, SourceFetchedBy, Source, Claim, NotabilityResult, WikiStatus, PersonProfile, ResearchStartResponse, SdPipelineResult, AddSourceResponse, AddSourcePasteResponse, CrawlResponse, DraftResponse, UrlSuggestion
-- `frontend/src/url.ts` — normalizeUrl
+- `frontend/src/url.ts` — normalizeUrl, getHostname
 - `frontend/src/workflow.ts` — WorkspaceMode, WorkspaceTone, WorkspaceRoute, getWorkspaceRoute, canGenerateDraft, getDraftDestination
 ### tests/
 - `tests/test_provenance.py` — def test_domain_trust_classification, def test_source_provenance_classification, def test_claim_trust_evaluation, def test_strict_notability_independence

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { PersonProfile, WikiStatus, Source } from "../types";
 import { getDraftDestination } from "../workflow";
+import { getHostname } from "../url";
 
 interface Props {
   profile: PersonProfile;
@@ -174,7 +175,7 @@ function SourceRow({ source }: { source: Source }) {
         <span className={`tag ${tagClass[source.reliability]}`}>{tagLabel[source.reliability]}</span>
         <a href={source.url} target="_blank" rel="noreferrer"
           style={{ fontSize: 12, color: "var(--primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {source.publisher || new URL(source.url).hostname}
+          {source.publisher || getHostname(source.url)}
         </a>
       </div>
       <p style={{ fontSize: 12, color: "var(--muted)" }} title={source.title}>

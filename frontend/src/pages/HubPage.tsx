@@ -772,7 +772,7 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
           </div>
 
           <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }} title={source.title}>
-            {source.publisher || new URL(source.url).hostname.replace("www.", "")}
+            {source.publisher || getHostname(source.url)}
           </p>
           <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }} title={source.title}>
             {source.title.slice(0, 90)}{source.title.length > 90 ? "…" : ""}

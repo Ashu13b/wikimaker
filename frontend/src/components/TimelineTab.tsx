@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { targetedSearch } from "../api";
 import type { PersonProfile, Source } from "../types";
+import { getHostname } from "../url";
 
 const TIMELINE_FIELDS = ["birth_date", "education", "affiliation", "position", "award", "death_date"];
 
@@ -177,7 +178,7 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
           {ev.source && (
             <a href={ev.source_url!} target="_blank" rel="noreferrer"
               style={{ fontSize: 11, color: "var(--primary)", marginTop: 2, display: "inline-block" }}>
-              {ev.source.publisher || new URL(ev.source_url!).hostname.replace("www.", "")} ↗
+              {ev.source.publisher || getHostname(ev.source_url!)} ↗
             </a>
           )}
         </div>
