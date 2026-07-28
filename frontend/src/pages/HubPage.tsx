@@ -170,7 +170,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
             <ProfileTab profile={profile} onProfileUpdate={setProfile} />
           )}
           {tab === "timeline" && (
-            <TimelineTab profile={profile} onProfileUpdate={setProfile} onLoadSuggestions={loadSuggestions} />
+            <TimelineTab profile={profile} onProfileUpdate={setProfile} />
           )}
           {tab === "pending" && (
             <ClaimsSection
