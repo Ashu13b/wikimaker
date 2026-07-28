@@ -1,4 +1,4 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 18:59 UTC · sha ed1e512 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:02 UTC · sha 9541d53 · host vnic-trading -->
 
 # CODE_MAP
 
@@ -6,11 +6,11 @@ Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
 - Python — 26 files · 269 symbols
-- TypeScript — 16 files · 130 symbols
+- TypeScript — 16 files · 132 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 399 symbols across 5 languages._
+_Total: 45 files · 401 symbols across 5 languages._
 
 
 ## Compartments
@@ -49,7 +49,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `frontend/src/components/TimelineTab.tsx` — parseFirstYear, TimelineTab, TLEvent, GapInfo, EventRow, GapRow, handleFillGap
 - `frontend/src/components/WorkspaceStatusBanner.tsx` — WorkspaceStatusBanner
 - `frontend/src/pages/DraftPage.tsx` — Props, DraftPage, handleCopy, TabBtn, SourceRow
-- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleGenerateDraft, markLinkOpened, SourceCategory, categorizeSource, SourcesPanel, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser, SourceCard, handleVerify, handleReject, FillMode, ProfileTab, setMode, handleSearch, handleManual, ClaimsSection, doVerify, ActionBtn, ResearcherIdsStrip, RelevanceBadge, FetchedByTag, AuthorMatchBadge, Expander, NotabilityBadge, NotabilityCard, ChecklistCard, TabBtn
+- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleGenerateDraft, markLinkOpened, SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser, SourceCard, handleVerify, handleReject, FillMode, ProfileTab, setMode, handleSearch, handleManual, ClaimsSection, doVerify, ActionBtn, ResearcherIdsStrip, RelevanceBadge, FetchedByTag, AuthorMatchBadge, Expander, NotabilityBadge, NotabilityCard, ChecklistCard, TabBtn
 - `frontend/src/pages/IdentifyPage.tsx` — Props, View, IdentifyPage, handleResume, handleDelete, handleSearch, handleConfirm
 - `frontend/src/pages/ResearchPage.tsx` — Props, ResearchPage, Spinner
 - `frontend/src/types.ts` — PersonCandidate, SourceReliability, VerificationState, SourceFetchedBy, Source, Claim, NotabilityResult, WikiStatus, PersonProfile, ResearchStartResponse, SdPipelineResult, AddSourceResponse, AddSourcePasteResponse, CrawlResponse, DraftResponse, UrlSuggestion

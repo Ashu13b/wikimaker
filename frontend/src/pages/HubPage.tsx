@@ -7,7 +7,7 @@ import BookmarkletCard from "../components/BookmarkletCard";
 import ResearchOperationsCard from "../components/ResearchOperationsCard";
 import TimelineTab from "../components/TimelineTab";
 import { canGenerateDraft, getWorkspaceRoute } from "../workflow";
-import { normalizeUrl } from "../url";
+import { normalizeUrl, getHostname } from "../url";
 
 interface Props {
   initialProfile: PersonProfile;
@@ -164,6 +164,8 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
               onOperationStatusChange={(op, active) => {
                 setActiveOperations(prev => ({ ...prev, [op]: active }));
               }}
+              showBrowser={showBrowser}
+              setShowBrowser={setShowBrowser}
             />
           )}
           {tab === "profile" && (
@@ -269,7 +271,7 @@ function categorizeSource(s: Source): SourceCategory {
   return "news";
 }
 
-function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relayPending, onRelayConsumed, onOperationStatusChange }: {
+function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relayPending, onRelayConsumed, onOperationStatusChange, showBrowser, setShowBrowser }: {
   profile: PersonProfile;
   openedLinks: Set<string>;
   onLinkOpen: (url: string) => void;
@@ -277,6 +279,8 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
   relayPending?: { url: string; text: string } | null;
   onRelayConsumed?: () => void;
   onOperationStatusChange?: (op: string, active: boolean) => void;
+  showBrowser?: boolean;
+  setShowBrowser?: (v: boolean) => void;
 }) {
   const [srcTab, setSrcTab] = useState<SourceCategory | "all">("all");
   const [urlInput, setUrlInput] = useState("");
@@ -313,6 +317,49 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
+
+  async function loadSuggestions() {
+    setSuggestionsLoading(true); setSuggestionsError(null);
+    try {
+      const results = await suggestUrls(profile.name);
+      setSuggestions(results);
+      setSkipped(new Set());
+    } catch (e) { setSuggestionsError(String(e)); }
+    finally { setSuggestionsLoading(false); }
+  }
+
+  useEffect(() => { loadSuggestions(); }, [profile.name]);
+
+  async function handleApproveSuggestion(url: string) {
+    setUrlInput(url);
+    setSkipped(s => new Set([...s, url])); // hide from queue immediately
+    setUrlLoading(true); setUrlError(null); setBlockedUrl(null); setPipelineMsg(null);
+    try {
+      const resp = await addSource(profile.name, url);
+      const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
+      onProfileUpdate({
+        ...profile,
+        sources: newSources,
+        claims: [...profile.claims, ...resp.new_claims],
+        notability: resp.notability,
+        ...(resp.researcher_ids !== undefined && { researcher_ids: resp.researcher_ids }),
+        ...(resp.confirmed_ids !== undefined && { confirmed_ids: resp.confirmed_ids }),
+      });
+      if (resp.sent_to_browser) { setSentToBrowser(true); setBlockedUrl(url); }
+      else if (resp.blocked && !resp.pipeline) { setBlockedUrl(url); setPasteUrl(url); setExpandPaste(true); }
+      if (resp.pipeline) {
+        const p = resp.pipeline;
+        const parts: string[] = [];
+        if (p.doi) parts.push(`DOI resolved: ${p.doi}`);
+        if (p.openalex_author_id) parts.push(`OpenAlex author confirmed`);
+        if ((p.openalex_works_added ?? 0) > 0) parts.push(`${p.openalex_works_added} papers added`);
+        if (p.scopus_id) parts.push(`Scopus ID: ${p.scopus_id}`);
+        if (parts.length) setPipelineMsg(parts.join(" · "));
+      }
+      setUrlInput("");
+    } catch (e) { setUrlError(String(e)); }
+    finally { setUrlLoading(false); }
+  }
 
   const isDuplicate = urlInput.trim() !== "" && profile.sources.some(s => normalizeUrl(s.url) === normalizeUrl(urlInput));
 
