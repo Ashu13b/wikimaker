@@ -738,6 +738,7 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
                 sourceNumber={i + 1}
                 profileName={profile.name}
                 linkOpened={openedLinks.has(s.url)}
+                allClaims={profile.claims}
                 onLinkOpen={() => onLinkOpen(s.url)}
                 onVerifyingChange={(v) => {
                   setVerifyingUrls(prev => {
@@ -775,7 +776,7 @@ function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate, relay
   );
 }
 
-function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onVerifyingChange }: {
+function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onVerifyingChange, allClaims }: {
   source: Source;
   sourceNumber: number;
   profileName: string;
@@ -784,8 +785,10 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
   onVerified: (v: boolean, newClaims?: Claim[], missingSlots?: string[]) => void;
   onRejected: (result: { sources: Source[]; claims: Claim[]; notability: NotabilityResult }) => void;
   onVerifyingChange?: (verifying: boolean) => void;
+  allClaims?: Claim[];
 }) {
   const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
@@ -794,15 +797,20 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
   const tagClass = SOURCE_TAG_CLASS;
   const tagLabel = SOURCE_TAG_LABEL;
 
+  const sourceClaims = (allClaims ?? []).filter(c => c.source_url === source.url);
+
   async function handleVerify() {
     setVerifying(true);
+    setVerifyError(null);
     onVerifyingChange?.(true);
     try {
       const resp = await verifySource(profileName, source.url, !source.human_verified);
-      if (resp.new_claims?.length) setClaimsExtracted(resp.new_claims.length);
+      const count = resp.new_claims?.length ?? 0;
+      setClaimsExtracted(count);
       onVerified(!source.human_verified, resp.new_claims ?? [], resp.missing_slots ?? []);
-    } catch { /* silently ignore */ }
-    finally {
+    } catch (e) {
+      setVerifyError(String(e));
+    } finally {
       setVerifying(false);
       onVerifyingChange?.(false);
     }
@@ -866,6 +874,25 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
         </p>
       )}
 
+      {verifyError && (
+        <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{verifyError}</p>
+      )}
+
+      {/* Inline Extracted Claims */}
+      {sourceClaims.length > 0 && (
+        <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 6 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--success)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+            Extracted Claims ({sourceClaims.length})
+          </p>
+          {sourceClaims.map((c, idx) => (
+            <div key={idx} style={{ fontSize: 12, color: "var(--text)", marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10, color: "var(--muted)", marginRight: 6 }}>{c.field}</span>
+              {c.text}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Action row */}
       {!showReject && (
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -880,7 +907,7 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
               cursor: "pointer",
             }}
           >
-            {verifying ? "Extracting claims…" : source.human_verified ? `✓ Verified${claimsExtracted ? ` · ${claimsExtracted} claims` : ""}` : "Confirm & extract claims"}
+            {verifying ? "Extracting claims…" : source.human_verified ? `✓ Verified${claimsExtracted || sourceClaims.length ? ` · ${claimsExtracted || sourceClaims.length} claims` : ""}` : "Confirm & extract claims"}
           </button>
           <button
             onClick={() => setShowReject(true)}
