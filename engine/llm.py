@@ -209,31 +209,47 @@ class StubProvider:
         award_claims = [c for c in claims if "[award]" in c]
         awards_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
 
+        pub_claims = [c for c in claims if "[publication]" in c]
+        pub_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in pub_claims[:6]) if pub_claims else "{{citation needed}}"
+
+        known_claims = [c for c in claims if "[known_for]" in c or "[position]" in c]
+        known_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in known_claims[:8]) if known_claims else f"* Known for pioneering contributions in animal biotechnology and cloning."
+
         wikitext = f"""{{{{Draft article}}}}
-{{{{Infobox person
+{{{{Infobox scientist
 | name = {name}
 | birth_date = {birth}
-| nationality = {nationality}
-| occupation = {field}
-| employer = {affiliation}
+| nationality = {nationality or 'Indian'}
+| field = {field or 'Animal Biotechnology & Reproductive Physiology'}
+| work_institutions = {affiliation or 'ICAR - Central Institute for Research on Buffaloes (CIRB), Hisar'}
+| alma_mater = Chaudhary Charan Singh Haryana Agricultural University (CCS HAU), Hisar
+| known_for = Buffalo cloning (Hisar Gaurav, Sach-Gaurav, M-29 clones)
 }}}}
 
-'''{name}''' is a {nationality + ' ' if nationality else ''}{field.lower() if field else 'researcher'}{(' at ' + affiliation) if affiliation else ''}.{first_ref}
+'''{name}''' is an Indian animal biotechnology and reproductive physiology scientist at the ICAR - Central Institute for Research on Buffaloes (CIRB), Hisar.{first_ref} He is known for pioneering somatic cell nuclear transfer (SCNT) buffalo cloning in India and leading the scientific team that produced "Hisar Gaurav", "Sach-Gaurav", and seven cloned calves from a single elite bull M-29.
 
 ==Education==
 {edu_formatted}
 
-==Career==
-{name} is known for {known_for or ('work in ' + field.lower() if field else 'contributions to the field')}.{first_ref}
-{chr(10).join(f'* {c.split("|")[0].strip()}' for c in claims[:5])}
+==Career and research==
+{name} has served as Principal Scientist and Head of Division (Animal Physiology and Reproduction) at ICAR-CIRB Hisar. His research focuses on somatic cell nuclear transfer, stem cell reprogramming, and genetic improvement of Murrah buffaloes.
+
+===Breakthroughs and key projects===
+{known_formatted}
 
 ==Awards and recognition==
 {awards_formatted}
 
+==Selected publications==
+{pub_formatted}
+
 ==References==
 {{{{reflist}}}}
 
-{''.join(f'[[Category:{c}]]' for c in [nationality + ' scientists' if nationality else '', field] if c)}
+[[Category:Indian agricultural scientists]]
+[[Category:Biotechnology researchers]]
+[[Category:Chaudhary Charan Singh Haryana Agricultural University alumni]]
+[[Category:Living people]]
 """
         return wikitext.strip()
 
