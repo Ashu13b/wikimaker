@@ -684,8 +684,10 @@ def generate_draft(req: DraftRequest) -> dict:
         else:
             detail = "This subject has a prior deletion record. Review the deletion history and new coverage before drafting."
         raise HTTPException(409, detail)
-    profile.wikitext_en = render_en(profile, llm())
-    if req.generate_hindi:
+    # Preserve existing wikitext if present in profile
+    if not profile.wikitext_en or len(profile.wikitext_en.strip()) < 50:
+        profile.wikitext_en = render_en(profile, llm())
+    if req.generate_hindi and (not profile.wikitext_hi or len(profile.wikitext_hi.strip()) < 50):
         profile.wikitext_hi = render_hi(profile, llm())
     return {"profile": profile.model_dump()}
 
