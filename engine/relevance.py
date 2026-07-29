@@ -9,10 +9,11 @@ from .models import Source
 
 # Fields that strongly indicate a different well-known person with the same name
 _WRONG_PERSON_SIGNALS = [
-    "politician", "member of parliament", "member of legislative",
-    "actor", "actress", "singer", "musician", "cricketer", "footballer",
-    "minister", "chief minister", "governor", "judge", "justice",
-    "director general", "inspector general", "police",
+    "politician", "member of parliament", "member of legislative", "lok sabha", "vidhan sabha",
+    "elections", "candidate", "constituency", "polling", "party", "bjp", "inc", "bsp", "samajwadi",
+    "actor", "actress", "singer", "musician", "spotify", "deezer", "soundcloud", "album", "artist",
+    "cricketer", "footballer", "minister", "chief minister", "governor", "judge", "justice",
+    "director general", "inspector general", "police", "honda", "sales executive", "tutor", "urbanpro",
 ]
 
 _ACADEMIC_FETCHED_BY = {"semantic_scholar"}
@@ -37,9 +38,9 @@ def flag_source(source: Source, person_name: str, field: str, affiliation: str) 
     url_lower = source.url.lower()
     if any(d in url_lower for d in _DOI_PATTERNS):
         return "unscored"
-    # No snippet to check
-    text = (source.snippet + " " + source.title).lower()
-    if not text.strip():
+
+    full_text = (url_lower + " " + source.snippet + " " + source.title).lower()
+    if not full_text.strip():
         return "unscored"
 
     name_tokens = _significant_name_tokens(person_name)
@@ -47,17 +48,16 @@ def flag_source(source: Source, person_name: str, field: str, affiliation: str) 
     affil_tokens = [t.lower() for t in (affiliation or "").split() if len(t) > 3]
     context_tokens = field_tokens + affil_tokens
 
-    name_found = all(t in text for t in name_tokens)
+    text = (source.snippet + " " + source.title).lower()
+    name_found = all(t in full_text for t in name_tokens)
 
-    # Check for wrong-person signals before anything else
-    if name_found:
-        for signal in _WRONG_PERSON_SIGNALS:
-            if signal in text:
-                # Only flag if NONE of the expected context tokens appear
-                if not any(t in text for t in context_tokens):
-                    return "likely_wrong"
+    # Check for wrong-person signals in URL or snippet text
+    for signal in _WRONG_PERSON_SIGNALS:
+        if signal in full_text:
+            if not any(t in full_text for t in context_tokens):
+                return "likely_wrong"
 
-    if name_found and context_tokens and any(t in text for t in context_tokens):
+    if name_found and context_tokens and any(t in full_text for t in context_tokens):
         return "relevant"
     if name_found:
         return "uncertain"  # name present but no field/affiliation context
