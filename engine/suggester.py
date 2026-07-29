@@ -217,8 +217,8 @@ def _generate_multiyear_report_urls(url: str) -> list[str]:
         return []
     year = int(m.group(1))
     results = []
-    for y in range(year - 2, year + 3):
-        if y != year and 1990 <= y <= 2026:
+    for y in range(2000, 2026):
+        if y != year:
             new_url = url[:m.start(1)] + str(y) + url[m.end(1):]
             results.append(new_url)
     return results
