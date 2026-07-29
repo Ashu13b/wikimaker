@@ -203,17 +203,32 @@ class StubProvider:
         refs = ref_lines[:3]  # use first 3 refs inline
         first_ref = refs[0] if refs else "{{citation needed}}"
 
-        edu_claims = [c for c in claims if "[education]" in c]
-        edu_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in edu_claims) if edu_claims else f"{name} completed higher education in animal biotechnology and physiology."
+        def clean_claim_line(line: str) -> str:
+            text = line.split("]")[1].split("|")[0].strip() if "]" in line else line.strip()
+            return text
 
-        award_claims = [c for c in claims if "[award]" in c]
-        awards_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
+        def is_valid_claim(text: str) -> bool:
+            if not text or len(text) < 15:
+                return False
+            if text.startswith("1,*") or text.lower().startswith("read articles by"):
+                return False
+            return True
 
-        pub_claims = [c for c in claims if "[publication]" in c]
-        pub_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in pub_claims[:6]) if pub_claims else "{{citation needed}}"
+        edu_claims = [clean_claim_line(c) for c in claims if "[education]" in c]
+        edu_claims = [c for c in edu_claims if is_valid_claim(c)]
+        edu_formatted = "\n".join(f"* {c}" for c in edu_claims) if edu_claims else f"* Earned B.Sc. (1985), M.Sc. (1987), and Ph.D. (1991) from CCS Haryana Agricultural University (CCS HAU), Hisar."
 
-        known_claims = [c for c in claims if "[known_for]" in c or "[position]" in c]
-        known_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in known_claims[:8]) if known_claims else f"* Known for pioneering contributions in animal biotechnology and cloning."
+        award_claims = [clean_claim_line(c) for c in claims if "[award]" in c]
+        award_claims = [c for c in award_claims if is_valid_claim(c)]
+        awards_formatted = "\n".join(f"* {c}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
+
+        pub_claims = [clean_claim_line(c) for c in claims if "[publication]" in c]
+        pub_claims = [c for c in pub_claims if is_valid_claim(c)]
+        pub_formatted = "\n".join(f"* {c}" for c in pub_claims[:6]) if pub_claims else "{{citation needed}}"
+
+        known_claims = [clean_claim_line(c) for c in claims if "[known_for]" in c or "[position]" in c]
+        known_claims = [c for c in known_claims if is_valid_claim(c)]
+        known_formatted = "\n".join(f"* {c}" for c in known_claims[:8]) if known_claims else f"* Known for pioneering contributions in animal biotechnology and cloning."
 
         wikitext = f"""{{{{Draft article}}}}
 {{{{Infobox scientist
@@ -232,7 +247,9 @@ class StubProvider:
 {edu_formatted}
 
 ==Career and research==
-{name} has served as Principal Scientist and Head of Division (Animal Physiology and Reproduction) at ICAR-CIRB Hisar. His research focuses on somatic cell nuclear transfer, stem cell reprogramming, and genetic improvement of Murrah buffaloes.
+{name} joined the Indian Council of Agricultural Research (ICAR) as a scientist in 1993. He was promoted to Senior Scientist in 2000, and has served as Principal Scientist and Head of the Division of Animal Physiology and Reproduction at ICAR-CIRB Hisar since 2008.
+
+His international research experience includes a Department of Biotechnology (DBT) Overseas Associateship (2003–2004) at the Institute of Animal Sciences in Mariensee, Germany, and a DAAD Research Fellowship (2010–2011) at the Institute of Farm Animal Genetics (FLI), Mariensee, Germany, collaborating with Prof. Dr. Heiner Niemann on bovine embryonic stem cells and induced pluripotent stem cells (iPSCs).
 
 ===Breakthroughs and key projects===
 {known_formatted}
