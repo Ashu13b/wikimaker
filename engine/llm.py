@@ -203,6 +203,9 @@ class StubProvider:
         refs = ref_lines[:3]  # use first 3 refs inline
         first_ref = refs[0] if refs else "{{citation needed}}"
 
+        award_claims = [c for c in claims if "[award]" in c]
+        awards_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
+
         wikitext = f"""{{{{Draft article}}}}
 {{{{Infobox person
 | name = {name}
@@ -222,7 +225,7 @@ class StubProvider:
 {chr(10).join(f'* {c.split("|")[0].strip()}' for c in claims[:5])}
 
 ==Awards and recognition==
-{('* ' + awards) if awards else '{{citation needed}}'}
+{awards_formatted}
 
 ==References==
 {{{{reflist}}}}

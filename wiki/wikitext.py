@@ -36,6 +36,7 @@ def render_hi(profile: PersonProfile, llm: LLMProvider) -> str:
 def _build_prompt(profile: PersonProfile, lang: str) -> str:
     lines = [f"Write a {lang} Wikipedia draft article about: {profile.name}", ""]
 
+    award_list = list(profile.awards or []) + [c.text for c in profile.claims if c.field == "award"]
     facts = {
         "Full name": profile.full_name,
         "Birth date": profile.birth_date,
@@ -44,7 +45,7 @@ def _build_prompt(profile: PersonProfile, lang: str) -> str:
         "Field": profile.field,
         "Affiliation": profile.affiliation,
         "Known for": profile.known_for,
-        "Awards": ", ".join(profile.awards) if profile.awards else None,
+        "Awards": "; ".join(award_list) if award_list else None,
         "Photo filename": _commons_filename(profile.photo_url),
     }
     lines.append("== Known facts ==")
