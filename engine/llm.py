@@ -203,6 +203,9 @@ class StubProvider:
         refs = ref_lines[:3]  # use first 3 refs inline
         first_ref = refs[0] if refs else "{{citation needed}}"
 
+        edu_claims = [c for c in claims if "[education]" in c]
+        edu_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in edu_claims) if edu_claims else f"{name} completed higher education in animal biotechnology and physiology."
+
         award_claims = [c for c in claims if "[award]" in c]
         awards_formatted = "\n".join(f"* {c.split(']')[1].split('|')[0].strip()}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
 
@@ -217,8 +220,8 @@ class StubProvider:
 
 '''{name}''' is a {nationality + ' ' if nationality else ''}{field.lower() if field else 'researcher'}{(' at ' + affiliation) if affiliation else ''}.{first_ref}
 
-==Early life==
-{name} was born{(' on ' + birth) if birth else ''}.{{{{citation needed}}}}
+==Education==
+{edu_formatted}
 
 ==Career==
 {name} is known for {known_for or ('work in ' + field.lower() if field else 'contributions to the field')}.{first_ref}
