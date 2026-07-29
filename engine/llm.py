@@ -210,7 +210,10 @@ class StubProvider:
         def is_valid_claim(text: str) -> bool:
             if not text or len(text) < 15:
                 return False
-            if text.startswith("1,*") or text.lower().startswith("read articles by"):
+            t_lower = text.lower()
+            if text.startswith("1,*") or t_lower.startswith("read articles by") or t_lower.startswith("we extracted"):
+                return False
+            if "inviting candidates" in t_lower or "walk-in interview" in t_lower:
                 return False
             return True
 
@@ -229,6 +232,8 @@ class StubProvider:
         known_claims = [clean_claim_line(c) for c in claims if "[known_for]" in c or "[position]" in c]
         known_claims = [c for c in known_claims if is_valid_claim(c)]
         known_formatted = "\n".join(f"* {c}" for c in known_claims[:8]) if known_claims else f"* Known for pioneering contributions in animal biotechnology and cloning."
+
+        birth_cat = f"[[Category:{birth.split()[-1]} births]]" if birth and len(birth.split()) > 0 and birth.split()[-1].isdigit() else ""
 
         wikitext = f"""{{{{Draft article}}}}
 {{{{Infobox scientist
@@ -263,6 +268,7 @@ His international research experience includes a Department of Biotechnology (DB
 ==References==
 {{{{reflist}}}}
 
+{birth_cat}
 [[Category:Indian agricultural scientists]]
 [[Category:Biotechnology researchers]]
 [[Category:Chaudhary Charan Singh Haryana Agricultural University alumni]]
