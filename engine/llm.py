@@ -176,7 +176,7 @@ class StubProvider:
             if ":" in line and section == "known facts":
                 k, _, v = line.partition(":")
                 facts[k.strip().lower()] = v.strip()
-            elif line.startswith("[") and "source:" in line and "claims" in section:
+            elif line.startswith("[") and ("verified claims" in section or "sourced claims" in section):
                 claims.append(line.strip())
             elif line.startswith("- [") and section == "all sources":
                 sources.append(line.strip())
