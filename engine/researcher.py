@@ -290,16 +290,29 @@ def targeted_slot_search(
     affiliation: str | None = None,
     hint: str | None = None,
 ) -> list[Source]:
-    """Search web for sources likely to contain a specific Wikipedia slot value."""
+    """Search web using multiple iterative queries for a specific slot."""
     template = _SLOT_QUERIES.get(slot, '"{name}"')
-    query = template.format(name=person_name)
+    q1 = template.format(name=person_name)
     if hint:
-        query += f" {hint}"
-    elif affiliation and slot in ("education", "position", "affiliation", "known_for"):
-        query += f" {affiliation}"
-    elif field and slot in ("known_for", "position"):
-        query += f" {field}"
-    return _search_web(query)
+        q1 += f" {hint}"
+    elif affiliation:
+        q1 += f" {affiliation}"
+
+    q2 = f'"{person_name}" {slot} news'
+    if field:
+        q2 += f" {field}"
+
+    q3 = f'"{person_name}" biography profile'
+
+    sources: list[Source] = []
+    seen: set[str] = set()
+    for q in [q1, q2, q3]:
+        results = _search_web(q)
+        for s in results:
+            if s.url not in seen:
+                seen.add(s.url)
+                sources.append(s)
+    return sources
 
 
 # ── Institution crawl ──────────────────────────────────────────────────────────

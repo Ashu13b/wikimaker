@@ -1,16 +1,16 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-28 19:25 UTC · sha 9cb2efe · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-29 03:18 UTC · sha 39a1c83 · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 26 files · 271 symbols
-- TypeScript — 16 files · 132 symbols
+- Python — 26 files · 272 symbols
+- TypeScript — 16 files · 135 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 403 symbols across 5 languages._
+_Total: 45 files · 407 symbols across 5 languages._
 
 
 ## Compartments
@@ -22,7 +22,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `browser_server.py` — PROFILE_DIR, XVFB_DISPLAY, PORT, class _Cmd, _q, _headed, _running, _xvfb, def _dispatch, def _try_start_xvfb, def _browser_thread, def lifespan, app, def screenshot, class NavReq, def navigate, def info, class ViewportReq, def set_viewport, class ClickReq, def click, class TypeReq, def type_text, class KeyReq, def press_key, class ScrollReq, def scroll, def go_back, def go_forward, def reload, def get_content, def status, def index, BROWSER_HTML, def start_browser, def stop_browser
 - `generate_draft.py` — session_file, hindi, data, profile, llm, wikitext, out_en
 ### backend/
-- `backend/main.py` — SESSIONS_DIR, app, _llm, def llm, class IdentifyRequest, class ResearchRequest, class AddSourceRequest, class AddDocumentFact, class VerifyClaimRequest, class AddSourcePaste, class CrawlRequest, class TargetedSearchRequest, class DraftRequest, _sessions, _wiki_statuses, def _session_path, def _apply_provenance, def _save_session, def _load_session_file, BROWSER_SERVER, def _push_to_browser, def _get_profile, def _check_doi_sources, def identify, def research_start, def add_source, def _add_sd_article, def _add_sd_author_profile, def add_document_fact, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def generate_draft, def get_session, def verify_source, def reject_source, def list_sessions, def delete_session, class FindIdsRequest, class RefreshPapersRequest, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def resume_session, def fetch_from_browser, def suggest_urls, def lifespan, api_app, unified_app, FRONTEND_DIST, app
+- `backend/main.py` — SESSIONS_DIR, app, _llm, def llm, class IdentifyRequest, class ResearchRequest, class AddSourceRequest, class AddDocumentFact, class VerifyClaimRequest, class AddSourcePaste, class CrawlRequest, class TargetedSearchRequest, class DraftRequest, _sessions, _wiki_statuses, def _session_path, def _apply_provenance, def _save_session, def _load_session_file, BROWSER_SERVER, def _push_to_browser, def _get_profile, def _check_doi_sources, def identify, def research_start, def add_source, def _add_sd_article, def _add_sd_author_profile, def add_document_fact, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def auto_enrich_endpoint, def generate_draft, def get_session, def verify_source, def reject_source, def list_sessions, def delete_session, class FindIdsRequest, class RefreshPapersRequest, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def resume_session, def fetch_from_browser, def suggest_urls, def lifespan, api_app, unified_app, FRONTEND_DIST, app
 ### engine/
 - `engine/author_check.py` — CROSSREF_API, TIMEOUT, def name_variants, def _normalise, def _author_matches_variants, def _affiliation_matches, def check_doi_authors, def extract_doi
 - `engine/classifier.py` — _RS_DOMAINS, _PRIMARY_DOMAINS, _SELF_DOMAINS, _UNRELIABLE_DOMAINS, def _domain_classify, SYSTEM, def classify_sources
@@ -42,14 +42,14 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def _generate_multiyear_report_urls, def suggest_next_urls
 ### frontend/
 - `frontend/src/App.tsx` — ErrorBoundaryProps, ErrorBoundaryState, ErrorBoundary, constructor, getDerivedStateFromError, componentDidCatch, render, Stage, MainApp, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset, App
-- `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, SessionSummary, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls
+- `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, SessionSummary, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls, AutoEnrichResponse, autoEnrich
 - `frontend/src/components/BookmarkletCard.tsx` — BookmarkletCard, handleCopy
 - `frontend/src/components/CandidateCard.tsx` — Props, CandidateCard
 - `frontend/src/components/ResearchOperationsCard.tsx` — ResearchOperationsCard
 - `frontend/src/components/TimelineTab.tsx` — parseFirstYear, TimelineTab, TLEvent, GapInfo, EventRow, GapRow, handleFillGap
 - `frontend/src/components/WorkspaceStatusBanner.tsx` — WorkspaceStatusBanner
 - `frontend/src/pages/DraftPage.tsx` — Props, DraftPage, handleCopy, TabBtn, SourceRow
-- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleGenerateDraft, markLinkOpened, SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser, SourceCard, handleVerify, handleReject, FillMode, ProfileTab, setMode, handleSearch, handleManual, ClaimsSection, doVerify, ActionBtn, ResearcherIdsStrip, RelevanceBadge, FetchedByTag, AuthorMatchBadge, Expander, NotabilityBadge, NotabilityCard, ChecklistCard, TabBtn
+- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleAutoEnrich, handleGenerateDraft, markLinkOpened, SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser, SourceCard, handleVerify, handleReject, FillMode, ProfileTab, setMode, handleSearch, handleManual, ClaimsSection, doVerify, ActionBtn, ResearcherIdsStrip, RelevanceBadge, FetchedByTag, AuthorMatchBadge, Expander, NotabilityBadge, NotabilityCard, ChecklistCard, TabBtn
 - `frontend/src/pages/IdentifyPage.tsx` — Props, View, IdentifyPage, handleResume, handleDelete, handleSearch, handleConfirm
 - `frontend/src/pages/ResearchPage.tsx` — Props, ResearchPage, Spinner
 - `frontend/src/types.ts` — PersonCandidate, SourceReliability, VerificationState, SourceFetchedBy, Source, Claim, NotabilityResult, WikiStatus, PersonProfile, ResearchStartResponse, SdPipelineResult, AddSourceResponse, AddSourcePasteResponse, CrawlResponse, DraftResponse, UrlSuggestion

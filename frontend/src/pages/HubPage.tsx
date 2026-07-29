@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { PersonProfile, WikiStatus, Source, Claim, NotabilityResult } from "../types";
-import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion } from "../api";
+import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion, autoEnrich } from "../api";
 import type { UrlSuggestion } from "../types";
 import WorkspaceStatusBanner from "../components/WorkspaceStatusBanner";
 import BookmarkletCard from "../components/BookmarkletCard";
@@ -25,6 +25,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
   const [profile, setProfile] = useState(initialProfile);
   const [tab, setTab] = useState<Tab>("sources");
   const [drafting, setDrafting] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [activeOperations, setActiveOperations] = useState<Record<string, boolean>>({});
   const [draftError, setDraftError] = useState<string | null>(null);
   // Track which source links the user has opened (session-local, not persisted)
@@ -34,6 +35,21 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
   const hasVerifiedSources = profile.sources.some(s => s.human_verified);
   const workspaceRoute = getWorkspaceRoute(wikiStatus.status);
   const draftAvailable = canGenerateDraft(wikiStatus.status, hasVerifiedSources);
+
+  async function handleAutoEnrich() {
+    setEnriching(true);
+    try {
+      const res = await autoEnrich(profile.name);
+      if (res.ok) {
+        const updated = await getSession(profile.name);
+        setProfile(updated.profile);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEnriching(false);
+    }
+  }
 
   // Force sources tab if none verified
   useEffect(() => {
@@ -93,6 +109,9 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
           </div>
         </div>
         <div className="workspace-actions">
+          <button className="btn-ghost" onClick={handleAutoEnrich} disabled={enriching} style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)", border: "1px solid #7dd3fc" }}>
+            {enriching ? "🔄 Auto-Enriching…" : "✨ Auto-Enrich Discovered Sources"}
+          </button>
           <button className="btn-ghost" onClick={() => setShowBrowser(!showBrowser)} style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
             🖥️ {showBrowser ? "Hide Remote Browser" : "Show Remote Browser"}
           </button>

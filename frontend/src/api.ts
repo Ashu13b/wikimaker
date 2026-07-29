@@ -245,3 +245,15 @@ export async function suggestUrls(profileName: string): Promise<import("./types"
   const data = await apiPost<{ suggestions: import("./types").UrlSuggestion[] }>("/research/suggest", { profile_name: profileName });
   return data.suggestions;
 }
+
+export interface AutoEnrichResponse {
+  ok: boolean;
+  added_source_count: number;
+  added_claim_count: number;
+  missing_slots: string[];
+  notability: import("./types").NotabilityResult;
+}
+
+export async function autoEnrich(profileName: string): Promise<AutoEnrichResponse> {
+  return apiPost("/research/auto-enrich", { profile_name: profileName });
+}

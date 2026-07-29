@@ -625,6 +625,54 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     }
 
 
+@app.post("/research/auto-enrich")
+def auto_enrich_endpoint(body: dict) -> dict:
+    """Autonomous discovery loop — inspects missing slots and recursively iterates search queries."""
+    profile_name = body["profile_name"]
+    profile = _get_profile(profile_name)
+    missing = profile.missing_slots or find_missing_slots(profile, profile.claims)
+
+    existing_urls = {s.url for s in profile.sources}
+    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
+    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    excluded = existing_urls | rejected_urls | skipped_urls
+
+    added_sources = []
+    added_claims = []
+
+    # Iterate through missing slots and execute targeted multi-query search
+    for slot in missing[:3]:
+        candidate_sources = targeted_slot_search(
+            person_name=profile.name,
+            slot=slot,
+            field=profile.field,
+            affiliation=profile.affiliation,
+        )
+        new_sources = [s for s in candidate_sources if s.url not in excluded]
+        if new_sources:
+            new_sources = classify_sources(new_sources, llm())
+            flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
+            new_claims = extract_claims(profile, new_sources, llm())
+
+            profile.sources.extend(new_sources)
+            profile.claims.extend(new_claims)
+            excluded.update(s.url for s in new_sources)
+            added_sources.extend(new_sources)
+            added_claims.extend(new_claims)
+
+    profile.missing_slots = find_missing_slots(profile, profile.claims)
+    profile.notability = score_notability(profile.name, profile.sources)
+    _save_session(profile.name)
+
+    return {
+        "ok": True,
+        "added_source_count": len(added_sources),
+        "added_claim_count": len(added_claims),
+        "missing_slots": profile.missing_slots,
+        "notability": profile.notability.model_dump(),
+    }
+
+
 @app.post("/draft")
 def generate_draft(req: DraftRequest) -> dict:
     profile = req.profile
