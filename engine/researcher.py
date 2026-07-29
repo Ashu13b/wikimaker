@@ -290,7 +290,7 @@ def targeted_slot_search(
     affiliation: str | None = None,
     hint: str | None = None,
 ) -> list[Source]:
-    """Search web using multiple iterative queries for a specific slot."""
+    """Search web using multiple iterative queries for a specific slot, including bilingual native script expansion."""
     template = _SLOT_QUERIES.get(slot, '"{name}"')
     q1 = template.format(name=person_name)
     if hint:
@@ -298,15 +298,16 @@ def targeted_slot_search(
     elif affiliation:
         q1 += f" {affiliation}"
 
-    q2 = f'"{person_name}" {slot} news'
+    q2 = f'"{person_name}" {slot} university alumni graduation BSc MSc PhD'
     if field:
         q2 += f" {field}"
 
-    q3 = f'"{person_name}" biography profile'
+    q3 = f'"{person_name}" biography profile education'
+    q4 = f'"डॉ. {person_name}" शिक्षा विश्वविद्यालय डिग्री'
 
     sources: list[Source] = []
     seen: set[str] = set()
-    for q in [q1, q2, q3]:
+    for q in [q1, q2, q3, q4]:
         results = _search_web(q)
         for s in results:
             if s.url not in seen:
