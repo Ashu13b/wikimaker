@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-07-26 20:58 UTC · sha a91db49 · host vnic-trading -->
+<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-07-29 12:14 UTC · sha 4de1615 · host vnic-trading -->
 
 # DOCS_MAP
 
@@ -20,3 +20,13 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Shipped
     - Next
     - Out of scope
+- `WIKITEXT_DRAFT.md`
+  - Complete Wikipedia AfC Draft & Verified Source Links Directory
+    - Subject: Dr. Prem Singh Yadav (Principal Scientist, ICAR-CIRB Hisar)
+      - 1. Verified Sources Directory (Clickable Links)
+      - 2. Complete Wikitext Draft for Wikipedia Submission
+- `wikitext_draft_prem_singh_yadav.md`
+  - Complete Wikipedia AfC Draft & Verified Source Links Directory
+    - Subject: Dr. Prem Singh Yadav (Principal Scientist, ICAR-CIRB Hisar)
+      - 1. Verified Sources Directory (Clickable Links)
+      - 2. Complete Wikitext Draft for Wikipedia Submission

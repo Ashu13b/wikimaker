@@ -11,15 +11,14 @@ interface Props {
 }
 
 export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }: Props) {
-  const [tab, setTab] = useState<"en" | "hi">("en");
+  const [tab, setTab] = useState<"en" | "preview" | "hi">("preview");
   const [copied, setCopied] = useState(false);
 
   const wikitextEn = profile.wikitext_en ?? "";
   const wikitextHi = profile.wikitext_hi ?? "";
-  const current = tab === "en" ? wikitextEn : wikitextHi;
+  const current = tab === "en" ? wikitextEn : (tab === "hi" ? wikitextHi : wikitextEn);
 
   function handleCopy() {
-    // navigator.clipboard is browser-only — kept in component, not api.ts
     if (navigator.clipboard) {
       navigator.clipboard.writeText(current).then(() => {
         setCopied(true);
@@ -33,7 +32,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
   const draftDestination = getDraftDestination(wikiStatus);
 
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: "0 20px 60px" }}>
+    <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 20px 60px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -77,33 +76,68 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
       )}
 
       <div className="hub-grid" style={{ gridTemplateColumns: "1fr 272px" }}>
-        {/* Draft */}
+        {/* Draft Container */}
         <div className="card" style={{ padding: 0 }}>
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
-            <TabBtn active={tab === "en"} onClick={() => setTab("en")}>English draft</TabBtn>
-            {wikitextHi && <TabBtn active={tab === "hi"} onClick={() => setTab("hi")}>Hindi draft</TabBtn>}
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle, #f9fafb)" }}>
+            <TabBtn active={tab === "preview"} onClick={() => setTab("preview")}>Draft Preview & Links</TabBtn>
+            <TabBtn active={tab === "en"} onClick={() => setTab("en")}>Raw Wikitext (EN)</TabBtn>
+            {wikitextHi && <TabBtn active={tab === "hi"} onClick={() => setTab("hi")}>Raw Wikitext (HI)</TabBtn>}
           </div>
+
           <div style={{ padding: 20 }}>
-            <textarea
-              readOnly
-              value={current}
-              style={{
-                width: "100%", height: 520, fontFamily: "monospace", fontSize: 12,
-                border: "none", resize: "vertical", outline: "none", lineHeight: 1.6,
-              }}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button className="btn-primary" onClick={handleCopy}>
-                {copied ? "Copied!" : "Copy wikitext"}
-              </button>
-              <a
-                href={draftDestination.href}
-                target="_blank" rel="noreferrer"
-                style={{ display: "inline-flex", alignItems: "center" }}
-              >
-                <button className="btn-ghost">{draftDestination.label}</button>
-              </a>
-            </div>
+            {tab === "preview" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: 8 }}>
+                  <div>
+                    <strong style={{ fontSize: 14, color: "#1e40af" }}>Wikipedia Submission Draft Loaded</strong>
+                    <p style={{ fontSize: 12, color: "#1e3a8a", margin: "2px 0 0" }}>Ready for submission. Click any source link to test or open in a new tab.</p>
+                  </div>
+                  <a href={draftDestination.href} target="_blank" rel="noopener noreferrer">
+                    <button className="btn-primary" style={{ fontSize: 13 }}>
+                      Open Wikipedia Submission in New Tab ↗
+                    </button>
+                  </a>
+                </div>
+
+                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
+                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
+                    {wikitextEn}
+                  </pre>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                  <button className="btn-primary" onClick={handleCopy}>
+                    {copied ? "Copied Wikitext!" : "Copy Wikitext to Clipboard"}
+                  </button>
+                  <a href={draftDestination.href} target="_blank" rel="noopener noreferrer">
+                    <button className="btn-ghost">{draftDestination.label} ↗</button>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <textarea
+                  readOnly
+                  value={current}
+                  style={{
+                    width: "100%", height: 520, fontFamily: "monospace", fontSize: 12,
+                    border: "none", resize: "vertical", outline: "none", lineHeight: 1.6,
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button className="btn-primary" onClick={handleCopy}>
+                    {copied ? "Copied!" : "Copy wikitext"}
+                  </button>
+                  <a
+                    href={draftDestination.href}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center" }}
+                  >
+                    <button className="btn-ghost">{draftDestination.label} ↗</button>
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
