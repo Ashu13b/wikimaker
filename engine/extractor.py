@@ -121,6 +121,35 @@ def _validate_and_filter_claims(claims: list[Claim], profile: PersonProfile) -> 
     return result
 
 
+def filter_person_snippets(text: str, person_name: str, window: int = 3) -> str:
+    """Extract only lines matching person's name tokens + window lines before/after for token-efficient PDF processing."""
+    if not text:
+        return ""
+    lines = text.split("\n")
+    tokens = [t.lower() for t in person_name.split() if len(t) > 2]
+    matched_indices = set()
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        if any(t in line_lower for t in tokens):
+            for idx in range(max(0, i - window), min(len(lines), i + window + 1)):
+                matched_indices.add(idx)
+    if not matched_indices:
+        return text[:800]
+    sorted_indices = sorted(matched_indices)
+    extracted_blocks = []
+    current_block = []
+    prev_idx = -10
+    for idx in sorted_indices:
+        if idx > prev_idx + 1 and current_block:
+            extracted_blocks.append("\n".join(current_block))
+            current_block = []
+        current_block.append(lines[idx])
+        prev_idx = idx
+    if current_block:
+        extracted_blocks.append("\n".join(current_block))
+    return "\n---\n".join(extracted_blocks)[:1200]
+
+
 def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvider) -> list[Claim]:
     from .provenance import classify_source_provenance, evaluate_claim_trust
 
@@ -139,6 +168,8 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
 
         # Build content block: prefer snippet; fall back to title as surrogate
         content = source.snippet or ""
+        if len(content) > 1000 or ".pdf" in source.url.lower():
+            content = filter_person_snippets(content, profile.name)
         title = source.title if source.title and source.title != source.url else ""
         if not content and not title:
             continue
@@ -153,7 +184,7 @@ def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvid
             + (f" ({context_line})" if context_line else "") + "\n"
             f"Source URL: {source.url}\n"
             f"Publisher: {source.publisher}\n"
-            f"Content: {content[:600]}"
+            f"Content: {content[:1200]}"
         )
         if title and title not in content:
             prompt += f"\nTitle: {title}"

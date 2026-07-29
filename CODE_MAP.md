@@ -1,16 +1,16 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-29 03:18 UTC · sha 39a1c83 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-07-29 05:05 UTC · sha 649d712 · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 26 files · 272 symbols
+- Python — 26 files · 273 symbols
 - TypeScript — 16 files · 135 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 45 files · 407 symbols across 5 languages._
+_Total: 45 files · 408 symbols across 5 languages._
 
 
 ## Compartments
@@ -27,7 +27,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/author_check.py` — CROSSREF_API, TIMEOUT, def name_variants, def _normalise, def _author_matches_variants, def _affiliation_matches, def check_doi_authors, def extract_doi
 - `engine/classifier.py` — _RS_DOMAINS, _PRIMARY_DOMAINS, _SELF_DOMAINS, _UNRELIABLE_DOMAINS, def _domain_classify, SYSTEM, def classify_sources
 - `engine/crawler.py` — TIMEOUT, S2_API, class SourceNode, class SourceGraph(to_sources), def crawl, def _extract_meta, def _extract_links, def _extract_dois, def _extract_entities, def _count_mentions, def _is_relevant_link, def _entity_worth_searching, def _search_entity, def _temporal_variants, def _expand_doi
-- `engine/extractor.py` — WIKI_SLOTS, SLOT_SOURCE_HINTS, def find_missing_slots, SYSTEM, def _validate_and_filter_claims, def extract_claims, def _deduplicate
+- `engine/extractor.py` — WIKI_SLOTS, SLOT_SOURCE_HINTS, def find_missing_slots, SYSTEM, def _validate_and_filter_claims, def filter_person_snippets, def extract_claims, def _deduplicate
 - `engine/fetcher.py` — HEADERS, BOT_HEADERS, TIMEOUT, class FetchResult(__init__), BROWSER_SERVER, def _try_browser_server, def fetch_url, def fetch_orcid_by_name, def fetch_text_paste, def _direct_fetch, def _pdf_extract, def _wayback_fetch, def _orcid_fetch, def _fetch_orcid_id, def _orcid_to_text, def _extract_text
 - `engine/fetcher_browser.py` — _SESSION_DIR, _BLOCKED_SIGNALS, _LAUNCH_ARGS, _STEALTH_JS, _UA, def fetch_with_browser
 - `engine/identifier.py` — HEADERS, WIKI_API, WIKIDATA_API, def fetch_wikidata_photo, def fetch_wikidata_photo_by_id, def find_candidates, _HONORIFICS, def _significant_tokens, def _name_matches, def _search_wikipedia, def _search_wikidata, def _wikipedia_detail, def _wikidata_detail, def _wikidata_image, def _looks_like_person, def _strip_html
