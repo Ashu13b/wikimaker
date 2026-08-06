@@ -271,9 +271,17 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   the answer. Helpers: `pending_jobs()` lists unanswered jobs, `answer_job()` writes
   a response. This was demonstrated live: extract_claims on the ARU "Impact of High
   Temperature on Oocytes and Embryos" review queued a job, the agent answered it,
-  and the claim entered the draft. Session is now 37 evidence sources / 43 eligible
-  claims / 11 independent outlets (incl. the agent-extracted ARU publication and the
-  Veer-Gaurav source found by the liveness-gated sweep).
+  and the claim entered the draft. Session is now 38 evidence sources / 45 eligible
+  claims / 11 independent outlets (incl. the agent-extracted ARU publication, the
+  Veer-Gaurav source found by the liveness-gated sweep, and two closed CV gaps).
+- CV-gap closure: two more gaps sourced and added. (1) The Indian Society for
+  Buffalo Development conferred the Distinguished Scientist Award on Yadav at its
+  National Conference, 17-19 Jan 2019, Navsari Agricultural University — CIRB news
+  "national-conference-of-the-society" (award claim). (2) Birth place: the Amar
+  Ujala Rewari retirement article states he is "resident of Village Nimoth"
+  (गांव निमोठ निवासी) — birth_place claim. Still unsourced: NADS fellowship
+  (dairyacademy.org down, no roster), ISSAR Outstanding Young Scientist 1996-97
+  (too old).
 - Liveness + Wayback fallback implemented (the "dead links" fix). `Source` gained  `liveness` (alive|blocked|dead|unknown) and `archive_url`. `engine/fetcher.py`
   `check_liveness()` GETs a URL with a browser UA: 404/410 -> dead (and looks up a
   Wayback snapshot via archive.org/wayback/available), 401/403/429 -> blocked

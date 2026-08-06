@@ -10,7 +10,8 @@ build/
 sessions/
 agent_jobs/
 *.json
-!tests/fixtures/
+!tests/fixtures/**
+!tests/fixtures
 
 # Node / frontend
 node_modules/
