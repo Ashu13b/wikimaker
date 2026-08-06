@@ -1,17 +1,17 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-06 20:04 UTC · sha eb96e64 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-06 20:24 UTC · sha 3a0cbc4 · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 34 files · 355 symbols
-- TypeScript — 17 files · 141 symbols
+- Python — 39 files · 359 symbols
+- TypeScript — 21 files · 142 symbols
 - JavaScript — 1 files · 0 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 55 files · 496 symbols across 6 languages._
+_Total: 64 files · 501 symbols across 6 languages._
 
 
 ## Compartments
@@ -23,7 +23,12 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `browser_server.py` — PROFILE_DIR, XVFB_DISPLAY, PORT, class _Cmd, _q, _headed, _running, _xvfb, def _dispatch, def _try_start_xvfb, def _browser_thread, def lifespan, app, def screenshot, class NavReq, def navigate, def info, class ViewportReq, def set_viewport, class ClickReq, def click, class TypeReq, def type_text, class KeyReq, def press_key, class ScrollReq, def scroll, def go_back, def go_forward, def reload, def get_content, def status, def index, BROWSER_HTML, def start_browser, def stop_browser
 - `generate_draft.py` — session_file, data, profile, audit, wikitext, out_en
 ### backend/
-- `backend/main.py` — SESSIONS_DIR, app, _llm, def llm, class IdentifyRequest, class ResearchRequest, class AddSourceRequest, class AddDocumentFact, class AddSourcedClaimRequest, class VerifyClaimRequest, class AddSourcePaste, class CrawlRequest, class TargetedSearchRequest, class DraftRequest, _sessions, _wiki_statuses, def _session_path, def _apply_provenance, def _annotate_liveness, def _save_session, def _load_session_file, BROWSER_SERVER, def _push_to_browser, def _get_profile, def _check_doi_sources, def identify, def research_start, def add_source, def _add_sd_article, def _add_sd_author_profile, def add_document_fact, def add_sourced_claim, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def auto_enrich_endpoint, def draft_audit, def generate_draft, def get_session, def verify_source, def reject_source, def list_sessions, def delete_session, class FindIdsRequest, class RefreshPapersRequest, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def resume_session, def fetch_from_browser, def suggest_urls, def lifespan, api_app, unified_app, FRONTEND_DIST, app
+- `backend/main.py` — api_app, def lifespan, app, FRONTEND_DIST
+- `backend/pipelines.py` — def _add_sd_article, def _add_sd_author_profile
+- `backend/routes.py` — router, def identify, def research_start, def add_source, def add_document_fact, def add_sourced_claim, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def auto_enrich_endpoint, def draft_audit, def generate_draft, def get_session, def verify_source, def reject_source, def list_sessions, def delete_session, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def fetch_from_browser, def suggest_urls
+- `backend/routes_sessions.py` — sessions_router, def resume_session
+- `backend/schemas.py` — class IdentifyRequest, class ResearchRequest, class AddSourceRequest, class AddDocumentFact, class AddSourcedClaimRequest, class VerifyClaimRequest, class AddSourcePaste, class CrawlRequest, class TargetedSearchRequest, class DraftRequest, class FindIdsRequest, class RefreshPapersRequest
+- `backend/store.py` — SESSIONS_DIR, _sessions, _wiki_statuses, _llm, def llm, def _session_path, def _apply_provenance, def _save_session, def _load_session_file, BROWSER_SERVER, def _push_to_browser, def _get_profile, def _check_doi_sources
 ### engine/
 - `engine/agent_llm.py` — AGENT_JOBS_DIR, def _job_id, class AgentProvider(__init__, complete), def pending_jobs, def answer_job
 - `engine/author_check.py` — CROSSREF_API, TIMEOUT, def name_variants, def _normalise, def _author_matches_variants, def _affiliation_matches, def check_doi_authors, def extract_doi
@@ -41,18 +46,22 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/relevance.py` — _WRONG_PERSON_SIGNALS, _ACADEMIC_FETCHED_BY, _DOI_PATTERNS, def _significant_name_tokens, def flag_source, def flag_sources
 - `engine/researcher.py` — HEADERS, S2_API, GOOGLE_CSE_URL, _NEWS_OUTLETS, _DISAMBIG_STOPWORDS, def _disambiguator, def _sweep_news, def fetch_auto_sources, def fetch_url_source, def fetch_url_source_with_paste, def _semantic_scholar, def _pick_author_id, def _google_cse, def _duckduckgo_html, def _extract_publisher, _SLOT_QUERIES, def _search_web, def targeted_slot_search, def _find_institution_url, def fetch_institution_sources
 - `engine/researcher_ids.py` — HEADERS, OA_HEADERS, _ORCID_RE, _SCHOLAR_RE, _SCOPUS_RE, _SD_AUTHOR_RE, _RESEARCHGATE_RE, _S2_AUTHOR_RE, _SD_PII_RE, def extract_ids_from_sources, def search_researcher_ids, def validate_orcid, def fetch_orcid_works, def extract_sd_pii, def is_sd_article_url, def is_sd_author_url, def resolve_sd_article, def find_openalex_id_for_person, def fetch_openalex_works, def fetch_s2_author_papers
-- `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def _generate_multiyear_report_urls, def suggest_next_urls
+- `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def _generate_multiyear_report_urls, def _profile_link_suggestions, def _multiyear_report_suggestions, def _build_search_prompt, def _search_queries, def _run_search_queries, def suggest_next_urls
 ### frontend/
 - `frontend/src/App.tsx` — ErrorBoundaryProps, ErrorBoundaryState, ErrorBoundary, constructor, getDerivedStateFromError, componentDidCatch, render, Stage, MainApp, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset, App
 - `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, getDraftAudit, generateDraft, SessionSummary, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, addSourcedClaim, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls, AutoEnrichResponse, autoEnrich
 - `frontend/src/components/BookmarkletCard.tsx` — BookmarkletCard, handleCopy
 - `frontend/src/components/CandidateCard.tsx` — Props, CandidateCard
 - `frontend/src/components/ClaimsReview.tsx` — FilterTab, ClaimsReview, doVerify, ActionBtn
+- `frontend/src/components/ProfileTab.tsx` — ProfileTab, setMode, handleSearch, handleAddUrl, handleManual, ResearcherIdsStrip
 - `frontend/src/components/ResearchOperationsCard.tsx` — ResearchOperationsCard
+- `frontend/src/components/SourceCard.tsx` — SourceCard, handleVerify, handleReject, FillMode, RelevanceBadge, FetchedByTag, AuthorMatchBadge
+- `frontend/src/components/SourcesPanel.tsx` — SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser
 - `frontend/src/components/TimelineTab.tsx` — parseFirstYear, TimelineTab, TLEvent, GapInfo, EventRow, GapRow, handleFillGap
+- `frontend/src/components/WorkspaceCards.tsx` — Expander, NotabilityBadge, NotabilityCard, DraftReadinessCard, ChecklistCard, TabBtn
 - `frontend/src/components/WorkspaceStatusBanner.tsx` — WorkspaceStatusBanner
 - `frontend/src/pages/DraftPage.tsx` — Props, DraftPage, handleCopy, TabBtn, SourceRow
-- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleAutoEnrich, handleGenerateDraft, markLinkOpened, SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser, SourceCard, handleVerify, handleReject, FillMode, ProfileTab, setMode, handleSearch, handleManual, ResearcherIdsStrip, RelevanceBadge, FetchedByTag, AuthorMatchBadge, Expander, NotabilityBadge, NotabilityCard, DraftReadinessCard, ChecklistCard, TabBtn
+- `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleAutoEnrich, handleGenerateDraft, markLinkOpened
 - `frontend/src/pages/IdentifyPage.tsx` — Props, View, IdentifyPage, handleResume, handleDelete, handleSearch, handleConfirm
 - `frontend/src/pages/ResearchPage.tsx` — Props, ResearchPage, Spinner
 - `frontend/src/types.ts` — PersonCandidate, SourceReliability, VerificationState, SourceFetchedBy, Source, Claim, NotabilityResult, WikiStatus, PersonProfile, ResearchStartResponse, SdPipelineResult, AddSourceResponse, AddSourcePasteResponse, CrawlResponse, DraftIssue, DraftAudit, DraftResponse, UrlSuggestion

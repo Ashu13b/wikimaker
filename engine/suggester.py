@@ -234,23 +234,9 @@ def _generate_multiyear_report_urls(url: str) -> list[str]:
     return results
 
 
-def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict]:
-    """Return ranked URL suggestions — profile links & multi-year reports first, then web searches."""
-    from .researcher import _search_web, _NEWS_OUTLETS
-    from .llm import get_provider
-
-    existing_urls = {s.url for s in profile.sources}
-    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
-    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
-    seen_urls: set[str] = set(existing_urls) | skipped_urls | rejected_urls
-    seen_normalized = {_normalize_url(u) for u in seen_urls}
-    affil = profile.affiliation or ""
-    field = profile.field or ""
-    missing = profile.missing_slots
-
-    suggestions: list[dict] = []
-
-    # ── Pass 1: profile links from already-fetched sources (warm leads) ────────
+def _profile_link_suggestions(profile: PersonProfile, missing: list[str], seen_normalized: set[str]) -> list[dict]:
+    """Pass 1 — warm leads: profile-shaped links already found on fetched pages."""
+    suggestions = []
     for src in profile.sources:
         for link_url in src.profile_links:
             if _normalize_url(link_url) in seen_normalized:
@@ -269,16 +255,18 @@ def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict
                 "completion_value": _completion_value(expected, missing),
             })
             seen_normalized.add(_normalize_url(link_url))
+    return suggestions
 
-    # ── Pass 1.5: multi-year institutional report expansion (bounded) ─────
-    # Cap these unverified URL guesses so real search results (Pass 2) always
-    # have room in the queue; otherwise one report URL floods every suggestion.
-    pass15_budget = max(max_results - 2, 0)
+
+def _multiyear_report_suggestions(profile: PersonProfile, missing: list[str], seen_normalized: set[str], budget: int) -> list[dict]:
+    """Pass 1.5 — unverified institutional report guesses, bounded so real
+    search results always keep queue slots."""
+    suggestions = []
     for src in profile.sources:
-        if len(suggestions) >= pass15_budget:
+        if len(suggestions) >= budget:
             break
         for report_url in _generate_multiyear_report_urls(src.url):
-            if len(suggestions) >= pass15_budget:
+            if len(suggestions) >= budget:
                 break
             if _normalize_url(report_url) in seen_normalized:
                 continue
@@ -296,18 +284,14 @@ def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict
                 "completion_value": _completion_value(expected, missing),
             })
             seen_normalized.add(_normalize_url(report_url))
+    return suggestions
 
-    # ── Pass 2: LLM-generated web searches ────────────────────────────────────
-    if len(suggestions) < max_results:
-        claims_text = "\n".join(f"- {c.field}: {c.text}" for c in profile.claims[:20]) or "None yet"
-        sources_text = "\n".join(f"- {s.url}" for s in profile.sources[:15]) or "None yet"
-        missing_text = ", ".join(missing) or "none"
 
-        # Detect gaps to guide search
-        gaps = detect_timeline_gaps(profile)
-        gaps_text = ", ".join(f"{start}–{end} ({end - start} years)" for start, end in gaps) if gaps else "None detected"
-
-        prompt = f"""Person: {profile.name}
+def _build_search_prompt(profile: PersonProfile, field: str, affil: str, missing: list[str], gaps: list[tuple[int, int]], sources_text: str) -> str:
+    claims_text = "\n".join(f"- {c.field}: {c.text}" for c in profile.claims[:20]) or "None yet"
+    missing_text = ", ".join(missing) or "none"
+    gaps_text = ", ".join(f"{start}–{end} ({end - start} years)" for start, end in gaps) if gaps else "None detected"
+    return f"""Person: {profile.name}
 Field: {field}
 Affiliation: {affil}
 
@@ -325,87 +309,113 @@ Already consulted (avoid same domains unless a clearly different page):
 Every query MUST include "{affil}" or "{field}" as disambiguation.
 If there are timeline gaps listed, please generate at least 2 queries targeting those specific years or periods (e.g. including years in the query or ranges)."""
 
-        queries = []
-        try:
-            raw = get_provider().complete(_SYSTEM, prompt)
-            queries = json.loads(raw).get("queries", [])
-        except Exception:
-            pass
 
-        if not queries:
-            _FALLBACK: dict[str, str] = {
-                "birth_date":  f'"{profile.name}" {affil} biography born',
-                "award":       f'"{profile.name}" {affil} award prize',
-                "education":   f'"{profile.name}" {affil} PhD education',
-                "known_for":   f'"{profile.name}" {affil} {field} contribution',
-                "affiliation": f'"{profile.name}" {affil} faculty profile',
-                "position":    f'"{profile.name}" {affil} {field} position',
-            }
-            for slot in missing[:6]:
-                q = _FALLBACK.get(slot, f'"{profile.name}" {affil} {slot}')
-                queries.append({"query": q.strip(), "seeking": slot, "reason": f"Likely has: {slot.replace('_', ' ')}"})
-            
-            # Add queries targeting timeline gaps
-            for start, end in gaps[:2]:
-                gap_query = f'"{profile.name}" {affil} {start} {end}'
-                queries.append({
-                    "query": gap_query.strip(),
-                    "seeking": "position",
-                    "reason": f"Search for career history during timeline gap {start}–{end}"
-                })
+def _search_queries(profile: PersonProfile, field: str, affil: str, missing: list[str], gaps: list[tuple[int, int]]) -> list[dict]:
+    """LLM-generated queries, fallback templates, and site-restricted outlet queries."""
+    from .llm import get_provider
+    from .researcher import _NEWS_OUTLETS
 
-        # Site-restricted national-outlet queries as a safety net for high-value slots
-        site_target = next((slot for slot in ("known_for", "award", "position") if slot in missing), "known_for")
-        for outlet in _NEWS_OUTLETS:
-            if len(suggestions) >= max_results:
-                break
-            site_query = f'"{profile.name}" {affil or field} site:{outlet}'.strip()
+    sources_text = "\n".join(f"- {s.url}" for s in profile.sources[:15]) or "None yet"
+    queries: list[dict] = []
+    try:
+        raw = get_provider().complete(_SYSTEM, _build_search_prompt(profile, field, affil, missing, gaps, sources_text))
+        queries = json.loads(raw).get("queries", [])
+    except Exception:
+        pass
+
+    if not queries:
+        fallback: dict[str, str] = {
+            "birth_date":  f'"{profile.name}" {affil} biography born',
+            "award":       f'"{profile.name}" {affil} award prize',
+            "education":   f'"{profile.name}" {affil} PhD education',
+            "known_for":   f'"{profile.name}" {affil} {field} contribution',
+            "affiliation": f'"{profile.name}" {affil} faculty profile',
+            "position":    f'"{profile.name}" {affil} {field} position',
+        }
+        for slot in missing[:6]:
+            q = fallback.get(slot, f'"{profile.name}" {affil} {slot}')
+            queries.append({"query": q.strip(), "seeking": slot, "reason": f"Likely has: {slot.replace('_', ' ')}"})
+        for start, end in gaps[:2]:
             queries.append({
-                "query": site_query,
-                "seeking": site_target,
-                "reason": f"National outlet {outlet} coverage",
+                "query": f'"{profile.name}" {affil} {start} {end}'.strip(),
+                "seeking": "position",
+                "reason": f"Search for career history during timeline gap {start}–{end}",
             })
 
-        for item in queries:
-            if len(suggestions) >= max_results:
-                break
-            query = item.get("query", "")
-            seeking = item.get("seeking", "")
-            reason = item.get("reason", f"Might have: {seeking.replace('_', ' ')}")
-            if not query:
+    site_target = next((slot for slot in ("known_for", "award", "position") if slot in missing), "known_for")
+    for outlet in _NEWS_OUTLETS:
+        queries.append({
+            "query": f'"{profile.name}" {affil or field} site:{outlet}'.strip(),
+            "seeking": site_target,
+            "reason": f"National outlet {outlet} coverage",
+        })
+    return queries
+
+
+def _run_search_queries(queries: list[dict], profile: PersonProfile, affil: str, field: str, missing: list[str], seen_normalized: set[str], max_results: int) -> list[dict]:
+    from .researcher import _search_web
+    suggestions: list[dict] = []
+    for item in queries:
+        if len(suggestions) >= max_results:
+            break
+        query = item.get("query", "")
+        seeking = item.get("seeking", "")
+        reason = item.get("reason", f"Might have: {seeking.replace('_', ' ')}")
+        if not query:
+            continue
+        results = _search_web(query)
+        for r in results[:6]:
+            if _normalize_url(r.url) in seen_normalized:
                 continue
-            results = _search_web(query)
-            for r in results[:6]:
-                if _normalize_url(r.url) in seen_normalized:
-                    continue
-                rel = _relevance(r.title, r.snippet, affil, field, profile.claims)
-                if rel == "low":
-                    continue  # skip wrong-person results
-                expected = [seeking] if seeking else []
-                if "birth_date" in expected:
-                    text_lower = (r.title + " " + r.snippet).lower()
-                    animal_kws = ["cloned", "cloning", "animal", "buffalo", "calf", "cow", "bull", "sheep", "goat", "offspring", "garima", "samrupa", "ganga", "dolly"]
-                    if any(akw in text_lower for akw in animal_kws):
-                        expected = ["known_for"]
-                        reason = "Likely has: cloning contribution"
-                is_prof = is_profile_url(r.url)
-                prio = 0 if "site:" in query else (1 if is_prof else 2)
-                stype = "profile" if is_prof else _classify_source_type(r.url, r.title)
-                suggestions.append({
-                    "url": r.url,
-                    "title": r.title,
-                    "snippet": r.snippet,
-                    "reason": reason,
-                    "query": query,
-                    "expected_slots": expected,
-                    "priority": prio,
-                    "source_type": stype,
-                    "fetchable": _fetchability(r.url),
-                    "relevance": rel,
-                    "completion_value": _completion_value(expected, missing),
-                })
-                seen_normalized.add(_normalize_url(r.url))
-                break
+            rel = _relevance(r.title, r.snippet, affil, field, profile.claims)
+            if rel == "low":
+                continue  # skip wrong-person results
+            expected = [seeking] if seeking else []
+            if "birth_date" in expected:
+                text_lower = (r.title + " " + r.snippet).lower()
+                animal_kws = ["cloned", "cloning", "animal", "buffalo", "calf", "cow", "bull", "sheep", "goat", "offspring", "garima", "samrupa", "ganga", "dolly"]
+                if any(akw in text_lower for akw in animal_kws):
+                    expected = ["known_for"]
+                    reason = "Likely has: cloning contribution"
+            is_prof = is_profile_url(r.url)
+            prio = 0 if "site:" in query else (1 if is_prof else 2)
+            stype = "profile" if is_prof else _classify_source_type(r.url, r.title)
+            suggestions.append({
+                "url": r.url,
+                "title": r.title,
+                "snippet": r.snippet,
+                "reason": reason,
+                "query": query,
+                "expected_slots": expected,
+                "priority": prio,
+                "source_type": stype,
+                "fetchable": _fetchability(r.url),
+                "relevance": rel,
+                "completion_value": _completion_value(expected, missing),
+            })
+            seen_normalized.add(_normalize_url(r.url))
+            break
+    return suggestions
+
+
+def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict]:
+    """Return ranked URL suggestions — profile links & multi-year reports first, then web searches."""
+
+    existing_urls = {s.url for s in profile.sources}
+    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
+    seen_normalized = {_normalize_url(u) for u in (existing_urls | skipped_urls | rejected_urls)}
+    affil = profile.affiliation or ""
+    field = profile.field or ""
+    missing = profile.missing_slots
+
+    suggestions = _profile_link_suggestions(profile, missing, seen_normalized)
+    suggestions += _multiyear_report_suggestions(profile, missing, seen_normalized, max(max_results - 2, 0))
+
+    if len(suggestions) < max_results:
+        gaps = detect_timeline_gaps(profile)
+        queries = _search_queries(profile, field, affil, missing, gaps)
+        suggestions += _run_search_queries(queries, profile, affil, field, missing, seen_normalized, max_results)
 
     # Sort: profile links first, then by completion_value × relevance weight
     _rel_weight = {"high": 3, "medium": 2, "low": 1}

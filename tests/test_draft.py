@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend import main as backend_main
+from backend import store
 from engine.models import Claim, PersonProfile, Source, SourceReliability, VerificationState
 from wiki.draft import audit_profile, render_draft
 
@@ -216,9 +217,9 @@ def test_audit_accepts_sourced_research_stay_as_career_activity():
 def test_claim_draft_approval_is_a_separate_persisted_action(tmp_path, monkeypatch):
     profile = _ready_profile()
     profile.claims[0].draft_approved = False
-    monkeypatch.setattr(backend_main, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setattr(backend_main, "_sessions", {profile.name: profile})
-    monkeypatch.setattr(backend_main, "_wiki_statuses", {profile.name: {"status": "clear"}})
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear"}})
 
     approved = backend_main.verify_claim(
         profile.name,
@@ -236,9 +237,9 @@ def test_claim_draft_approval_is_a_separate_persisted_action(tmp_path, monkeypat
 
 def test_draft_endpoint_uses_server_session_and_persists_output(tmp_path, monkeypatch):
     profile = _ready_profile()
-    monkeypatch.setattr(backend_main, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setattr(backend_main, "_sessions", {profile.name: profile})
-    monkeypatch.setattr(backend_main, "_wiki_statuses", {profile.name: {"status": "clear", "url": None, "note": None}})
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear", "url": None, "note": None}})
 
     result = backend_main.generate_draft(backend_main.DraftRequest(profile_name=profile.name))
     saved = json.loads((tmp_path / "Example_Person.json").read_text())
@@ -251,9 +252,9 @@ def test_draft_endpoint_uses_server_session_and_persists_output(tmp_path, monkey
 
 def test_add_sourced_claim_binds_fact_to_verified_source(tmp_path, monkeypatch):
     profile = _ready_profile()
-    monkeypatch.setattr(backend_main, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setattr(backend_main, "_sessions", {profile.name: profile})
-    monkeypatch.setattr(backend_main, "_wiki_statuses", {profile.name: {"status": "clear"}})
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear"}})
     src = profile.sources[0]
 
     result = backend_main.add_sourced_claim(
@@ -274,8 +275,8 @@ def test_add_sourced_claim_binds_fact_to_verified_source(tmp_path, monkeypatch):
 
 def test_add_sourced_claim_requires_existing_source(tmp_path, monkeypatch):
     profile = _ready_profile()
-    monkeypatch.setattr(backend_main, "_sessions", {profile.name: profile})
-    monkeypatch.setattr(backend_main, "_wiki_statuses", {profile.name: {"status": "clear"}})
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear"}})
 
     with pytest.raises(HTTPException):
         backend_main.add_sourced_claim(
@@ -296,9 +297,9 @@ def test_resume_never_repopulates_claims_from_stub_provider(tmp_path, monkeypatc
         "wiki_status": {"status": "clear", "url": None, "note": None},
     }
     (tmp_path / "Example_Person.json").write_text(json.dumps(payload))
-    monkeypatch.setattr(backend_main, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setattr(backend_main, "_sessions", {})
-    monkeypatch.setattr(backend_main, "_wiki_statuses", {})
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {})
+    monkeypatch.setattr(store, "_wiki_statuses", {})
     monkeypatch.setattr("engine.llm.has_real_llm", lambda: False)
 
     result = backend_main.resume_session({"file": "Example_Person.json"})
