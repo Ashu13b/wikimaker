@@ -43,7 +43,7 @@ def extract_profile_links(raw_html: str, person_name: str, base_url: str) -> lis
     seen: set[str] = set()
 
     for a in soup.find_all("a", href=True):
-        href = a.get("href", "").strip()
+        href = str(a.get("href", "")).strip()
         if not href or href.startswith(("#", "mailto:", "javascript:")):
             continue
         url = urljoin(base_url, href)

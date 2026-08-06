@@ -1,4 +1,4 @@
-<!-- context-kit DEPS_MAP · v0.1.0 · generated 2026-08-06 19:43 UTC · sha 343c8bf · host vnic-trading -->
+<!-- context-kit DEPS_MAP · v0.1.0 · generated 2026-08-06 20:04 UTC · sha eb96e64 · host vnic-trading -->
 
 # DEPS_MAP
 
@@ -12,6 +12,35 @@ External packages and required env keys (names only — no values).
 - pypdf
 - requests
 - uvicorn
+
+## frontend/package.json
+- @types/react
+- @types/react-dom
+- @vitejs/plugin-react
+- react
+- react-dom
+- typescript
+- vite
+
+## requirements.txt
+- anthropic
+- beautifulsoup4
+- bs4
+- ddgs
+- engine
+- fastapi
+- google
+- google-generativeai
+- pdfminer
+- pdfminer.six
+- playwright
+- playwright-stealth
+- playwright_stealth
+- pydantic
+- pypdf
+- requests
+- uvicorn
+- wiki
 
 ## Required env keys
 - `ANTHROPIC_API_KEY`

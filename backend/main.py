@@ -1,28 +1,29 @@
 """FastAPI backend for wikimaker."""
 from __future__ import annotations
-import sys, os, json
+import sys
+import os
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
-from engine.models import PersonProfile, PersonCandidate, Claim, VerificationState
-from engine.identifier import find_candidates
+from engine.models import PersonProfile, Claim, VerificationState
 from engine.researcher import fetch_auto_sources, fetch_url_source, fetch_url_source_with_paste, fetch_institution_sources, targeted_slot_search
 from engine.classifier import classify_sources
 from engine.notability import score_notability
-from engine.extractor import extract_claims, find_missing_slots, SLOT_SOURCE_HINTS
+from engine.extractor import extract_claims, find_missing_slots
 from engine.relevance import flag_sources
 from engine.crawler import crawl
 from engine.llm import get_provider
 from engine.researcher_ids import (
     extract_ids_from_sources, is_sd_article_url, is_sd_author_url,
     resolve_sd_article, find_openalex_id_for_person, fetch_openalex_works,
-    extract_sd_pii, _SD_AUTHOR_RE,
+    _SD_AUTHOR_RE,
 )
 from engine.author_check import check_doi_authors, extract_doi
 from engine.provenance import classify_source_provenance, evaluate_claim_trust, normalize_url
@@ -196,7 +197,6 @@ def _get_profile(name: str) -> PersonProfile:
 
 def _check_doi_sources(sources: list, person_name: str, affiliation: str) -> None:
     """In-place: run author check on every source whose URL contains a DOI."""
-    from engine.models import Source as S
     for source in sources:
         doi = extract_doi(source.url)
         if not doi:
@@ -349,7 +349,6 @@ def add_source(req: AddSourceRequest) -> dict:
 def _add_sd_article(profile, url: str) -> dict:
     """Resolve a ScienceDirect article URL via PII→CrossRef→OpenAlex."""
     from engine.models import Source as Src, SourceReliability
-    from engine.researcher import _extract_publisher
 
     resolved = resolve_sd_article(url)
     if not resolved:
@@ -441,8 +440,6 @@ def _add_sd_author_profile(profile, url: str) -> dict:
         profile.researcher_ids["scopus"] = scopus_id
 
     # Try to find OpenAlex author by name, then fetch works
-    from engine.researcher import _extract_publisher
-    from engine.models import Source as Src, SourceReliability
 
     # Add the author profile page as a source (may be blocked, that's ok)
     source, blocked = fetch_url_source(url, profile.name)
@@ -1069,11 +1066,11 @@ def suggest_urls(body: dict) -> dict:
 
 
 # ── Unified App setup ───────────────────────────────────────────────────────
-from contextlib import asynccontextmanager
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from browser_server import start_browser, stop_browser, app as browser_app
-from pathlib import Path
+from contextlib import asynccontextmanager  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+from fastapi.responses import FileResponse  # noqa: E402
+from browser_server import stop_browser, app as browser_app  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -1,7 +1,6 @@
 import json
 
-from engine.agent_llm import AgentProvider, pending_jobs, answer_job, AGENT_JOBS_DIR
-from engine.llm import get_provider
+from engine.agent_llm import AgentProvider, pending_jobs, answer_job
 
 
 def test_unanswered_prompt_queues_job_and_returns_empty(tmp_path, monkeypatch):

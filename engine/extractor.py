@@ -29,12 +29,18 @@ def find_missing_slots(profile: PersonProfile, claims: list[Claim]) -> list[str]
     """Return WIKI_SLOTS not covered by any claim or profile-level field."""
     filled: set[str] = {c.field for c in claims}
     # User-entered form data counts as filled (unsourced but known)
-    if profile.birth_date:  filled.add("birth_date")
-    if profile.birth_place: filled.add("birth_place")
-    if profile.nationality: filled.add("nationality")
-    if profile.affiliation: filled.add("affiliation")
-    if profile.field:       filled.add("field")
-    if profile.full_name:   filled.add("full_name")
+    if profile.birth_date:
+        filled.add("birth_date")
+    if profile.birth_place:
+        filled.add("birth_place")
+    if profile.nationality:
+        filled.add("nationality")
+    if profile.affiliation:
+        filled.add("affiliation")
+    if profile.field:
+        filled.add("field")
+    if profile.full_name:
+        filled.add("full_name")
     return [s for s in WIKI_SLOTS if s not in filled]
 
 SYSTEM = """\

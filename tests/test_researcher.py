@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from engine.models import Source
+from engine.models import Source, SourceReliability
 from engine.researcher import _disambiguator, _sweep_news
 
 
@@ -9,7 +9,7 @@ def _result(url: str) -> Source:
         url=url,
         title="Report about Example Person",
         publisher="Example News",
-        reliability="reliable_secondary",
+        reliability=SourceReliability.reliable_secondary,
         fetched_by="duckduckgo",
     )
 

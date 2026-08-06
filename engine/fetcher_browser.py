@@ -75,8 +75,6 @@ def fetch_with_browser(url: str, timeout_ms: int = 25_000) -> FetchResult:
                 return FetchResult(url, "", method="browser", blocked=True)
 
             html = page.content()
-            title_el = page.query_selector("title")
-            page_title = title_el.inner_text() if title_el else ""
             ctx.close()
 
         text = _extract_text(html)

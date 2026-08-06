@@ -5,7 +5,6 @@ import pytest
 from fastapi import HTTPException
 
 from backend import main as backend_main
-from engine.llm import StubProvider
 from engine.models import Claim, PersonProfile, Source, SourceReliability, VerificationState
 from wiki.draft import audit_profile, render_draft
 

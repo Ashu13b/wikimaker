@@ -1,0 +1,27 @@
+# Wikimaker Python production dependencies.
+#
+# The four alias lines below use an always-false environment marker so pip never
+# installs them; they exist only so the ck dependency-guard can match import names
+# that differ from their distribution names (bs4 -> beautifulsoup4, google ->
+# google-generativeai, pdfminer -> pdfminer.six, playwright_stealth ->
+# playwright-stealth) and the internal packages engine/wiki, which the guard
+# cannot detect as local.
+anthropic==0.46.0
+beautifulsoup4==4.14.3
+ddgs==9.14.4
+fastapi==0.128.8
+google-generativeai==0.8.6
+pdfminer.six==20260107
+playwright==1.60.0
+playwright-stealth==2.0.3
+pydantic==2.12.5
+pypdf==6.12.2
+requests==2.32.5
+uvicorn==0.44.0
+
+bs4; python_version < "0"
+google; python_version < "0"
+pdfminer; python_version < "0"
+playwright_stealth; python_version < "0"
+engine; python_version < "0"
+wiki; python_version < "0"

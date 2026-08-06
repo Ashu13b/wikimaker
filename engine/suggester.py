@@ -8,6 +8,8 @@ Each suggestion carries: fetchable, relevance, completion_value.
 """
 from __future__ import annotations
 import json
+import re
+from datetime import datetime
 from urllib.parse import urlparse
 from .models import PersonProfile
 
@@ -119,8 +121,6 @@ def _completion_value(expected_slots: list[str], missing: list[str]) -> int:
 
 
 # ── Gap detection ─────────────────────────────────────────────────────────────
-import re
-from datetime import datetime
 
 def _extract_first_year(s: str | None) -> int | None:
     if not s:

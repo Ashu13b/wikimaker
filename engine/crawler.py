@@ -67,7 +67,6 @@ def crawl(
     graph = SourceGraph()
     queue: list[tuple[str, int]] = [(u, 0) for u in seed_urls]
     visited: set[str] = set()
-    name_tokens = set(person_name.lower().split())
 
     while queue and len(graph.nodes) < max_nodes:
         url, depth = queue.pop(0)
@@ -137,7 +136,7 @@ def crawl(
 def _extract_meta(html: str, url: str) -> tuple[str, str]:
     try:
         soup = BeautifulSoup(html, "html.parser")
-        title = soup.title.string.strip() if soup.title else url
+        title = (soup.title.string or "").strip() if soup.title else url
         host = urlparse(url).netloc.replace("www.", "")
         return title, host
     except Exception:
@@ -149,7 +148,7 @@ def _extract_links(html: str, base_url: str) -> list[str]:
         soup = BeautifulSoup(html, "html.parser")
         links = []
         for a in soup.find_all("a", href=True):
-            href = a["href"].strip()
+            href = str(a["href"]).strip()
             if href.startswith(("javascript", "mailto", "#")):
                 continue
             full = urljoin(base_url, href)
@@ -227,7 +226,7 @@ def _is_relevant_link(link: str, page_html: str, person_name: str, keywords: lis
     try:
         soup = BeautifulSoup(page_html, "html.parser")
         for a in soup.find_all("a", href=True):
-            href = a["href"]
+            href = str(a["href"])
             if link.endswith(href) or href in link:
                 anchor_text = a.get_text(strip=True).lower()
                 if any(p in anchor_text for p in name_parts):

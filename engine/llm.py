@@ -28,16 +28,16 @@ class ClaudeProvider:
 class GeminiProvider:
     def __init__(self) -> None:
         import google.generativeai as genai
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])  # type: ignore[reportPrivateImportUsage]
         model_name = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
-        self._model = genai.GenerativeModel(
+        self._model = genai.GenerativeModel(  # type: ignore[reportPrivateImportUsage]
             model_name=model_name,
             system_instruction=None,  # injected per-call
         )
         self._genai = genai
 
     def complete(self, system: str, user: str) -> str:
-        model = self._genai.GenerativeModel(
+        model = self._genai.GenerativeModel(  # type: ignore[reportPrivateImportUsage]
             model_name=self._model.model_name,
             system_instruction=system,
         )
@@ -55,7 +55,7 @@ class VertexClaudeProvider:
 
     def __init__(self) -> None:
         import anthropic
-        self._client = anthropic.AnthropicVertex(
+        self._client = anthropic.AnthropicVertex(  # type: ignore[reportPrivateImportUsage]
             project_id=os.environ["ANTHROPIC_VERTEX_PROJECT_ID"],
             region=os.environ.get("CLOUD_ML_REGION", "us-east5"),
         )
@@ -92,7 +92,6 @@ class StubProvider:
     Replace with a real provider by setting ANTHROPIC_API_KEY + WIKIMAKER_LLM=claude."""
 
     def complete(self, system: str, user: str) -> str:
-        import json
         if "wikipedia editor" in system.lower() or "draft" in system.lower():
             raise NotImplementedError(
                 "The stub provider cannot draft articles. Drafting is deterministic "
@@ -123,7 +122,8 @@ class StubProvider:
     # ── extractor ─────────────────────────────────────────────────────────────
 
     def _extract(self, user: str) -> str:
-        import json, re
+        import json
+        import re
         person, content, title, publisher = "", "", "", ""
         for line in user.splitlines():
             if line.startswith("Person:"):
@@ -201,7 +201,7 @@ _stub_warned = False
 _agent_warned = False
 
 
-def _agent_provider() -> "AgentProvider":
+def _agent_provider() -> LLMProvider:
     from .agent_llm import AgentProvider
     return AgentProvider()
 

@@ -4,7 +4,6 @@ Academic DOI sources are validated by author_check; this module handles
 web, news, and profile sources where we only have a snippet and title.
 """
 from __future__ import annotations
-import re
 from .models import Source
 
 # Fields that strongly indicate a different well-known person with the same name
@@ -48,7 +47,6 @@ def flag_source(source: Source, person_name: str, field: str, affiliation: str) 
     affil_tokens = [t.lower() for t in (affiliation or "").split() if len(t) > 3]
     context_tokens = field_tokens + affil_tokens
 
-    text = (source.snippet + " " + source.title).lower()
     name_found = all(t in full_text for t in name_tokens)
 
     # Check for wrong-person signals in URL or snippet text

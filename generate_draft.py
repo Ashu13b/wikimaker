@@ -1,5 +1,7 @@
 """Generate a deterministic, evidence-grounded AfC draft from a saved session."""
-import sys, os, json
+import sys
+import os
+import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
 sys.path.insert(0, os.path.dirname(__file__))
 

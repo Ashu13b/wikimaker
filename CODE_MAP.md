@@ -1,4 +1,4 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-06 19:43 UTC · sha 343c8bf · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-06 20:04 UTC · sha eb96e64 · host vnic-trading -->
 
 # CODE_MAP
 
@@ -7,10 +7,11 @@ Symbol index (skim-grade). Consult before Grep/Read.
 ## Composition
 - Python — 34 files · 355 symbols
 - TypeScript — 17 files · 141 symbols
+- JavaScript — 1 files · 0 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 54 files · 496 symbols across 5 languages._
+_Total: 55 files · 496 symbols across 6 languages._
 
 
 ## Compartments

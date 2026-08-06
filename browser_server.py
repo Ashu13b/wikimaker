@@ -13,7 +13,11 @@ Install Xvfb first for headed mode (lets you solve CAPTCHAs visually):
     sudo apt install -y xvfb
 """
 from __future__ import annotations
-import os, time, subprocess, threading, queue
+import os
+import time
+import subprocess
+import threading
+import queue
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional

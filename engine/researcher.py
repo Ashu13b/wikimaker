@@ -2,7 +2,6 @@
 from __future__ import annotations
 import os
 import requests
-from bs4 import BeautifulSoup
 from .models import Source, SourceReliability
 
 HEADERS = {"User-Agent": "wikimaker/0.1 (ay.yadav53@gmail.com)"}
@@ -99,7 +98,7 @@ def fetch_url_source(url: str, person_name: str = "") -> tuple[Source, bool]:
     try:
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(result.text[:10000], "html.parser") if "<html" in result.text[:200] else None
-        title = soup.title.string.strip() if (soup and soup.title) else url
+        title = (soup.title.string or "").strip() if (soup and soup.title) else url
     except Exception:
         title = url
 
@@ -115,8 +114,6 @@ def fetch_url_source(url: str, person_name: str = "") -> tuple[Source, bool]:
 
 def fetch_url_source_with_paste(url: str, pasted_text: str) -> Source:
     """Build a Source from user-pasted text for a blocked URL."""
-    from .fetcher import fetch_text_paste
-    result = fetch_text_paste(url, pasted_text)
     return Source(
         url=url, title=_extract_publisher(url), publisher=_extract_publisher(url),
         reliability=SourceReliability.primary,
@@ -175,7 +172,7 @@ def _pick_author_id(candidates: list[dict], name: str, affiliation: str) -> str 
     name is the right one. Falls back to highest paper-count candidate if
     CrossRef can't resolve any.
     """
-    from .author_check import check_doi_authors, name_variants
+    from .author_check import check_doi_authors
 
     affil_kw = [w.lower() for w in affiliation.split() if len(w) > 3]
 

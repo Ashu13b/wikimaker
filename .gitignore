@@ -12,6 +12,7 @@ agent_jobs/
 *.json
 !tests/fixtures/**
 !tests/fixtures
+!frontend/package.json
 
 # Node / frontend
 node_modules/
