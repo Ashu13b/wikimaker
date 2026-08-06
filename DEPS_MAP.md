@@ -1,4 +1,4 @@
-<!-- context-kit DEPS_MAP · v0.1.0 · generated 2026-07-10 11:09 UTC · sha a91db49 · host vnic-trading -->
+<!-- context-kit DEPS_MAP · v0.1.0 · generated 2026-08-06 19:43 UTC · sha 343c8bf · host vnic-trading -->
 
 # DEPS_MAP
 
@@ -15,10 +15,13 @@ External packages and required env keys (names only — no values).
 
 ## Required env keys
 - `ANTHROPIC_API_KEY`
+- `ANTHROPIC_VERTEX_PROJECT_ID`
 - `CLAUDE_MODEL`
+- `CLOUD_ML_REGION`
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL`
 - `GOOGLE_CSE_CX`
 - `GOOGLE_CSE_KEY`
+- `VERTEX_CLAUDE_MODEL`
 - `WIKIMAKER_HEADLESS`
 - `WIKIMAKER_LLM`

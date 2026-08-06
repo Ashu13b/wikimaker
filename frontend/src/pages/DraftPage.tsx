@@ -31,6 +31,11 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
   const rsCount = notability?.rs_count ?? 0;
   const draftDestination = getDraftDestination(wikiStatus);
 
+  const approvedClaims = profile.claims.filter(c => c.draft_approved);
+  const evidenceUrls = new Set(
+    approvedClaims.map(c => c.source_url).filter((u): u is string => !!u)
+  );
+
   return (
     <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 20px 60px" }}>
       {/* Header */}
@@ -58,11 +63,11 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
       {/* Notability — informational only, never a gate */}
       {notability && (
         <div style={{
-          background: rsCount >= 2 ? "#dcfce7" : "#fef9c3",
-          border: `1px solid ${rsCount >= 2 ? "#86efac" : "#fde047"}`,
+          background: "#eff6ff",
+          border: "1px solid #bfdbfe",
           borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13,
         }}>
-          <strong>Notability: {notability.label}</strong> — {rsCount} reliable secondary source{rsCount !== 1 ? "s" : ""} · {notability.reason}
+          <strong>Automated source-count estimate: {notability.label}</strong> — {rsCount} classified secondary source{rsCount !== 1 ? "s" : ""} · This is not a Wikipedia notability decision. {notability.reason}
         </div>
       )}
 
@@ -89,8 +94,8 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: 8 }}>
                   <div>
-                    <strong style={{ fontSize: 14, color: "#1e40af" }}>Wikipedia Submission Draft Loaded</strong>
-                    <p style={{ fontSize: 12, color: "#1e3a8a", margin: "2px 0 0" }}>Ready for submission. Click any source link to test or open in a new tab.</p>
+                    <strong style={{ fontSize: 14, color: "#1e40af" }}>Reviewable Wikipedia Draft Loaded</strong>
+                    <p style={{ fontSize: 12, color: "#1e3a8a", margin: "2px 0 0" }}>Draft generated from approved evidence. Review Wikipedia notability, neutrality, and every citation before submission.</p>
                   </div>
                   <a href={draftDestination.href} target="_blank" rel="noopener noreferrer">
                     <button className="btn-primary" style={{ fontSize: 13 }}>
@@ -162,10 +167,13 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
           </div>
 
           <div className="card">
-            <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
               Sources ({profile.sources.length})
             </p>
-            {profile.sources.map((s, i) => <SourceRow key={i} source={s} />)}
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px 0" }}>
+              {evidenceUrls.size} of {profile.sources.length} back the {approvedClaims.length} approved claim{approvedClaims.length !== 1 ? "s" : ""} in this draft; the rest are research leads only.
+            </p>
+            {profile.sources.map((s, i) => <SourceRow key={i} source={s} inDraft={evidenceUrls.has(s.url)} />)}
           </div>
         </div>
       </div>
@@ -190,7 +198,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({ source, inDraft }: { source: Source; inDraft: boolean }) {
   const tagClass: Record<string, string> = {
     reliable_secondary: "tag-rs",
     primary: "tag-primary",
@@ -207,6 +215,11 @@ function SourceRow({ source }: { source: Source }) {
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
         <span className={`tag ${tagClass[source.reliability]}`}>{tagLabel[source.reliability]}</span>
+        {inDraft && (
+          <span style={{ fontSize: 10, fontWeight: 700, padding: "0px 5px", borderRadius: 4, background: "rgba(37, 99, 235, 0.12)", color: "var(--primary)" }}>
+            in draft
+          </span>
+        )}
         <a href={source.url} target="_blank" rel="noreferrer"
           style={{ fontSize: 12, color: "var(--primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {source.publisher || getHostname(source.url)}

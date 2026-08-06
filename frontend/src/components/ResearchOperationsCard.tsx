@@ -39,7 +39,7 @@ export default function ResearchOperationsCard({ ops, drafting }: { ops: Record<
       id: "drafter",
       name: "Wikitext Drafter",
       active: drafting,
-      descActive: "Rendering the subject profile into Wikipedia markup (English & Hindi) using LLM...",
+      descActive: "Rendering approved, source-linked claims into deterministic Wikipedia markup...",
       descIdle: "Idle · Ready to draft article"
     }
   ];

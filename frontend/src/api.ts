@@ -6,6 +6,7 @@ import type {
   AddSourcePasteResponse,
   CrawlResponse,
   DraftResponse,
+  DraftAudit,
 } from "./types";
 
 // Configurable for mobile builds (set VITE_API_BASE env var to the device's server IP)
@@ -122,7 +123,7 @@ export async function deepCrawl(
 export async function verifyClaim(
   profileName: string,
   claimIndex: number,
-  action: "confirm" | "edit" | "skip",
+  action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft",
   editedText?: string,
 ): Promise<{ claim: import("./types").Claim }> {
   return apiPost(
@@ -148,11 +149,13 @@ export async function rejectSource(
   return apiPost("/research/source/reject", { profile_name: profileName, url, reason });
 }
 
-export async function generateDraft(
-  profile: PersonProfile,
-  generateHindi: boolean,
-): Promise<DraftResponse> {
-  return apiPost("/draft", { profile, generate_hindi: generateHindi });
+export async function getDraftAudit(profileName: string): Promise<DraftAudit> {
+  const data = await apiGet<{ audit: DraftAudit }>(`/draft/audit/${encodeURIComponent(profileName)}`);
+  return data.audit;
+}
+
+export async function generateDraft(profileName: string): Promise<DraftResponse> {
+  return apiPost("/draft", { profile_name: profileName });
 }
 
 export interface SessionSummary {
@@ -194,6 +197,22 @@ export async function addDocumentFact(
   text: string,
 ): Promise<{ claim: import("./types").Claim }> {
   return apiPost("/research/add-document-fact", { profile_name: profileName, field, text });
+}
+
+export async function addSourcedClaim(
+  profileName: string,
+  url: string,
+  field: string,
+  text: string,
+  dateContext?: string,
+): Promise<{ claim: import("./types").Claim; missing_slots: string[] }> {
+  return apiPost("/research/add-sourced-claim", {
+    profile_name: profileName,
+    url,
+    field,
+    text,
+    date_context: dateContext,
+  });
 }
 
 export async function targetedSearch(

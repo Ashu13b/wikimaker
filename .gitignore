@@ -8,7 +8,9 @@ build/
 
 # Runtime outputs
 sessions/
+agent_jobs/
 *.json
+!tests/fixtures/
 
 # Node / frontend
 node_modules/

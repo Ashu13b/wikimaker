@@ -43,6 +43,8 @@ export interface Claim {
   user_provided: boolean;
   auto_source_attempted: boolean;
   date_context?: string | null;
+  draft_approved?: boolean;
+  draft_text?: string | null;
   trust_score?: number;
   provenance_status?: "verified_independent" | "primary_sourced" | "unverified";
   is_independent?: boolean;
@@ -128,8 +130,26 @@ export interface CrawlResponse {
   sources: Source[];
 }
 
+export interface DraftIssue {
+  code: string;
+  message: string;
+  count: number;
+}
+
+export interface DraftAudit {
+  ready: boolean;
+  eligible_claim_count: number;
+  eligible_source_count: number;
+  independent_source_count: number;
+  excluded_claim_count: number;
+  blockers: DraftIssue[];
+  warnings: DraftIssue[];
+  exclusions: DraftIssue[];
+}
+
 export interface DraftResponse {
   profile: PersonProfile;
+  audit: DraftAudit;
 }
 
 export interface UrlSuggestion {

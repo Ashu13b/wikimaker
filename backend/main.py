@@ -27,7 +27,7 @@ from engine.researcher_ids import (
 from engine.author_check import check_doi_authors, extract_doi
 from engine.provenance import classify_source_provenance, evaluate_claim_trust, normalize_url
 from wiki.wiki_check import check_existing_page, draft_generation_allowed
-from wiki.wikitext import render_en, render_hi
+from wiki.draft import audit_profile, render_draft
 
 SESSIONS_DIR = Path(__file__).parent.parent / "sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
@@ -80,6 +80,15 @@ class AddDocumentFact(BaseModel):
     text: str
 
 
+class AddSourcedClaimRequest(BaseModel):
+    """A fact the user read directly in a source and wants bound to it."""
+    profile_name: str
+    url: str
+    field: str
+    text: str
+    date_context: Optional[str] = None
+
+
 class VerifyClaimRequest(BaseModel):
     claim_index: int
     action: str   # confirm | edit | skip
@@ -108,8 +117,7 @@ class TargetedSearchRequest(BaseModel):
 
 
 class DraftRequest(BaseModel):
-    profile: PersonProfile
-    generate_hindi: bool = False
+    profile_name: str
 
 
 # ── Session store — in-memory + disk persistence ──────────────────────────
@@ -134,6 +142,16 @@ def _apply_provenance(profile: PersonProfile) -> None:
         profile.claims[i] = evaluate_claim_trust(c, src, profile)
     
     profile.notability = score_notability(profile.name, profile.sources)
+
+
+def _annotate_liveness(sources) -> None:
+    """Store http liveness + a Wayback fallback URL on each source (best-effort)."""
+    from engine.fetcher import check_liveness
+    for s in sources:
+        try:
+            s.liveness, s.archive_url = check_liveness(s.url)
+        except Exception:
+            s.liveness = "unknown"
 
 
 def _save_session(name: str) -> None:
@@ -294,6 +312,7 @@ def add_source(req: AddSourceRequest) -> dict:
     [source] = classify_sources([source], llm())
     flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
     _check_doi_sources([source], profile.name, profile.affiliation or "")
+    source.liveness = "blocked" if blocked else "alive"
 
     # Extract researcher IDs from the new URL (e.g. user pastes an ORCID link)
     from engine.researcher_ids import extract_ids_from_sources
@@ -509,6 +528,39 @@ def add_document_fact(req: AddDocumentFact) -> dict:
     return {"claim": claim.model_dump()}
 
 
+@app.post("/research/add-sourced-claim")
+def add_sourced_claim(req: AddSourcedClaimRequest) -> dict:
+    """Bind a fact the user read in a source to that source's URL.
+
+    The source must already be in the session. The claim is created confirmed and
+    user-provided; draft approval remains a separate explicit action, so a fact
+    cannot enter the draft until the user both verifies the source and approves it.
+    """
+    profile = _get_profile(req.profile_name)
+    if not any(s.url == req.url for s in profile.sources):
+        raise HTTPException(400, "Source URL is not in this session; add the source first.")
+    claim = Claim(
+        text=req.text,
+        field=req.field,
+        source_url=req.url,
+        verification=VerificationState.confirmed,
+        user_provided=True,
+        date_context=req.date_context,
+    )
+    source = next(s for s in profile.sources if s.url == req.url)
+    from engine.provenance import evaluate_claim_trust
+    claim = evaluate_claim_trust(claim, source, profile)
+    profile.claims.append(claim)
+    profile.missing_slots = find_missing_slots(profile, profile.claims)
+    profile.notability = score_notability(profile.name, profile.sources)
+    _save_session(profile.name)
+    return {
+        "claim": claim.model_dump(),
+        "missing_slots": profile.missing_slots,
+        "notability": profile.notability.model_dump() if profile.notability else None,
+    }
+
+
 @app.post("/research/verify-claim")
 def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     profile = _get_profile(name)
@@ -521,8 +573,25 @@ def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     elif req.action == "edit" and req.edited_text:
         claim.text = req.edited_text
         claim.verification = VerificationState.edited
+        claim.draft_approved = False
+        claim.draft_text = None
     elif req.action == "skip":
         claim.verification = VerificationState.skipped
+        claim.draft_approved = False
+        claim.draft_text = None
+    elif req.action == "approve_draft":
+        if claim.verification not in {VerificationState.confirmed, VerificationState.edited}:
+            raise HTTPException(400, "Confirm the claim before approving it for the draft")
+        source = next((source for source in profile.sources if source.url == claim.source_url), None)
+        if source is None or not source.human_verified:
+            raise HTTPException(400, "Draft claims require a human-verified source")
+        claim.draft_approved = True
+        claim.draft_text = req.edited_text or claim.text
+    elif req.action == "remove_draft":
+        claim.draft_approved = False
+        claim.draft_text = None
+    else:
+        raise HTTPException(400, f"Unsupported claim action: {req.action}")
 
     _save_session(name)
     return {"claim": claim.model_dump()}
@@ -611,6 +680,12 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     new_sources = [s for s in sources if s.url not in excluded]
     new_sources = classify_sources(new_sources, llm())
     flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
+    # Auto-added search results must be citable: never flood the session with
+    # self-published or unreliable noise (LinkedIn dir pages, personal trainers, etc.)
+    new_sources = [
+        s for s in new_sources
+        if s.reliability.value not in ("self_published", "unreliable")
+    ]
     new_claims = []
     profile.sources.extend(new_sources)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
@@ -639,19 +714,27 @@ def auto_enrich_endpoint(body: dict) -> dict:
 
     added_sources = []
     added_claims = []
+    max_slots = 8
+    max_sources = 15
 
     # Iterate through missing slots and execute targeted multi-query search
-    for slot in missing[:3]:
+    for slot in missing[:max_slots]:
+        if len(added_sources) >= max_sources:
+            break
         candidate_sources = targeted_slot_search(
             person_name=profile.name,
             slot=slot,
             field=profile.field,
             affiliation=profile.affiliation,
         )
-        new_sources = [s for s in candidate_sources if s.url not in excluded]
+        new_sources = [s for s in candidate_sources if s.url not in excluded][: max_sources - len(added_sources)]
         if new_sources:
             new_sources = classify_sources(new_sources, llm())
             flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
+            new_sources = [
+                s for s in new_sources
+                if s.reliability.value not in ("self_published", "unreliable")
+            ]
             new_claims = extract_claims(profile, new_sources, llm())
 
             profile.sources.extend(new_sources)
@@ -673,24 +756,40 @@ def auto_enrich_endpoint(body: dict) -> dict:
     }
 
 
+@app.get("/draft/audit/{name}")
+def draft_audit(name: str) -> dict:
+    """Return server-computed draft readiness without generating text."""
+    audit = audit_profile(_get_profile(name))
+    return {"audit": audit.model_dump(exclude={"evidence"})}
+
+
 @app.post("/draft")
 def generate_draft(req: DraftRequest) -> dict:
-    profile = req.profile
+    """Generate and persist a deterministic draft from the server-owned session."""
+    profile = _get_profile(req.profile_name)
     wiki_status = _wiki_statuses.get(profile.name, {"status": "clear"})
     status = wiki_status.get("status", "clear")
     if not draft_generation_allowed(status):
         if status == "exists":
-            detail = "An article already exists. Use research mode to prepare improvements instead of a duplicate draft."
+            detail = "An article already exists. Prepare improvements instead of a duplicate draft."
         else:
-            detail = "This subject has a prior deletion record. Review the deletion history and new coverage before drafting."
+            detail = "A prior deletion must be reviewed before generating another draft."
         raise HTTPException(409, detail)
-    # Preserve existing wikitext if present in profile
-    if not profile.wikitext_en or len(profile.wikitext_en.strip()) < 50:
-        profile.wikitext_en = render_en(profile, llm())
-    if req.generate_hindi and (not profile.wikitext_hi or len(profile.wikitext_hi.strip()) < 50):
-        profile.wikitext_hi = render_hi(profile, llm())
-    return {"profile": profile.model_dump()}
 
+    audit = audit_profile(profile)
+    if not audit.ready:
+        raise HTTPException(422, {
+            "message": "The evidence audit found blockers.",
+            "audit": audit.model_dump(exclude={"evidence"}),
+        })
+
+    profile.wikitext_en = render_draft(profile, audit)
+    profile.wikitext_hi = None
+    _save_session(profile.name)
+    return {
+        "profile": profile.model_dump(),
+        "audit": audit.model_dump(exclude={"evidence"}),
+    }
 
 @app.get("/session/{name}")
 def get_session(name: str) -> dict:
@@ -710,6 +809,11 @@ def verify_source(body: dict) -> dict:
     source.human_verified = verified
     norm_target = normalize_url(url)
     new_claims: list = []
+
+    if verified:
+        # Liveness + Wayback fallback at the moment of human confirmation.
+        from engine.fetcher import check_liveness
+        source.liveness, source.archive_url = check_liveness(url)
 
     if verified and source.relevance_flag != "likely_wrong":
         existing_for_url = [c for c in profile.claims if c.source_url and normalize_url(c.source_url) == norm_target]
@@ -815,10 +919,14 @@ def find_researcher_ids_endpoint(req: FindIdsRequest) -> dict:
     for id_type, id_val in found.items():
         profile.researcher_ids.setdefault(id_type, id_val)
 
-    # Auto-validate ORCID if found
-    if "orcid" in profile.researcher_ids and not profile.confirmed_ids.get("orcid"):
-        valid = validate_orcid(profile.researcher_ids["orcid"], profile.name, profile.affiliation)
+    # ORCID candidates are cheap to validate and unsafe to retain on a name hit
+    # alone: coauthors and namesakes commonly appear in the same search results.
+    orcid_id = profile.researcher_ids.get("orcid")
+    if orcid_id and not profile.confirmed_ids.get("orcid"):
+        valid = validate_orcid(orcid_id, profile.name, profile.affiliation)
         profile.confirmed_ids["orcid"] = valid
+        if not valid:
+            profile.researcher_ids.pop("orcid", None)
 
     _save_session(profile.name)
     return {
@@ -830,10 +938,12 @@ def find_researcher_ids_endpoint(req: FindIdsRequest) -> dict:
 @app.post("/research/refresh-papers")
 def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     """Re-fetch publications from ORCID or Semantic Scholar for a confirmed ID."""
-    from engine.researcher_ids import fetch_orcid_works, fetch_s2_author_papers
+    from engine.researcher_ids import fetch_orcid_works, fetch_s2_author_papers, validate_orcid
     profile = _get_profile(req.profile_name)
 
     if req.confirm:
+        if req.id_type == "orcid" and not validate_orcid(req.id_value, profile.name, profile.affiliation):
+            raise HTTPException(400, "ORCID does not match the subject name and affiliation")
         profile.researcher_ids[req.id_type] = req.id_value
         profile.confirmed_ids[req.id_type] = True
 
@@ -885,8 +995,11 @@ def resume_session(body: dict) -> dict:
     wiki_status = data.get("wiki_status", {"status": "clear", "url": None, "note": None})
 
     # If session has sources but no claims (was saved before LLM was available), re-extract now
+    # Never repopulate a session from the stub provider: its extracted claims are fabricated.
     if profile.sources and not profile.claims:
-        profile.claims = extract_claims(profile, profile.sources, llm())
+        from engine.llm import has_real_llm
+        if has_real_llm():
+            profile.claims = extract_claims(profile, profile.sources, llm())
     flag_sources(profile.sources, profile.name, profile.field or "", profile.affiliation or "")
     profile.missing_slots = find_missing_slots(profile, profile.claims)
 

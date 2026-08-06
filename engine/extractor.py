@@ -151,6 +151,11 @@ def filter_person_snippets(text: str, person_name: str, window: int = 3) -> str:
 
 
 def extract_claims(profile: PersonProfile, sources: list[Source], llm: LLMProvider) -> list[Claim]:
+    from .llm import LocalProvider, NullProvider, StubProvider
+    if isinstance(llm, (StubProvider, NullProvider, LocalProvider)):
+        # Rule-based providers fabricate plausible claim prose from snippets.
+        # Never inject that into a session; a human adds facts via add-document-fact.
+        return []
     from .provenance import classify_source_provenance, evaluate_claim_trust
 
     all_claims: list[Claim] = []

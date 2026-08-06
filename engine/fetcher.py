@@ -8,6 +8,38 @@ BOT_HEADERS = {"User-Agent": "wikimaker/0.1 (ay.yadav53@gmail.com)"}  # for APIs
 TIMEOUT = 10
 
 
+def check_liveness(url: str) -> tuple[str, str | None]:
+    """Return (liveness, archive_url) for a URL.
+
+    liveness: alive | blocked | dead | unknown
+    - dead (404/410) also looks up a Wayback snapshot to use as the citation.
+    - blocked (403/401/429) is bot-protection: still citable by a human.
+    """
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=12, allow_redirects=True, stream=True)
+        code = resp.status_code
+    except requests.RequestException:
+        return "unknown", None
+    if code in (404, 410):
+        return "dead", get_wayback_url(url)
+    if code in (401, 403, 429):
+        return "blocked", None
+    if 200 <= code < 400:
+        return "alive", None
+    return "unknown", None
+
+
+def get_wayback_url(url: str) -> str | None:
+    """Return the closest Wayback snapshot URL for a dead page, or None."""
+    try:
+        resp = requests.get("https://archive.org/wayback/available",
+                            params={"url": url}, headers=HEADERS, timeout=10)
+        snapshot = resp.json().get("archived_snapshots", {}).get("closest", {})
+        return snapshot.get("url") or None
+    except Exception:
+        return None
+
+
 class FetchResult:
     def __init__(self, url: str, text: str, method: str, blocked: bool = False, raw_html: str = ""):
         self.url = url

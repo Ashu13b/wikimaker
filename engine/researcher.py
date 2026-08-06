@@ -9,6 +9,53 @@ HEADERS = {"User-Agent": "wikimaker/0.1 (ay.yadav53@gmail.com)"}
 S2_API = "https://api.semanticscholar.org/graph/v1"
 GOOGLE_CSE_URL = "https://www.googleapis.com/customsearch/v1"
 
+_NEWS_OUTLETS = (
+    "timesofindia.indiatimes.com", "ndtv.com", "tribuneindia.com",
+    "amarujala.com", "thehindu.com", "indianexpress.com",
+    "hindustantimes.com", "business-standard.com", "theprint.in",
+    "news18.com", "jagran.com", "punjabkesari.com",
+)
+
+_DISAMBIG_STOPWORDS = {
+    "university", "institute", "college", "research", "central", "department",
+    "division", "center", "centre", "school", "faculty", "for", "and", "the",
+}
+
+
+def _disambiguator(affiliation: str | None, field: str | None) -> str:
+    for src in (affiliation, field):
+        if not src:
+            continue
+        tokens = [t.strip("()") for t in src.replace("-", " ").split()]
+        tokens = [t for t in tokens if len(t) > 3 and t.lower() not in _DISAMBIG_STOPWORDS]
+        if tokens:
+            return " ".join(tokens[:2])
+    return ""
+
+
+def _sweep_news(
+    person_name: str,
+    affiliation: str | None = None,
+    field: str | None = None,
+    limit: int = 20,
+) -> list[Source]:
+    """Site-restricted searches across major national outlets plus a Hindi query."""
+    disambig = _disambiguator(affiliation, field)
+    queries = [f'"{person_name}" {disambig} site:{outlet}'.strip() for outlet in _NEWS_OUTLETS]
+    queries.append(f'"डॉ. {person_name}" {disambig} वैज्ञानिक प्रोफ़ाइल'.strip())
+    sources: list[Source] = []
+    seen: set[str] = set()
+    for query in queries:
+        if len(sources) >= limit:
+            break
+        for result in _search_web(query):
+            if result.url not in seen:
+                seen.add(result.url)
+                sources.append(result)
+            if len(sources) >= limit:
+                break
+    return sources
+
 
 def fetch_auto_sources(
     name: str,
@@ -28,6 +75,10 @@ def fetch_auto_sources(
     bio_sources = _search_web(bio_query)
     seen = {s.url for s in sources}
     sources.extend(s for s in bio_sources if s.url not in seen)
+
+    # National-outlet sweep for independent news coverage (finding all reliable links)
+    news_sweep = _sweep_news(name, affiliation, field)
+    sources.extend(s for s in news_sweep if s.url not in seen)
     return sources, s2_author_id
 
 

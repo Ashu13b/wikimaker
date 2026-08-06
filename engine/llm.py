@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import sys
 from typing import Protocol, runtime_checkable
 
 
@@ -44,6 +45,37 @@ class GeminiProvider:
         return resp.text
 
 
+class VertexClaudeProvider:
+    """Claude via Google Vertex AI (application-default credentials).
+
+    Used when ANTHROPIC_VERTEX_PROJECT_ID is set and no ANTHROPIC_API_KEY is.
+    The constructor probes the model so a project without model access falls
+    back cleanly to the stub instead of failing on the first real call.
+    """
+
+    def __init__(self) -> None:
+        import anthropic
+        self._client = anthropic.AnthropicVertex(
+            project_id=os.environ["ANTHROPIC_VERTEX_PROJECT_ID"],
+            region=os.environ.get("CLOUD_ML_REGION", "us-east5"),
+        )
+        self._model = os.environ.get("VERTEX_CLAUDE_MODEL", "claude-sonnet-4-5@20250929")
+        self._client.messages.create(
+            model=self._model,
+            max_tokens=1,
+            messages=[{"role": "user", "content": "ping"}],
+        )
+
+    def complete(self, system: str, user: str) -> str:
+        msg = self._client.messages.create(
+            model=self._model,
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        return msg.content[0].text  # type: ignore[index]
+
+
 class LocalProvider:
     def complete(self, system: str, user: str) -> str:
         raise NotImplementedError("Local provider not yet wired — set WIKIMAKER_LLM=claude")
@@ -60,9 +92,13 @@ class StubProvider:
     Replace with a real provider by setting ANTHROPIC_API_KEY + WIKIMAKER_LLM=claude."""
 
     def complete(self, system: str, user: str) -> str:
-        import json, re
+        import json
         if "wikipedia editor" in system.lower() or "draft" in system.lower():
-            return self._draft(user)
+            raise NotImplementedError(
+                "The stub provider cannot draft articles. Drafting is deterministic "
+                "and server-owned: use wiki.draft.render_draft, or configure an LLM "
+                "API key for research steps only."
+            )
         if "reliability" in system:
             return self._classify(user)
         if "claims" in system.lower():
@@ -160,121 +196,44 @@ class StubProvider:
 
         return json.dumps({"claims": claims})
 
-    # ── drafter ───────────────────────────────────────────────────────────────
 
-    def _draft(self, user: str) -> str:
-        lines = user.splitlines()
-        facts: dict[str, str] = {}
-        claims: list[str] = []
-        sources: list[str] = []
-        section = ""
+_stub_warned = False
+_agent_warned = False
 
-        for line in lines:
-            if line.startswith("== "):
-                section = line.strip("= ").lower()
-                continue
-            if ":" in line and section == "known facts":
-                k, _, v = line.partition(":")
-                facts[k.strip().lower()] = v.strip()
-            elif line.startswith("[") and ("verified claims" in section or "sourced claims" in section):
-                claims.append(line.strip())
-            elif line.startswith("- [") and section == "all sources":
-                sources.append(line.strip())
 
-        name = facts.get("full name") or (lines[0].split("about:")[-1].strip() if lines else "Unknown")
-        birth = facts.get("birth date", "")
-        nationality = facts.get("nationality", "")
-        field = facts.get("field", "")
-        affiliation = facts.get("affiliation", "")
-        known_for = facts.get("known for", "")
-        awards = facts.get("awards", "")
+def _agent_provider() -> "AgentProvider":
+    from .agent_llm import AgentProvider
+    return AgentProvider()
 
-        ref_lines = []
-        for i, src in enumerate(sources[:10], 1):
-            # - [reliable_secondary] Publisher: Title | URL
-            parts = src.lstrip("- ").split("|")
-            url = parts[-1].strip() if len(parts) > 1 else ""
-            meta = parts[0] if parts else src
-            title_part = meta.split("]", 1)[-1].strip()
-            publisher = title_part.split(":", 1)[0].strip() if ":" in title_part else ""
-            title = title_part.split(":", 1)[1].strip() if ":" in title_part else title_part
-            ref_lines.append(f'<ref>{{{{cite web|url={url}|title={title}|publisher={publisher}|access-date=2026-05-18}}}}</ref>')
 
-        refs = ref_lines[:3]  # use first 3 refs inline
-        first_ref = refs[0] if refs else "{{citation needed}}"
+def _warn_agent_mode() -> None:
+    global _agent_warned
+    if not _agent_warned:
+        _agent_warned = True
+        print(
+            "WIKIMAKER: no LLM API key, routing intelligence to the coding agent. "
+            "Extraction/classification prompts are queued in agent_jobs/ — answer them "
+            "and re-run to apply. (WIKIMAKER_LLM=agent to force; =stub to disable.)",
+            file=sys.stderr,
+        )
 
-        def clean_claim_line(line: str) -> str:
-            text = line.split("]")[1].split("|")[0].strip() if "]" in line else line.strip()
-            return text
 
-        def is_valid_claim(text: str) -> bool:
-            if not text or len(text) < 15:
-                return False
-            t_lower = text.lower()
-            if text.startswith("1,*") or t_lower.startswith("read articles by") or t_lower.startswith("we extracted"):
-                return False
-            if "inviting candidates" in t_lower or "walk-in interview" in t_lower:
-                return False
-            return True
+def has_real_llm() -> bool:
+    """True when an API-backed provider is configured, not a stub/null/local fallback."""
+    return not isinstance(get_provider(), (StubProvider, NullProvider, LocalProvider))
 
-        edu_claims = [clean_claim_line(c) for c in claims if "[education]" in c]
-        edu_claims = [c for c in edu_claims if is_valid_claim(c)]
-        edu_formatted = "\n".join(f"* {c}" for c in edu_claims) if edu_claims else f"* Earned B.Sc. (1985), M.Sc. (1987), and Ph.D. (1991) from CCS Haryana Agricultural University (CCS HAU), Hisar."
 
-        award_claims = [clean_claim_line(c) for c in claims if "[award]" in c]
-        award_claims = [c for c in award_claims if is_valid_claim(c)]
-        awards_formatted = "\n".join(f"* {c}" for c in award_claims) if award_claims else (f"* {awards}" if awards else "{{citation needed}}")
-
-        pub_claims = [clean_claim_line(c) for c in claims if "[publication]" in c]
-        pub_claims = [c for c in pub_claims if is_valid_claim(c)]
-        pub_formatted = "\n".join(f"* {c}" for c in pub_claims[:6]) if pub_claims else "{{citation needed}}"
-
-        known_claims = [clean_claim_line(c) for c in claims if "[known_for]" in c or "[position]" in c]
-        known_claims = [c for c in known_claims if is_valid_claim(c)]
-        known_formatted = "\n".join(f"* {c}" for c in known_claims[:8]) if known_claims else f"* Known for pioneering contributions in animal biotechnology and cloning."
-
-        birth_cat = f"[[Category:{birth.split()[-1]} births]]" if birth and len(birth.split()) > 0 and birth.split()[-1].isdigit() else ""
-
-        wikitext = f"""{{{{Draft article}}}}
-{{{{Infobox scientist
-| name = {name}
-| birth_date = {birth}
-| nationality = {nationality or 'Indian'}
-| field = {field or 'Animal Biotechnology & Reproductive Physiology'}
-| work_institutions = {affiliation or 'ICAR - Central Institute for Research on Buffaloes (CIRB), Hisar'}
-| alma_mater = Chaudhary Charan Singh Haryana Agricultural University (CCS HAU), Hisar
-| known_for = Buffalo cloning (Hisar Gaurav, Sach-Gaurav, M-29 clones)
-}}}}
-
-'''{name}''' is an Indian animal biotechnology and reproductive physiology scientist at the ICAR - Central Institute for Research on Buffaloes (CIRB), Hisar.{first_ref} He is known for pioneering somatic cell nuclear transfer (SCNT) buffalo cloning in India and leading the scientific team that produced "Hisar Gaurav", "Sach-Gaurav", and seven cloned calves from a single elite bull M-29.
-
-==Education==
-{edu_formatted}
-
-==Career and research==
-{name} joined the Indian Council of Agricultural Research (ICAR) as a scientist in 1993. He was promoted to Senior Scientist in 2000, and has served as Principal Scientist and Head of the Division of Animal Physiology and Reproduction at ICAR-CIRB Hisar since 2008.
-
-His international research experience includes a Department of Biotechnology (DBT) Overseas Associateship (2003–2004) at the Institute of Animal Sciences in Mariensee, Germany, and a DAAD Research Fellowship (2010–2011) at the Institute of Farm Animal Genetics (FLI), Mariensee, Germany, collaborating with Prof. Dr. Heiner Niemann on bovine embryonic stem cells and induced pluripotent stem cells (iPSCs).
-
-===Breakthroughs and key projects===
-{known_formatted}
-
-==Awards and recognition==
-{awards_formatted}
-
-==Selected publications==
-{pub_formatted}
-
-==References==
-{{{{reflist}}}}
-
-{birth_cat}
-[[Category:Indian agricultural scientists]]
-[[Category:Biotechnology researchers]]
-[[Category:Chaudhary Charan Singh Haryana Agricultural University alumni]]
-[[Category:Living people]]
-"""
-        return wikitext.strip()
+def _stub_provider() -> StubProvider:
+    global _stub_warned
+    if not _stub_warned:
+        _stub_warned = True
+        print(
+            "WARNING: No LLM API key configured; falling back to rule-based StubProvider. "
+            "Research classification/extraction will be low quality and article drafting is "
+            "unavailable. Set ANTHROPIC_API_KEY (WIKIMAKER_LLM=claude) or GEMINI_API_KEY.",
+            file=sys.stderr,
+        )
+    return StubProvider()
 
 
 def get_provider() -> LLMProvider:
@@ -295,14 +254,25 @@ def get_provider() -> LLMProvider:
                 return ClaudeProvider()
             except Exception:
                 pass
-        return StubProvider()
+        if os.environ.get("ANTHROPIC_VERTEX_PROJECT_ID"):
+            try:
+                return VertexClaudeProvider()
+            except Exception:
+                pass
+        _warn_agent_mode()
+        return _agent_provider()
     if backend == "gemini":
-        if not os.environ.get("GEMINI_API_KEY"):
-            return StubProvider()
-        try:
-            return GeminiProvider()
-        except Exception:
-            return StubProvider()
+        if os.environ.get("GEMINI_API_KEY"):
+            try:
+                return GeminiProvider()
+            except Exception:
+                pass
+        _warn_agent_mode()
+        return _agent_provider()
     if backend == "local":
         return LocalProvider()
+    if backend == "agent":
+        return _agent_provider()
+    if backend == "stub":
+        return _stub_provider()
     raise ValueError(f"Unknown WIKIMAKER_LLM value: {backend}")

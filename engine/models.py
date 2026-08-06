@@ -36,6 +36,10 @@ class Source(BaseModel):
     # Where this source came from
     fetched_by: Optional[str] = None  # semantic_scholar|google_search|duckduckgo|crawl|user
 
+    # Liveness & archiving (populated by check_liveness at add/verify time)
+    liveness: str = "unknown"  # alive | blocked | dead | unknown
+    archive_url: Optional[str] = None  # Wayback URL used as the citation when the source is dead
+
     # Author match result (populated for DOI/academic sources)
     author_match_status: Optional[str] = None   # confirmed|possible|wrong_person|not_found|no_data
     author_match_name: Optional[str] = None      # matched author as it appears in paper
@@ -57,6 +61,8 @@ class Claim(BaseModel):
     user_provided: bool = False        # True = user typed this fact directly
     auto_source_attempted: bool = False  # True = we tried to find a source, failed
     date_context: Optional[str] = None  # e.g. "2005", "2005–2015", "since 2020" — only if verbatim in source
+    draft_approved: bool = False  # Explicit editorial decision; verification alone is insufficient
+    draft_text: Optional[str] = None  # Neutral paraphrase used by the deterministic renderer
 
     # Strict Provenance & Trust Scoring
     trust_score: float = 0.5            # 0.0–1.0 trust score

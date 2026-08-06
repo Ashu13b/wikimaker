@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import type { PersonProfile, WikiStatus, Source, Claim, NotabilityResult } from "../types";
-import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion, autoEnrich } from "../api";
+import type { PersonProfile, WikiStatus, Source, Claim, NotabilityResult, DraftAudit } from "../types";
+import { addSource, addSourcePaste, deepCrawl, verifyClaim, verifySource, rejectSource, generateDraft, getDraftAudit, getSession, targetedSearch, addDocumentFact, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion, autoEnrich } from "../api";
 import type { UrlSuggestion } from "../types";
 import WorkspaceStatusBanner from "../components/WorkspaceStatusBanner";
 import BookmarkletCard from "../components/BookmarkletCard";
 import ResearchOperationsCard from "../components/ResearchOperationsCard";
 import TimelineTab from "../components/TimelineTab";
-import { canGenerateDraft, getWorkspaceRoute } from "../workflow";
+import ClaimsReview from "../components/ClaimsReview";
+import { getWorkspaceRoute } from "../workflow";
 import { normalizeUrl, getHostname } from "../url";
 
 interface Props {
   initialProfile: PersonProfile;
   wikiStatus: WikiStatus;
-  generateHindi: boolean;
   onDraft: (profile: PersonProfile) => void;
   onReset: () => void;
   relayPending?: { url: string; text: string } | null;
@@ -21,20 +21,31 @@ interface Props {
 
 type Tab = "sources" | "profile" | "timeline" | "pending";
 
-export default function HubPage({ initialProfile, wikiStatus, generateHindi, onDraft, onReset, relayPending, onRelayConsumed }: Props) {
+export default function HubPage({ initialProfile, wikiStatus, onDraft, onReset, relayPending, onRelayConsumed }: Props) {
   const [profile, setProfile] = useState(initialProfile);
   const [tab, setTab] = useState<Tab>("sources");
   const [drafting, setDrafting] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [activeOperations, setActiveOperations] = useState<Record<string, boolean>>({});
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftAudit, setDraftAudit] = useState<DraftAudit | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
   // Track which source links the user has opened (session-local, not persisted)
   const [openedLinks, setOpenedLinks] = useState<Set<string>>(new Set());
   const [showBrowser, setShowBrowser] = useState(false);
 
   const hasVerifiedSources = profile.sources.some(s => s.human_verified);
   const workspaceRoute = getWorkspaceRoute(wikiStatus.status);
-  const draftAvailable = canGenerateDraft(wikiStatus.status, hasVerifiedSources);
+  const draftAvailable = workspaceRoute.draftLabel !== null && draftAudit?.ready === true;
+
+  useEffect(() => {
+    let cancelled = false;
+    setAuditError(null);
+    getDraftAudit(profile.name)
+      .then(audit => { if (!cancelled) setDraftAudit(audit); })
+      .catch(error => { if (!cancelled) setAuditError(String(error)); });
+    return () => { cancelled = true; };
+  }, [profile]);
 
   async function handleAutoEnrich() {
     setEnriching(true);
@@ -42,7 +53,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
       const res = await autoEnrich(profile.name);
       if (res.ok) {
         const updated = await getSession(profile.name);
-        setProfile(updated.profile);
+        setProfile(updated);
       }
     } catch (e) {
       console.error(e);
@@ -67,7 +78,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
     setDrafting(true);
     setDraftError(null);
     try {
-      const result = await generateDraft(profile, generateHindi);
+      const result = await generateDraft(profile.name);
       onDraft(result.profile);
     } catch (e) {
       setDraftError(String(e));
@@ -81,7 +92,6 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
   }
 
   const pendingClaims = profile.claims.filter(c => c.verification === "unverified");
-  const skippedClaims = profile.claims.filter(c => c.verification === "skipped");
 
   return (
     <div style={{ maxWidth: showBrowser ? 1500 : 1100, margin: "0 auto", padding: "20px 20px 60px", transition: "max-width 0.2s" }}>
@@ -153,7 +163,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
                 Timeline
               </TabBtn>
               <TabBtn active={tab === "pending"} onClick={() => setTab("pending")}>
-                Review ({pendingClaims.length})
+                Claims ({profile.claims.length})
                 {pendingClaims.length > 0 && (
                   <span style={{ marginLeft: 6, background: "var(--primary)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
                     {pendingClaims.length}
@@ -194,12 +204,12 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
             <TimelineTab profile={profile} onProfileUpdate={setProfile} />
           )}
           {tab === "pending" && (
-            <ClaimsSection
-              claims={[...pendingClaims, ...skippedClaims]}
+            <ClaimsReview
+              claims={profile.claims}
               allClaims={profile.claims}
               profile={profile}
               onProfileUpdate={setProfile}
-              emptyMessage="All claims have been reviewed."
+              emptyMessage="No claims have been collected."
             />
           )}
         </div>
@@ -211,6 +221,7 @@ export default function HubPage({ initialProfile, wikiStatus, generateHindi, onD
             <>
               {profile.notability && <NotabilityCard n={profile.notability} />}
               <ChecklistCard profile={profile} wikiStatus={wikiStatus} />
+              <DraftReadinessCard audit={draftAudit} error={auditError} />
               {workspaceRoute.draftLabel ? (
                 <button className="btn-primary" onClick={handleGenerateDraft} disabled={drafting || !draftAvailable} style={{ width: "100%" }}>
                   {drafting ? "Generating…" : workspaceRoute.draftLabel}
@@ -811,7 +822,6 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
-  const [claimsExtracted, setClaimsExtracted] = useState(0);
 
   const tagClass = SOURCE_TAG_CLASS;
   const tagLabel = SOURCE_TAG_LABEL;
@@ -824,8 +834,6 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
     onVerifyingChange?.(true);
     try {
       const resp = await verifySource(profileName, source.url, !source.human_verified);
-      const count = resp.new_claims?.length ?? 0;
-      setClaimsExtracted(count);
       onVerified(!source.human_verified, resp.new_claims ?? [], resp.missing_slots ?? []);
     } catch (e) {
       setVerifyError(String(e));
@@ -897,18 +905,24 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
         <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{verifyError}</p>
       )}
 
-      {/* Inline Extracted Claims */}
+      {/* Inline Extracted Claims — AI suggestions, not yet verified facts */}
       {sourceClaims.length > 0 && (
-        <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 6 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--success)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
-            Extracted Claims ({sourceClaims.length})
+        <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(139, 92, 246, 0.07)", border: "1px solid rgba(139, 92, 246, 0.2)", borderRadius: 6 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#7c3aed", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+            Suggested claims ({sourceClaims.length})
           </p>
           {sourceClaims.map((c, idx) => (
-            <div key={idx} style={{ fontSize: 12, color: "var(--text)", marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10, color: "var(--muted)", marginRight: 6 }}>{c.field}</span>
-              {c.text}
+            <div key={idx} style={{ fontSize: 12, color: "var(--text)", marginBottom: 4, display: "flex", gap: 6, alignItems: "baseline" }}>
+              <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10, color: "var(--muted)", marginRight: 2, flexShrink: 0 }}>{c.field}</span>
+              <span>{c.text}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: c.verification === "confirmed" || c.verification === "edited" ? "var(--success)" : "var(--warning)", flexShrink: 0 }}>
+                {c.draft_approved ? "· in draft" : c.verification === "unverified" ? "· unverified" : `· ${c.verification}`}
+              </span>
             </div>
           ))}
+          <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+            These were extracted by the AI — verifying the source does <strong>not</strong> put them in the draft. Confirm or edit them in the Claims tab, then press + to include.
+          </p>
         </div>
       )}
 
@@ -926,7 +940,7 @@ function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen,
               cursor: "pointer",
             }}
           >
-            {verifying ? "Extracting claims…" : source.human_verified ? `✓ Verified${claimsExtracted || sourceClaims.length ? ` · ${claimsExtracted || sourceClaims.length} claims` : ""}` : "Confirm & extract claims"}
+            {verifying ? "Extracting claims…" : source.human_verified ? `✓ Verified${sourceClaims.length ? ` · ${sourceClaims.length} claim${sourceClaims.length === 1 ? "" : "s"} suggested` : ""}` : "Confirm & extract claims"}
           </button>
           <button
             onClick={() => setShowReject(true)}
@@ -1315,164 +1329,6 @@ const modeBtn: React.CSSProperties = {
 
 // ── Claims section (Review tab) ───────────────────────────────────────────────
 
-function ClaimsSection({ claims, allClaims, profile, onProfileUpdate, emptyMessage }: {
-  claims: Claim[];
-  allClaims: Claim[];
-  profile: PersonProfile;
-  onProfileUpdate: (p: PersonProfile) => void;
-  emptyMessage: string;
-}) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editText, setEditText] = useState("");
-  const [loading, setLoading] = useState<number | null>(null);
-
-  if (claims.length === 0) {
-    return <p style={{ fontSize: 13, color: "var(--muted)", padding: "20px 0" }}>{emptyMessage}</p>;
-  }
-
-  async function doVerify(globalIndex: number, action: "confirm" | "edit" | "skip", text?: string) {
-    setLoading(globalIndex);
-    try {
-      const resp = await verifyClaim(profile.name, globalIndex, action, text);
-      const updated = [...allClaims];
-      updated[globalIndex] = resp.claim;
-      onProfileUpdate({ ...profile, claims: updated });
-    } catch { /* silently ignore */ }
-    finally { setLoading(null); setEditingIndex(null); }
-  }
-
-  const claimIndexMap = new Map(allClaims.map((c, i) => [c, i]));
-
-  const verificationColor: Record<string, string> = {
-    unverified: "var(--muted)",
-    confirmed: "var(--success)",
-    edited: "var(--primary)",
-    skipped: "var(--border)",
-  };
-
-  return (
-    <div>
-      {claims.map(claim => {
-        const globalIndex = claimIndexMap.get(claim) ?? -1;
-        const isEditing = editingIndex === globalIndex;
-        const isLoading = loading === globalIndex;
-        return (
-          <div key={globalIndex} style={{
-            padding: "14px 0", borderBottom: "1px solid var(--border)",
-            opacity: claim.verification === "skipped" ? 0.45 : 1,
-          }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", gap: 6, marginBottom: 5, flexWrap: "wrap", alignItems: "center" }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "var(--muted)" }}>
-                    {claim.field}
-                  </span>
-                  {claim.provenance_status === "verified_independent" && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>
-                      Independent Secondary
-                    </span>
-                  )}
-                  {claim.provenance_status === "primary_sourced" && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>
-                      Primary Sourced
-                    </span>
-                  )}
-                  {claim.trust_score !== undefined && (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: claim.trust_score >= 0.7 ? "var(--success)" : "var(--muted)" }}>
-                      · {Math.round(claim.trust_score * 100)}% Trust
-                    </span>
-                  )}
-                  {claim.verification !== "unverified" && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: verificationColor[claim.verification] }}>
-                      · {claim.verification}
-                    </span>
-                  )}
-                  {claim.user_provided && (
-                    <span style={{ fontSize: 11, color: "var(--muted)" }}>· manual entry</span>
-                  )}
-                </div>
-
-                {isEditing ? (
-                  <textarea
-                    value={editText}
-                    onChange={e => setEditText(e.target.value)}
-                    style={{ height: 72, resize: "vertical", fontFamily: "inherit", fontSize: 13 }}
-                    autoFocus
-                  />
-                ) : (
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>{claim.text}</p>
-                    {claim.date_context && (
-                      <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", whiteSpace: "nowrap" }}>
-                        {claim.date_context}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div style={{ marginTop: 5 }}>
-                  {claim.source_url ? (() => {
-                    const srcIdx = profile.sources.findIndex(s => s.url === claim.source_url);
-                    const src = srcIdx >= 0 ? profile.sources[srcIdx] : null;
-                    const title = src?.title ?? claim.source_url ?? "";
-                    const shortTitle = title.length > 70 ? title.slice(0, 70) + "…" : title;
-                    return (
-                      <a href={claim.source_url} target="_blank" rel="noreferrer"
-                        style={{ fontSize: 11, color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                        {srcIdx >= 0 && <strong style={{ fontWeight: 700 }}>[{srcIdx + 1}]</strong>}
-                        <span>{shortTitle}</span>
-                        {src && <span className={`tag ${SOURCE_TAG_CLASS[src.reliability]}`} style={{ fontSize: 10, padding: "0px 5px", lineHeight: "16px" }}>{SOURCE_TAG_LABEL[src.reliability]}</span>}
-                        <span>↗</span>
-                      </a>
-                    );
-                  })() : (
-                    <span style={{ fontSize: 11, color: "var(--warning)" }}>
-                      {"No source · will get {{citation needed}}"}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Action buttons — only for unverified/skipped */}
-              {(claim.verification === "unverified" || claim.verification === "skipped") && !isEditing && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "confirm")} disabled={isLoading} color="var(--success)" title="Confirm">✓</ActionBtn>
-                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--primary)" title="Edit">✎</ActionBtn>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "skip")} disabled={isLoading} color="var(--muted)" title="Skip">✗</ActionBtn>
-                </div>
-              )}
-              {/* For confirmed/edited, just allow editing */}
-              {(claim.verification === "confirmed" || claim.verification === "edited") && !isEditing && (
-                <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--primary)" title="Edit">✎</ActionBtn>
-              )}
-              {isEditing && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "edit", editText)} disabled={isLoading} color="var(--primary)" title="Save">✓</ActionBtn>
-                  <ActionBtn onClick={() => setEditingIndex(null)} disabled={isLoading} color="var(--muted)" title="Cancel">✗</ActionBtn>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ActionBtn({ onClick, disabled, color, title, children }: {
-  onClick: () => void; disabled: boolean; color: string; title: string; children: React.ReactNode;
-}) {
-  return (
-    <button onClick={onClick} disabled={disabled} title={title} style={{
-      width: 28, height: 28, padding: 0, borderRadius: 6, background: "var(--bg)",
-      border: "1px solid var(--border)", color, fontSize: 14, fontWeight: 700,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      {children}
-    </button>
-  );
-}
-
 // ── Researcher IDs strip ──────────────────────────────────────────────────────
 
 const ID_META: Record<string, { label: string; url: (id: string) => string; color: string }> = {
@@ -1681,6 +1537,23 @@ function NotabilityCard({ n }: { n: NotabilityResult }) {
       <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Notability: {n.label}</p>
       <p style={{ fontSize: 12 }}>{n.rs_count} reliable secondary source{n.rs_count !== 1 ? "s" : ""}</p>
       <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{n.reason}</p>
+    </div>
+  );
+}
+
+function DraftReadinessCard({ audit, error }: { audit: DraftAudit | null; error: string | null }) {
+  if (error) return <div className="card" style={{ color: "var(--danger)", fontSize: 12 }}>Evidence audit failed: {error}</div>;
+  if (!audit) return <div className="card" style={{ color: "var(--muted)", fontSize: 12 }}>Auditing draft evidence…</div>;
+  const issues = audit.ready ? audit.warnings : audit.blockers;
+  return (
+    <div className="card" style={{ borderLeft: `4px solid ${audit.ready ? "var(--success)" : "var(--danger)"}` }}>
+      <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{audit.ready ? "Draft evidence sufficient" : "Draft blocked"}</p>
+      <p style={{ fontSize: 12, color: "var(--muted)" }}>
+        {audit.eligible_claim_count} eligible claims · {audit.eligible_source_count} cited sources · {audit.independent_source_count} independent outlets
+      </p>
+      {audit.ready && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>This permits evidence-filtered drafting; it does not establish Wikipedia notability.</p>}
+      {issues.map(issue => <p key={issue.code} style={{ fontSize: 12, marginTop: 6 }}>{issue.message} ({issue.count})</p>)}
+      {audit.excluded_claim_count > 0 && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{audit.excluded_claim_count} unsafe or unusable claims will be omitted.</p>}
     </div>
   );
 }

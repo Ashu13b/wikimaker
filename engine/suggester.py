@@ -212,6 +212,16 @@ def _normalize_url(url: str) -> str:
 
 def _generate_multiyear_report_urls(url: str) -> list[str]:
     import re
+    host = urlparse(url).netloc.lower().replace("www.", "")
+    _NO_SWEEP_HOSTS = (
+        "doi.org", "arxiv.org", "pubmed.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov",
+        "nature.com", "springer.com", "link.springer.com", "wiley.com",
+        "onlinelibrary.wiley.com", "plos.org", "journals.plos.org",
+        "sciencedirect.com", "semanticscholar.org", "academic.oup.com",
+        "tandfonline.com", "mdpi.com", "frontiersin.org", "researchgate.net",
+    )
+    if any(host == d or host.endswith("." + d) for d in _NO_SWEEP_HOSTS):
+        return []
     m = re.search(r'\b(19\d\d|20[0-2]\d)\b', url)
     if not m:
         return []
@@ -226,7 +236,7 @@ def _generate_multiyear_report_urls(url: str) -> list[str]:
 
 def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict]:
     """Return ranked URL suggestions — profile links & multi-year reports first, then web searches."""
-    from .researcher import _search_web
+    from .researcher import _search_web, _NEWS_OUTLETS
     from .llm import get_provider
 
     existing_urls = {s.url for s in profile.sources}
@@ -260,9 +270,16 @@ def suggest_next_urls(profile: PersonProfile, max_results: int = 8) -> list[dict
             })
             seen_normalized.add(_normalize_url(link_url))
 
-    # ── Pass 1.5: multi-year institutional report expansion ─────────────────
+    # ── Pass 1.5: multi-year institutional report expansion (bounded) ─────
+    # Cap these unverified URL guesses so real search results (Pass 2) always
+    # have room in the queue; otherwise one report URL floods every suggestion.
+    pass15_budget = max(max_results - 2, 0)
     for src in profile.sources:
+        if len(suggestions) >= pass15_budget:
+            break
         for report_url in _generate_multiyear_report_urls(src.url):
+            if len(suggestions) >= pass15_budget:
+                break
             if _normalize_url(report_url) in seen_normalized:
                 continue
             expected = ["position", "award", "known_for"]
@@ -337,6 +354,18 @@ If there are timeline gaps listed, please generate at least 2 queries targeting 
                     "reason": f"Search for career history during timeline gap {start}–{end}"
                 })
 
+        # Site-restricted national-outlet queries as a safety net for high-value slots
+        site_target = next((slot for slot in ("known_for", "award", "position") if slot in missing), "known_for")
+        for outlet in _NEWS_OUTLETS:
+            if len(suggestions) >= max_results:
+                break
+            site_query = f'"{profile.name}" {affil or field} site:{outlet}'.strip()
+            queries.append({
+                "query": site_query,
+                "seeking": site_target,
+                "reason": f"National outlet {outlet} coverage",
+            })
+
         for item in queries:
             if len(suggestions) >= max_results:
                 break
@@ -360,7 +389,7 @@ If there are timeline gaps listed, please generate at least 2 queries targeting 
                         expected = ["known_for"]
                         reason = "Likely has: cloning contribution"
                 is_prof = is_profile_url(r.url)
-                prio = 1 if is_prof else 2
+                prio = 0 if "site:" in query else (1 if is_prof else 2)
                 stype = "profile" if is_prof else _classify_source_type(r.url, r.title)
                 suggestions.append({
                     "url": r.url,

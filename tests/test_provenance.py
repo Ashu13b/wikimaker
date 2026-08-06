@@ -1,6 +1,5 @@
 """Unit tests for Strict Provenance & Trust Scoring engine."""
-import pytest
-from engine.models import Source, Claim, PersonProfile, SourceReliability, VerificationState
+from engine.models import Source, Claim, SourceReliability, VerificationState
 from engine.provenance import get_domain_trust, classify_source_provenance, evaluate_claim_trust
 from engine.notability import score_notability
 
@@ -102,3 +101,32 @@ def test_strict_notability_independence():
     res = score_notability("Jane Doe", [s1, s2])
     # s1 is independent secondary (high domain trust), s2 is institutional bio (primary)
     assert res.rs_count == 1
+
+
+def test_icar_and_cirb_reports_are_institutional_primary_sources():
+    for url in (
+        "https://cirb.res.in/reports/annual.pdf",
+        "https://icar.org.in/award-citations.pdf",
+        "https://icar.gov.in/node/123",
+    ):
+        source = classify_source_provenance(Source(
+            url=url,
+            title="Official institutional report",
+            publisher="Indian Council of Agricultural Research",
+        ))
+        assert source.provenance_category == "institutional_bio"
+        assert source.reliability == SourceReliability.primary
+        assert source.is_independent is False
+
+
+def test_record_registries_are_primary_and_non_independent():
+    source = classify_source_provenance(Source(
+        url="https://indiabookofrecords.in/maximum-buffalo-clones-produced/",
+        title="Maximum buffalo clones produced",
+        publisher="India Book of Records",
+        fetched_by="google_search",
+    ))
+
+    assert source.provenance_category == "record_registry"
+    assert source.reliability == SourceReliability.primary
+    assert source.is_independent is False

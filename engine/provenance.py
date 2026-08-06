@@ -7,12 +7,18 @@ def normalize_url(url: str | None) -> str:
     if not url:
         return ""
     u = url.strip().lower()
-    if u.startswith("https://"): u = u[8:]
-    elif u.startswith("http://"): u = u[7:]
-    if u.startswith("www."): u = u[4:]
-    if "#" in u: u = u.split("#", 1)[0]
-    if "?" in u: u = u.split("?", 1)[0]
-    if u.endswith("/"): u = u[:-1]
+    if u.startswith("https://"):
+        u = u[8:]
+    elif u.startswith("http://"):
+        u = u[7:]
+    if u.startswith("www."):
+        u = u[4:]
+    if "#" in u:
+        u = u.split("#", 1)[0]
+    if "?" in u:
+        u = u.split("?", 1)[0]
+    if u.endswith("/"):
+        u = u[:-1]
     return u
 
 HIGH_TRUST_DOMAINS = {
@@ -31,6 +37,10 @@ MEDIUM_TRUST_DOMAINS = {
 UNTRUSTED_DOMAINS = {
     "medium.com", "wordpress.com", "blogspot.com", "github.io", "linkedin.com",
     "facebook.com", "twitter.com", "x.com", "reddit.com", "quora.com"
+}
+
+RECORD_REGISTRY_DOMAINS = {
+    "indiabookofrecords.in", "limcabookofrecords.in",
 }
 
 
@@ -71,7 +81,20 @@ def classify_source_provenance(source: Source, subject_name: str = "") -> Source
 
     url_lower = (source.url or "").lower()
     pub_lower = (source.publisher or "").lower()
-    title_lower = (source.title or "").lower()
+
+    # Record registries verify that a registry made a recognition, but they are
+    # the issuing body rather than independent coverage of the subject.
+    try:
+        hostname = urlparse(source.url).netloc.lower()
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+    except Exception:
+        hostname = ""
+    if any(hostname == domain or hostname.endswith("." + domain) for domain in RECORD_REGISTRY_DOMAINS):
+        source.provenance_category = "record_registry"
+        source.is_independent = False
+        source.reliability = SourceReliability.primary
+        return source
 
     # Academic authored publication
     if (
@@ -87,9 +110,10 @@ def classify_source_provenance(source: Source, subject_name: str = "") -> Source
 
     # Institutional bio / faculty profile
     is_inst_domain = any(k in url_lower for k in (".edu", ".ac.", ".res.in")) or any(k in pub_lower for k in ("university", "institute", "college", "school of"))
+    is_icar_domain = any(k in url_lower for k in ("cirb.res.in", "icar.org.in", "icar.gov.in"))
     is_inst_path = any(k in url_lower for k in ("/faculty/", "/staff/", "/people/", "/directory/", "/person/", "/cv/", "faculty-profile"))
     
-    if (is_inst_domain and (is_inst_path or "bio" in url_lower or "profile" in url_lower)) or (is_inst_path and "news" not in pub_lower):
+    if is_icar_domain or (is_inst_domain and (is_inst_path or "bio" in url_lower or "profile" in url_lower)) or (is_inst_path and "news" not in pub_lower):
         source.provenance_category = "institutional_bio"
         source.is_independent = False
         source.reliability = SourceReliability.primary
@@ -139,7 +163,7 @@ def evaluate_claim_trust(claim: Claim, source: Source | None, profile: PersonPro
 
     if is_indep and category == "independent_secondary":
         base_score += 0.15
-    elif category in ("institutional_bio", "authored_publication"):
+    elif category in ("institutional_bio", "authored_publication", "record_registry"):
         base_score += 0.05
     elif category == "self_published":
         base_score -= 0.2
@@ -159,7 +183,7 @@ def evaluate_claim_trust(claim: Claim, source: Source | None, profile: PersonPro
 
     if trust_score >= 0.7 and is_indep:
         claim.provenance_status = "verified_independent"
-    elif category in ("institutional_bio", "authored_publication") or not is_indep:
+    elif category in ("institutional_bio", "authored_publication", "record_registry") or not is_indep:
         claim.provenance_status = "primary_sourced"
     else:
         claim.provenance_status = "unverified"

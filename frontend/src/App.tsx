@@ -65,7 +65,6 @@ function MainApp() {
   const [hubProfile, setHubProfile] = useState<PersonProfile | null>(null);
   const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
   const [draftProfile, setDraftProfile] = useState<PersonProfile | null>(null);
-  const [generateHindi, setGenerateHindi] = useState(false);
   const [relayPending, setRelayPending] = useState<{ url: string; text: string } | null>(null);
 
   // Pick up Wiki+ relay from browser_server: ?relay_url=&relay_text=
@@ -115,23 +114,8 @@ function MainApp() {
     setDraftProfile(null);
   }
 
-  const hindiToggle = stage === "identify" ? (
-    <div style={{ position: "fixed", top: 16, right: 20, fontSize: 13 }}>
-      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-        <input
-          type="checkbox"
-          checked={generateHindi}
-          onChange={e => setGenerateHindi(e.target.checked)}
-          style={{ width: "auto" }}
-        />
-        Hindi draft
-      </label>
-    </div>
-  ) : null;
-
   return (
     <>
-      {hindiToggle}
       {stage === "identify" && (
         <IdentifyPage
           onConfirmed={handleConfirmed}
@@ -153,7 +137,6 @@ function MainApp() {
         <HubPage
           initialProfile={hubProfile}
           wikiStatus={wikiStatus}
-          generateHindi={generateHindi}
           onDraft={handleDraft}
           onReset={handleReset}
           relayPending={relayPending}
