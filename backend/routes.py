@@ -117,7 +117,7 @@ def add_source(req: AddSourceRequest) -> dict:
     profile = store._get_profile(req.profile_name)
     url = req.url
 
-    if any(s.url == url for s in profile.sources):
+    if any(normalize_url(s.url) == normalize_url(url) for s in profile.sources):
         raise HTTPException(400, "This source is already in your list.")
 
     # ── ScienceDirect article: use PII pipeline instead of fetching ───────────
@@ -290,14 +290,14 @@ def deep_crawl(req: CrawlRequest) -> dict:
     new_sources = classify_sources(new_sources, store.llm())
 
     # Only keep sources that mention the person at least once and are not rejected/skipped
-    existing_urls = {s.url for s in profile.sources}
-    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
-    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    existing_urls = {normalize_url(s.url) for s in profile.sources}
+    rejected_urls = {normalize_url(u) for u in (getattr(profile, "rejected_sources", []) or [])}
+    skipped_urls = {normalize_url(u) for u in (getattr(profile, "skipped_sources", []) or [])}
     excluded = existing_urls | rejected_urls | skipped_urls
 
     relevant = [
         s for s in new_sources
-        if graph.relevance_hits.get(s.url, 0) > 0 and s.url not in excluded
+        if graph.relevance_hits.get(s.url, 0) > 0 and normalize_url(s.url) not in excluded
     ]
 
     new_claims = []
@@ -326,12 +326,12 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
         hint=req.hint,
     )
     # Deduplicate against existing, rejected, or skipped sources
-    existing_urls = {s.url for s in profile.sources}
-    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
-    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    existing_urls = {normalize_url(s.url) for s in profile.sources}
+    rejected_urls = {normalize_url(u) for u in (getattr(profile, "rejected_sources", []) or [])}
+    skipped_urls = {normalize_url(u) for u in (getattr(profile, "skipped_sources", []) or [])}
     excluded = existing_urls | rejected_urls | skipped_urls
 
-    new_sources = [s for s in sources if s.url not in excluded]
+    new_sources = [s for s in sources if normalize_url(s.url) not in excluded]
     new_sources = classify_sources(new_sources, store.llm())
     flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
     # Auto-added search results must be citable: never flood the session with
@@ -361,9 +361,9 @@ def auto_enrich_endpoint(body: dict) -> dict:
     profile = store._get_profile(profile_name)
     missing = profile.missing_slots or find_missing_slots(profile, profile.claims)
 
-    existing_urls = {s.url for s in profile.sources}
-    rejected_urls = set(getattr(profile, "rejected_sources", []) or [])
-    skipped_urls = set(getattr(profile, "skipped_sources", []) or [])
+    existing_urls = {normalize_url(s.url) for s in profile.sources}
+    rejected_urls = {normalize_url(u) for u in (getattr(profile, "rejected_sources", []) or [])}
+    skipped_urls = {normalize_url(u) for u in (getattr(profile, "skipped_sources", []) or [])}
     excluded = existing_urls | rejected_urls | skipped_urls
 
     added_sources = []
@@ -381,7 +381,7 @@ def auto_enrich_endpoint(body: dict) -> dict:
             field=profile.field,
             affiliation=profile.affiliation,
         )
-        new_sources = [s for s in candidate_sources if s.url not in excluded][: max_sources - len(added_sources)]
+        new_sources = [s for s in candidate_sources if normalize_url(s.url) not in excluded][: max_sources - len(added_sources)]
         if new_sources:
             new_sources = classify_sources(new_sources, store.llm())
             flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
@@ -393,7 +393,7 @@ def auto_enrich_endpoint(body: dict) -> dict:
 
             profile.sources.extend(new_sources)
             profile.claims.extend(new_claims)
-            excluded.update(s.url for s in new_sources)
+            excluded.update(normalize_url(s.url) for s in new_sources)
             added_sources.extend(new_sources)
             added_claims.extend(new_claims)
 
@@ -506,6 +506,17 @@ def reject_source(body: dict) -> dict:
         "sources": [s.model_dump() for s in profile.sources],
         "claims": [c.model_dump() for c in profile.claims],
     }
+
+
+@router.post("/research/skip-suggestion")
+def skip_suggestion(body: dict) -> dict:
+    """Record a suggestion as skipped so discovery stops re-offering it."""
+    profile = store._get_profile(body["profile_name"])
+    url = body["url"]
+    if url not in profile.skipped_sources:
+        profile.skipped_sources.append(url)
+    store._save_session(profile.name)
+    return {"ok": True}
 
 
 @router.get("/sessions")

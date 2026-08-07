@@ -215,12 +215,12 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
           }
         }
 
-        const mergedClaims = [...respPos.new_claims];
-        const existingClaims = new Set(mergedClaims.map(c => c.text));
-        for (const c of respAward.new_claims) {
-          if (!existingClaims.has(c.text)) {
+        const alreadyPresent = new Set(profile.claims.map(c => c.text));
+        const mergedClaims: typeof profile.claims = [];
+        for (const c of [...respPos.new_claims, ...respAward.new_claims]) {
+          if (!alreadyPresent.has(c.text)) {
             mergedClaims.push(c);
-            existingClaims.add(c.text);
+            alreadyPresent.add(c.text);
           }
         }
 

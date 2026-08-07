@@ -13,6 +13,9 @@ agent_jobs/
 !tests/fixtures/**
 !tests/fixtures
 !frontend/package.json
+!frontend/package-lock.json
+!tsconfig.json
+!frontend/tsconfig.json
 
 # Node / frontend
 node_modules/

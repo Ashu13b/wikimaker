@@ -27,7 +27,7 @@ from .routes import (  # noqa: F401  (public route handlers)
     auto_enrich_endpoint, draft_audit, generate_draft, get_session,
     verify_source, reject_source, list_sessions, delete_session,
     find_researcher_ids_endpoint, refresh_papers_endpoint, resume_session,
-    fetch_from_browser, suggest_urls,
+    fetch_from_browser, suggest_urls, skip_suggestion,
 )
 from .routes import router
 

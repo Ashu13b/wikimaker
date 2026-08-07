@@ -289,6 +289,38 @@ def test_add_sourced_claim_requires_existing_source(tmp_path, monkeypatch):
         )
 
 
+def test_skip_suggestion_persists_url_so_discovery_stops_offering_it(tmp_path, monkeypatch):
+    profile = _ready_profile()
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear"}})
+    url = "https://skipped.test/report"
+
+    result = backend_main.skip_suggestion({"profile_name": profile.name, "url": url})
+
+    assert result["ok"] is True
+    assert url in profile.skipped_sources
+    assert url in json.loads((tmp_path / "Example_Person.json").read_text())["profile"]["skipped_sources"]
+
+    backend_main.skip_suggestion({"profile_name": profile.name, "url": url})
+    assert profile.skipped_sources.count(url) == 1
+
+
+def test_add_source_rejects_normalized_url_variant(tmp_path, monkeypatch):
+    profile = _ready_profile()
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.name: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.name: {"status": "clear"}})
+
+    with pytest.raises(HTTPException):
+        backend_main.add_source(
+            backend_main.AddSourceRequest(
+                profile_name=profile.name,
+                url="http://news.example.test/report",
+            )
+        )
+
+
 def test_resume_never_repopulates_claims_from_stub_provider(tmp_path, monkeypatch):
     profile = _ready_profile()
     profile.claims = []

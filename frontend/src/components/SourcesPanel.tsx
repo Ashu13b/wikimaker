@@ -4,21 +4,9 @@ import { addSource, addSourcePaste, deepCrawl, verifySource, rejectSource, getSe
 import { normalizeUrl, getHostname } from "../url";
 import { SourceCard } from "./SourceCard";
 import { FetchedByTag, RelevanceBadge, AuthorMatchBadge } from "./SourceCard";
-
-// ── Shared tag constants ──────────────────────────────────────────────────────
-
-const SOURCE_TAG_CLASS: Record<string, string> = {
-  reliable_secondary: "tag-rs",
-  primary: "tag-primary",
-  self_published: "tag-self",
-  unreliable: "tag-unreliable",
-};
-const SOURCE_TAG_LABEL: Record<string, string> = {
-  reliable_secondary: "RS",
-  primary: "Primary",
-  self_published: "Self",
-  unreliable: "Unreliable",
-};
+import { Expander } from "./WorkspaceCards";
+import BookmarkletCard from "./BookmarkletCard";
+import { ResearcherIdsStrip } from "./ProfileTab";
 
 // ── Sources panel ──────────────────────────────────────────────────────────────
 
@@ -73,7 +61,6 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
 
   const [expandPaste, setExpandPaste] = useState(false);
   const [expandCrawl, setExpandCrawl] = useState(false);
-  const [expandManual, setExpandManual] = useState(false);
   const [sentToBrowser, setSentToBrowser] = useState(false);
   const [browserFetchLoading, setBrowserFetchLoading] = useState(false);
 
@@ -286,7 +273,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ url: s.url }),
                 });
-                if (!showBrowser) {
+                if (!showBrowser && setShowBrowser) {
                   setShowBrowser(true);
                 }
               } catch { window.open(s.url, "_blank"); }
@@ -396,19 +383,16 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
           </div>
         )}
         {blockedUrl && !sentToBrowser && <p style={{ fontSize: 12, color: "var(--warning)", marginTop: 6 }}>Site blocked — paste content below.</p>}
+      </div>
 
-        {/* Manual entry — secondary */}
-        <div style={{ marginTop: 12 }}>
-          <Expander label="Add URL manually" open={expandManual} onToggle={() => setExpandManual(v => !v)}>
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddUrl()} placeholder="https://…" style={{ flex: 1, borderColor: isDuplicate ? "var(--warning)" : undefined }} />
-                <button className="btn-primary" onClick={handleAddUrl} disabled={urlLoading || !urlInput.trim() || isDuplicate}>{urlLoading ? "Fetching…" : "Add"}</button>
-              </div>
-              {isDuplicate && <p style={{ color: "var(--warning)", fontSize: 12, marginTop: 6 }}>Already in your sources list.</p>}
-            </div>
-          </Expander>
+      {/* Add-source tools — manual URL (fallback) always visible, niche tools expandable */}
+      <div className="card" style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0, marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, margin: "0 0 10px" }}>Add a source</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input value={urlInput} onChange={e => setUrlInput(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddUrl()} placeholder="Paste a URL: ORCID, Scholar, institutional profile, paper…" style={{ flex: 1, borderColor: isDuplicate ? "var(--warning)" : undefined }} />
+          <button className="btn-primary" onClick={handleAddUrl} disabled={urlLoading || !urlInput.trim() || isDuplicate}>{urlLoading ? "Fetching…" : "Add"}</button>
         </div>
+        {isDuplicate && <p style={{ color: "var(--warning)", fontSize: 12, marginTop: 6 }}>Already in your sources list.</p>}
 
         <div style={{ marginTop: 8 }}>
           <Expander label="Paste text from blocked page / PDF" open={expandPaste} onToggle={() => setExpandPaste(v => !v)}>
@@ -455,7 +439,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
         );
       })()}
 
-      {/* Source sub-tabs */}
+      {/* Confirmed sources */}
       {profile.sources.length === 0 ? (
         <p style={{ fontSize: 13, color: "var(--muted)", padding: "12px 0" }}>No sources yet.</p>
       ) : (() => {
@@ -467,6 +451,10 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
 
         return (
           <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Sources in this session</p>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>verify each source, then approve its claims in the Claims tab</span>
+            </div>
             <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
               {(["all", "research", "news", "profile"] as const).map(t => {
                 const label = t === "all" ? `All (${profile.sources.length})`
@@ -522,10 +510,11 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
                 }}
                 onVerified={(verified, newClaims, missingSlots) => {
                   const sources = profile.sources.map(src => src.url === s.url ? { ...src, human_verified: verified } : src);
+                  const freshClaims = newClaims ? newClaims.filter(c => !profile.claims.some(ex => ex.source_url === c.source_url && ex.text === c.text)) : [];
                   onProfileUpdate({
                     ...profile,
                     sources,
-                    claims: newClaims ? [...profile.claims, ...newClaims] : profile.claims,
+                    claims: [...profile.claims, ...freshClaims],
                     missing_slots: missingSlots ?? profile.missing_slots,
                   });
                   // New profile_links may have been extracted from this source — refresh queue

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { PersonProfile } from "../types";
-import { addDocumentFact, targetedSearch } from "../api";
+import { addDocumentFact, targetedSearch, addSource } from "../api";
+import { FillMode, SLOT_SECTIONS, SLOT_LABELS, SLOT_HINTS, SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
 export function ProfileTab({ profile, onProfileUpdate }: {
   profile: PersonProfile;
@@ -317,7 +318,7 @@ const ID_META: Record<string, { label: string; url: (id: string) => string; colo
   openalex:         { label: "OpenAlex",         url: id => `https://openalex.org/authors/${id}`,                        color: "#6b7280" },
 };
 
-function ResearcherIdsStrip({
+export function ResearcherIdsStrip({
   researcherIds,
   confirmedIds,
   loading,

@@ -27,7 +27,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState<number | null>(null);
-  const [tab, setTab] = useState<FilterTab>("all");
+  const [tab, setTab] = useState<FilterTab>(() => claims.some(c => !c.draft_approved && c.verification !== "skipped") ? "review" : "all");
 
   const draftCount = claims.filter(c => c.draft_approved).length;
   const unsourcedCount = claims.filter(c => !c.source_url).length;

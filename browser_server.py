@@ -1,13 +1,13 @@
 """
-Standalone remote browser server.
+Remote browser server.
 
-Usage:
-    python browser_server.py            # port 7070
+The FastAPI app here is mounted at `/browser` on the unified server
+(`backend/main.py`, port 3890) and shown in the HubPage companion iframe. The
+browser thread is started lazily on first request.
 
-Tunnel (add to your ssh command):
-    -L 7070:localhost:7070
-
-Then open http://localhost:7070 on your mobile browser.
+Legacy standalone mode (pre-unification): `python browser_server.py` served
+this app on port 7070 for direct mobile access. The code path still exists but
+the unified server is the supported way to run it.
 
 Install Xvfb first for headed mode (lets you solve CAPTCHAs visually):
     sudo apt install -y xvfb

@@ -1,17 +1,17 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-06 20:24 UTC · sha 3a0cbc4 · host vnic-trading -->
+<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-07 05:39 UTC · sha 5ed9e31 · host vnic-trading -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 39 files · 359 symbols
-- TypeScript — 21 files · 142 symbols
+- Python — 39 files · 362 symbols
+- TypeScript — 24 files · 149 symbols
 - JavaScript — 1 files · 0 symbols
 - CSS — 1 file (unindexed)
 - HTML — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 64 files · 501 symbols across 6 languages._
+_Total: 67 files · 511 symbols across 6 languages._
 
 
 ## Compartments
@@ -25,7 +25,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 ### backend/
 - `backend/main.py` — api_app, def lifespan, app, FRONTEND_DIST
 - `backend/pipelines.py` — def _add_sd_article, def _add_sd_author_profile
-- `backend/routes.py` — router, def identify, def research_start, def add_source, def add_document_fact, def add_sourced_claim, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def auto_enrich_endpoint, def draft_audit, def generate_draft, def get_session, def verify_source, def reject_source, def list_sessions, def delete_session, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def fetch_from_browser, def suggest_urls
+- `backend/routes.py` — router, def identify, def research_start, def add_source, def add_document_fact, def add_sourced_claim, def verify_claim, def add_source_paste, def deep_crawl, def targeted_search_endpoint, def auto_enrich_endpoint, def draft_audit, def generate_draft, def get_session, def verify_source, def reject_source, def skip_suggestion, def list_sessions, def delete_session, def find_researcher_ids_endpoint, def refresh_papers_endpoint, def fetch_from_browser, def suggest_urls
 - `backend/routes_sessions.py` — sessions_router, def resume_session
 - `backend/schemas.py` — class IdentifyRequest, class ResearchRequest, class AddSourceRequest, class AddDocumentFact, class AddSourcedClaimRequest, class VerifyClaimRequest, class AddSourcePaste, class CrawlRequest, class TargetedSearchRequest, class DraftRequest, class FindIdsRequest, class RefreshPapersRequest
 - `backend/store.py` — SESSIONS_DIR, _sessions, _wiki_statuses, _llm, def llm, def _session_path, def _apply_provenance, def _save_session, def _load_session_file, BROWSER_SERVER, def _push_to_browser, def _get_profile, def _check_doi_sources
@@ -53,13 +53,16 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `frontend/src/components/BookmarkletCard.tsx` — BookmarkletCard, handleCopy
 - `frontend/src/components/CandidateCard.tsx` — Props, CandidateCard
 - `frontend/src/components/ClaimsReview.tsx` — FilterTab, ClaimsReview, doVerify, ActionBtn
+- `frontend/src/components/ClaimsTab.tsx` — Mode, ClaimsTab
 - `frontend/src/components/ProfileTab.tsx` — ProfileTab, setMode, handleSearch, handleAddUrl, handleManual, ResearcherIdsStrip
 - `frontend/src/components/ResearchOperationsCard.tsx` — ResearchOperationsCard
-- `frontend/src/components/SourceCard.tsx` — SourceCard, handleVerify, handleReject, FillMode, RelevanceBadge, FetchedByTag, AuthorMatchBadge
+- `frontend/src/components/SourceCard.tsx` — SourceCard, handleVerify, handleReject, RelevanceBadge, FetchedByTag, AuthorMatchBadge, PipeStep, PipeConnector
 - `frontend/src/components/SourcesPanel.tsx` — SourceCategory, categorizeSource, SourcesPanel, loadSuggestions, handleApproveSuggestion, handleAddUrl, handleAddPaste, handleCrawl, handleFetchFromBrowser, handleFindIds, handleRefreshPapers, viewInBrowser
+- `frontend/src/components/StageHeader.tsx` — StageHeaderProps, StageHeader, action
 - `frontend/src/components/TimelineTab.tsx` — parseFirstYear, TimelineTab, TLEvent, GapInfo, EventRow, GapRow, handleFillGap
 - `frontend/src/components/WorkspaceCards.tsx` — Expander, NotabilityBadge, NotabilityCard, DraftReadinessCard, ChecklistCard, TabBtn
 - `frontend/src/components/WorkspaceStatusBanner.tsx` — WorkspaceStatusBanner
+- `frontend/src/components/slotMeta.ts` — FillMode
 - `frontend/src/pages/DraftPage.tsx` — Props, DraftPage, handleCopy, TabBtn, SourceRow
 - `frontend/src/pages/HubPage.tsx` — Props, Tab, HubPage, handleAutoEnrich, handleGenerateDraft, markLinkOpened
 - `frontend/src/pages/IdentifyPage.tsx` — Props, View, IdentifyPage, handleResume, handleDelete, handleSearch, handleConfirm
@@ -69,7 +72,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `frontend/src/workflow.ts` — WorkspaceMode, WorkspaceTone, WorkspaceRoute, getWorkspaceRoute, canGenerateDraft, getDraftDestination
 ### tests/
 - `tests/test_agent_llm.py` — def test_unanswered_prompt_queues_job_and_returns_empty, def test_answered_prompt_returns_agent_response, def test_get_provider_selects_agent_via_env
-- `tests/test_draft.py` — def _source, def _ready_profile, def test_audit_excludes_cv_animal_birth_and_unverified_sources, def test_audit_blocks_profiles_without_explicit_draft_approval, def test_audit_blocks_drafts_without_independent_secondary_coverage, def test_renderer_cites_every_included_claim_and_never_fills_biography_gaps, def test_dr_yadav_saved_session_produces_policy_filtered_draft, def test_audit_accepts_sourced_research_stay_as_career_activity, def test_claim_draft_approval_is_a_separate_persisted_action, def test_draft_endpoint_uses_server_session_and_persists_output, def test_add_sourced_claim_binds_fact_to_verified_source, def test_add_sourced_claim_requires_existing_source, def test_resume_never_repopulates_claims_from_stub_provider, def test_independent_count_uses_distinct_outlets_not_article_urls, def test_verified_amar_ujala_report_counts_as_independent_news
+- `tests/test_draft.py` — def _source, def _ready_profile, def test_audit_excludes_cv_animal_birth_and_unverified_sources, def test_audit_blocks_profiles_without_explicit_draft_approval, def test_audit_blocks_drafts_without_independent_secondary_coverage, def test_renderer_cites_every_included_claim_and_never_fills_biography_gaps, def test_dr_yadav_saved_session_produces_policy_filtered_draft, def test_audit_accepts_sourced_research_stay_as_career_activity, def test_claim_draft_approval_is_a_separate_persisted_action, def test_draft_endpoint_uses_server_session_and_persists_output, def test_add_sourced_claim_binds_fact_to_verified_source, def test_add_sourced_claim_requires_existing_source, def test_skip_suggestion_persists_url_so_discovery_stops_offering_it, def test_add_source_rejects_normalized_url_variant, def test_resume_never_repopulates_claims_from_stub_provider, def test_independent_count_uses_distinct_outlets_not_article_urls, def test_verified_amar_ujala_report_counts_as_independent_news
 - `tests/test_liveness.py` — def test_check_liveness_live, def test_check_liveness_dead_looks_up_wayback, def test_check_liveness_blocked, def test_get_wayback_url_parses_snapshot, def test_audit_excludes_dead_unarchived_source, def test_renderer_cites_wayback_url_for_dead_archived_source
 - `tests/test_llm.py` — def test_extract_claims_is_noop_under_stub, def test_get_provider_uses_vertex_when_available, def test_get_provider_falls_back_to_agent_when_vertex_unavailable
 - `tests/test_provenance.py` — def test_domain_trust_classification, def test_source_provenance_classification, def test_claim_trust_evaluation, def test_strict_notability_independence, def test_icar_and_cirb_reports_are_institutional_primary_sources, def test_record_registries_are_primary_and_non_independent

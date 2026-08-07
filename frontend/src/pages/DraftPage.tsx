@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { PersonProfile, WikiStatus, Source } from "../types";
 import { getDraftDestination } from "../workflow";
 import { getHostname } from "../url";
+import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "../components/slotMeta";
 
 interface Props {
   profile: PersonProfile;
@@ -199,22 +200,10 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 
 function SourceRow({ source, inDraft }: { source: Source; inDraft: boolean }) {
-  const tagClass: Record<string, string> = {
-    reliable_secondary: "tag-rs",
-    primary: "tag-primary",
-    self_published: "tag-self",
-    unreliable: "tag-unreliable",
-  };
-  const tagLabel: Record<string, string> = {
-    reliable_secondary: "RS",
-    primary: "Primary",
-    self_published: "Self",
-    unreliable: "Unreliable",
-  };
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-        <span className={`tag ${tagClass[source.reliability]}`}>{tagLabel[source.reliability]}</span>
+        <span className={`tag ${SOURCE_TAG_CLASS[source.reliability]}`}>{SOURCE_TAG_LABEL[source.reliability]}</span>
         {inDraft && (
           <span style={{ fontSize: 10, fontWeight: 700, padding: "0px 5px", borderRadius: 4, background: "rgba(37, 99, 235, 0.12)", color: "var(--primary)" }}>
             in draft

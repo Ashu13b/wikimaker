@@ -1,7 +1,7 @@
 import type { PersonProfile, WikiStatus, NotabilityResult, DraftAudit } from "../types";
 import { getWorkspaceRoute } from "../workflow";
 
-function Expander({ label, open, onToggle, children }: {
+export function Expander({ label, open, onToggle, children }: {
   label: string; open: boolean; onToggle: () => void; children: React.ReactNode;
 }) {
   return (

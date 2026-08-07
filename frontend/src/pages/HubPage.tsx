@@ -3,10 +3,10 @@ import type { PersonProfile, WikiStatus, DraftAudit } from "../types";
 import { generateDraft, getDraftAudit, getSession, autoEnrich } from "../api";
 import WorkspaceStatusBanner from "../components/WorkspaceStatusBanner";
 import ResearchOperationsCard from "../components/ResearchOperationsCard";
-import TimelineTab from "../components/TimelineTab";
-import ClaimsReview from "../components/ClaimsReview";
+import ClaimsTab from "../components/ClaimsTab";
 import { SourcesPanel } from "../components/SourcesPanel";
 import { ProfileTab } from "../components/ProfileTab";
+import { StageHeader } from "../components/StageHeader";
 import { TabBtn, NotabilityBadge, NotabilityCard, ChecklistCard, DraftReadinessCard } from "../components/WorkspaceCards";
 import { getWorkspaceRoute } from "../workflow";
 
@@ -20,7 +20,7 @@ interface Props {
   onRelayConsumed?: () => void;
 }
 
-type Tab = "sources" | "profile" | "timeline" | "pending";
+type Tab = "sources" | "profile" | "claims";
 
 export default function HubPage({ initialProfile, wikiStatus, onDraft, onReset, relayPending, onRelayConsumed }: Props) {
   const [profile, setProfile] = useState(initialProfile);
@@ -143,6 +143,17 @@ export default function HubPage({ initialProfile, wikiStatus, onDraft, onReset, 
 
       <WorkspaceStatusBanner wikiStatus={wikiStatus} />
 
+      <StageHeader
+        profile={profile}
+        audit={draftAudit}
+        auditError={auditError}
+        drafting={drafting}
+        draftLabel={workspaceRoute.draftLabel}
+        draftAvailable={draftAvailable}
+        onNavigate={setTab}
+        onGenerateDraft={handleGenerateDraft}
+      />
+
       <div className="hub-grid" style={{ gridTemplateColumns: showBrowser ? "1fr 272px 420px" : "1fr 272px" }}>
         {/* Main panel */}
         <div>
@@ -160,10 +171,7 @@ export default function HubPage({ initialProfile, wikiStatus, onDraft, onReset, 
                   </span>
                 )}
               </TabBtn>
-              <TabBtn active={tab === "timeline"} onClick={() => setTab("timeline")}>
-                Timeline
-              </TabBtn>
-              <TabBtn active={tab === "pending"} onClick={() => setTab("pending")}>
+              <TabBtn active={tab === "claims"} onClick={() => setTab("claims")}>
                 Claims ({profile.claims.length})
                 {pendingClaims.length > 0 && (
                   <span style={{ marginLeft: 6, background: "var(--primary)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
@@ -201,17 +209,8 @@ export default function HubPage({ initialProfile, wikiStatus, onDraft, onReset, 
           {tab === "profile" && (
             <ProfileTab profile={profile} onProfileUpdate={setProfile} />
           )}
-          {tab === "timeline" && (
-            <TimelineTab profile={profile} onProfileUpdate={setProfile} />
-          )}
-          {tab === "pending" && (
-            <ClaimsReview
-              claims={profile.claims}
-              allClaims={profile.claims}
-              profile={profile}
-              onProfileUpdate={setProfile}
-              emptyMessage="No claims have been collected."
-            />
+          {tab === "claims" && (
+            <ClaimsTab profile={profile} onProfileUpdate={setProfile} />
           )}
         </div>
 

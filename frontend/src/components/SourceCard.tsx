@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Source, Claim, NotabilityResult, UrlSuggestion } from "../types";
 import { verifySource, rejectSource } from "../api";
 import { getHostname } from "../url";
+import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
 export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onVerifyingChange, allClaims }: {
   source: Source;
@@ -24,6 +25,9 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
   const tagLabel = SOURCE_TAG_LABEL;
 
   const sourceClaims = (allClaims ?? []).filter(c => c.source_url === source.url);
+  const suggestedCount = sourceClaims.filter(c => c.verification === "unverified").length;
+  const confirmedCount = sourceClaims.filter(c => c.verification === "confirmed" || c.verification === "edited").length;
+  const draftCount = sourceClaims.filter(c => c.draft_approved).length;
 
   async function handleVerify() {
     setVerifying(true);
@@ -102,6 +106,27 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
         <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{verifyError}</p>
       )}
 
+      {/* Claim pipeline — one action per step, no re-triggering */}
+      <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 11 }}>
+        <PipeStep
+          label={source.human_verified ? "Verified" : "Verify"}
+          done={source.human_verified}
+          active={!source.human_verified}
+        />
+        <PipeConnector />
+        <PipeStep
+          label={sourceClaims.length ? `${sourceClaims.length} suggested` : "no claims"}
+          done={source.human_verified && sourceClaims.length > 0}
+          active={false}
+        />
+        <PipeConnector />
+        <PipeStep
+          label={draftCount ? `${draftCount} in draft` : confirmedCount ? `${confirmedCount} confirmed` : "approve"}
+          done={draftCount > 0}
+          active={confirmedCount > 0 && draftCount === 0}
+        />
+      </div>
+
       {/* Inline Extracted Claims — AI suggestions, not yet verified facts */}
       {sourceClaims.length > 0 && (
         <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(139, 92, 246, 0.07)", border: "1px solid rgba(139, 92, 246, 0.2)", borderRadius: 6 }}>
@@ -123,22 +148,22 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
         </div>
       )}
 
-      {/* Action row */}
+      {/* Action row — only the next step is actionable, once */}
       {!showReject && (
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button
-            onClick={handleVerify}
-            disabled={verifying}
-            style={{
-              padding: "6px 14px", fontSize: 12, fontWeight: 600, borderRadius: 6,
-              border: `1px solid ${source.human_verified ? "var(--success)" : "var(--border)"}`,
-              background: source.human_verified ? "#dcfce7" : "transparent",
-              color: source.human_verified ? "var(--success)" : "var(--text)",
-              cursor: "pointer",
-            }}
-          >
-            {verifying ? "Extracting claims…" : source.human_verified ? `✓ Verified${sourceClaims.length ? ` · ${sourceClaims.length} claim${sourceClaims.length === 1 ? "" : "s"} suggested` : ""}` : "Confirm & extract claims"}
-          </button>
+          {!source.human_verified && (
+            <button
+              onClick={handleVerify}
+              disabled={verifying}
+              style={{
+                padding: "6px 14px", fontSize: 12, fontWeight: 600, borderRadius: 6,
+                border: "1px solid var(--primary)", background: "var(--primary)", color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {verifying ? "Extracting claims…" : "Confirm & extract claims"}
+            </button>
+          )}
           <button
             onClick={() => setShowReject(true)}
             style={{ padding: "6px 14px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--danger)", cursor: "pointer" }}
@@ -186,41 +211,6 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
 }
 
 // ── Timeline tab ─────────────────────────────────────────────────────────────
-
-
-const SLOT_LABELS: Record<string, string> = {
-  full_name: "Full name",
-  birth_date: "Date of birth",
-  birth_place: "Place of birth",
-  nationality: "Nationality",
-  affiliation: "Institution",
-  position: "Position / title",
-  field: "Research field",
-  education: "Education",
-  known_for: "Known for",
-  award: "Awards",
-};
-
-const SLOT_HINTS: Record<string, string> = {
-  birth_date:   "news article, obituary, or institutional bio",
-  birth_place:  "news article or institutional bio",
-  nationality:  "institutional bio or news",
-  affiliation:  "institution website (faculty/staff page)",
-  position:     "institution website (faculty/staff page)",
-  field:        "institution website or research profile",
-  education:    "institution website or CV/bio page",
-  known_for:    "news article or research profile",
-  award:        "press release, news, or institution website",
-  full_name:    "institution website or official document",
-};
-
-const SLOT_SECTIONS: { label: string; slots: string[] }[] = [
-  { label: "Infobox", slots: ["full_name", "birth_date", "birth_place", "nationality"] },
-  { label: "Career", slots: ["affiliation", "position", "field", "education"] },
-  { label: "Recognition", slots: ["known_for", "award"] },
-];
-
-type FillMode = "search" | "url" | "manual";
 
 
 export function RelevanceBadge({ flag }: { flag: Source["relevance_flag"] }) {
@@ -306,4 +296,19 @@ export function AuthorMatchBadge({ source }: { source: Source }) {
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
+
+function PipeStep({ label, done, active }: { label: string; done: boolean; active: boolean }) {
+  const bg = done ? "var(--success)" : active ? "var(--primary)" : "var(--border)";
+  const fg = done ? "var(--success)" : active ? "var(--primary)" : "var(--muted)";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 600 }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: bg, flexShrink: 0 }} />
+      <span style={{ color: fg }}>{label}</span>
+    </span>
+  );
+}
+
+function PipeConnector() {
+  return <span style={{ width: 14, height: 1, background: "var(--border)", flexShrink: 0 }} />;
+}
 
