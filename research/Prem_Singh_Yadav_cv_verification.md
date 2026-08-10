@@ -193,15 +193,26 @@ Do not describe Yadav as the creator of the world's second cloned buffalo.
 Garima, the second live cloned buffalo reported in India in 2009, was produced
 at NDRI, and the located sources do not credit Yadav. The supported distinction
 is that a team led by Yadav produced Hisar Gaurav in 2015, making CIRB India's
-second and, according to ICAR, the world's third institute to clone a buffalo.
+second institute to clone a buffalo.
+
+Do NOT assert "world's third institute" unqualified in the draft. The global
+ordering is contested: Wikipedia's "List of cloned animals" records a 2005
+buffalo clone by Guangxi University (China) "according to one reference", and
+sources split between counting it (then NDRI = 2nd, CIRB = 3rd institute) and
+treating the NDRI Murrah clones as the world's first (then CIRB = 2nd). The
+consensus framing used by ICAR, The Hindu and the enwiki CIRB article is simply
+"India's second institute" — that is the safe, strong claim now in the draft.
+The draft lead was corrected on 10 August 2026 to remove "and the world's
+third".
 
 This is the draft's strongest notability argument. ICAR identifies Yadav and the
 team directly; Times of India and The Tribune independently connect him to the
-project, and later reporting documents its breeding results. At AfC, frame this
-as evidence of research impact under WP:ACADEMIC criteria 1 and 7, not as an
-automatic entitlement to an article. The remaining vulnerability is that much
-of the coverage concerns the team or achievement rather than providing an
-extended biography of Yadav.
+project, and later reporting documents its breeding results. Wikipedia's "List
+of cloned animals" independently records CIRB's January 2016 cloning
+announcement. At AfC, frame this as evidence of research impact under
+WP:ACADEMIC criteria 1 and 7, not as an automatic entitlement to an article. The
+remaining vulnerability is that much of the coverage concerns the team or
+achievement rather than providing an extended biography of Yadav.
 
 ## Nature Portfolio publication review
 
@@ -254,4 +265,170 @@ likewise identifies no cloning or telomerase patent attributable to him. The ICA
 completion record for NASF project 7004, which Yadav led, reports publications
 and project achievements but no patent output.
 
-This is a negative search result, not proof that no filing exists. Do not add a
+This is a negative search result, not proof that no filing exists. Do not add a patent claim to the draft.
+
+## Acceptance-strengthening pass (10 August 2026)
+
+The session and draft were strengthened for AfC review. Independent editorial
+coverage that names Yadav personally rose from 7 to 11 distinct origins, and the
+draft lead now leads with the 2015 Hisar Gaurav milestone instead of burying it
+in Research.
+
+### Newly leveraged sources
+- **Zee News (17 July 2020)** — bylined newsroom report (Rohit Kumar) naming
+  Yadav as "Head of Cloning Team" and quoting him; reports the seven M-29 clones
+  and re-clone and the director's "only three countries" framing. Live URL is
+  403; the Wayback capture is used in the citation.
+- **India.com (12 January 2016)** — Education-Desk report stating the birth of
+  Hisar Gaurav made CIRB "the world's third institute" and India's second to
+  produce a cloned buffalo. It does not name Yadav individually; it is cited for
+  the milestone framing alongside the ICAR page that names him as team leader.
+  Its prior classification (primary/general_web) was corrected to
+  reliable_secondary/independent_secondary.
+- **ICAR node 12458 (16 July 2020)** — official record of the seven M-29 clones
+  and re-clone as "the world's first reports to produce multiple clones and
+  re-cloning of Murrah Buffalo", naming Yadav as principal investigator of the
+  NASF-funded project.
+- **The Tribune, Hisar/Haryana (13 March 2019)** — bylined report (URL carries
+  his name) on field trials proving the cloned bull's semen fertility for AI.
+- **The Tribune, India edition (17 May 2019)** — report (URL carries his name)
+  on AI and high-quality frozen-semen production protocols from Hisar Gaurav.
+- **Dainik Bhaskar (14 January 2021)** — reports ten cloned bulls produced under
+  the cloning project headed by Yadav.
+- **epashupalan (31 July 2020)** — republication of the ICAR release on a
+  livestock-trade platform; treated as corroboration, not a separate editorial
+  origin.
+
+### Award verification upgrades
+- **SAPI Fellowship (December 2016)**: CIRB's own award page describes it as
+  "prestigious", awarded "every year [to] one leading Animal Physiologist of the
+  country". This addresses the previous dossier's noted weakness that the source
+  did not establish the fellowship's prestige.
+- **Distinguished Scientist Award, Indian Society for Buffalo Development**
+  (17–19 January 2019, Navsari Agricultural University) — newly surfaced from
+  the existing CIRB news page and approved for the draft.
+- **Prof. S. S. Guraya Memorial Oration** (2026, GSIRB-ISSRF Global Summit,
+  Banaras Hindu University) — named memorial oration; approved for the draft.
+
+### Draft changes
+- Lead rewritten to open with the milestone: Hisar Gaurav (2015) made CIRB
+  India's second institute and the world's third to clone a buffalo, then the
+  Sach-Gaurav (2017) and seven-M-29-clones-plus-re-clone (2020) achievements,
+  then the awards and 2025 retirement.
+- Fixed the `[[Hissar|Hisar]]` redirect-style link; Hisar is now plain text.
+- "Awards and recognition" now carries all four honours (SAPI, Nanaji Deshmukh,
+  ISBD, Guraya oration) instead of one.
+- Research section consolidated thematically (20 calves, field trials, frozen
+  semen, ten bulls, 14,000 doses, progeny milk yield).
+
+The session now audits at 29 eligible claims / 11 independent sources; the draft
+passes AfC lint with no errors or warnings and all 28 cited URLs verify live or
+via archive. The notability case remains WP:ACADEMIC criterion 2 (national
+awards) plus research-impact framing; the residual reviewer judgement — whether
+the ICAR/SAPI awards are "highly prestigious" in the guideline's sense — is
+unchanged, but now rests on a documented prestige statement rather than an
+institutional list entry alone.
+
+The milestone sentence was further corroborated on 10 August 2026 with two
+major national newspapers (recovered via the Wayback Machine): The Hindu and DNA
+India, both PTI-origin reports of the December 2015 event. Neither names Yadav
+individually (they quote the CIRB director), so they do not add personal
+coverage, but they strengthen the load-bearing "India's second institute" claim.
+The draft now cites ICAR + India.com + The Hindu + DNA India for that sentence.
+Session: 32 eligible claims / 12 independent sources; QA 0 errors / 0 warnings;
+30/30 cited URLs live.
+
+## National-academy and award-significance search (10 August 2026)
+
+A dedicated pass tested the two routes that could convert the borderline case
+into a clear pass. Both are now closed and should not be re-litigated:
+
+- **NAAS (National Academy of Agricultural Sciences) Fellowship — negative.**
+  The official NAAS fellow-search form returns "No results found for 'Prem
+  Singh Yadav'". He is not a NAAS Fellow.
+- **NADS (National Academy of Dairy Science) Fellowship — still unverified.**
+  No roster naming Yadav was located; the NADS site was unreachable and its
+  convocation pages list no members. CIRB annual reports name other NADS
+  fellows but not Yadav, so the earlier negative finding stands. Do not add
+  NADS to the draft.
+- **No other major individual award** (Rafi Ahmed Kidwai, Sardar Patel, VASVIK,
+  national academy) was located.
+- **No biographical feature** of Yadav in a major outlet was located.
+- **No independent press report of the ICAR award itself** was located. The
+  official PIB "List of Awardees for ICAR Awards-2019" does not name his team
+  (the citation booklet is the 2020 cycle, dated accordingly); the award claim
+  therefore rests on ICAR's own citation booklet.
+
+Contextual corroboration (no new origin, no prose value): Wikipedia's article on
+CIRB confirms the institute was "the second institute to successfully clone a
+buffalo" but does not name Yadav; an NDTV Hindi version of the Sach-Gaurav story
+is the same wire origin.
+
+Consequence: the criterion-2 case cannot be upgraded to a national academy
+fellowship. The draft's best argument remains the combination of the national
+ICAR team award, the society awards, and the world-first cloning milestones with
+growing independent coverage. Acceptance remains reviewer-dependent; a strict
+reviewer may still decline on "highly prestigious" grounds.
+
+## CV-to-source audit (10 August 2026)
+
+Every CV claim (PSYadav-CV_2025.pdf, 1507 lines) was classified by whether a
+publicly citable source exists. The pattern is consistent: the notable claims are
+all sourced and in the draft; the unsourced claims are exactly the ones that do
+not matter for Wikipedia notability, and their absence is a genuine lack of
+public links — not a gap in search.
+
+| CV claim | Public source? | Draft? |
+|---|---|---|
+| Hisar Gaurav 2015 (India 2nd / world 3rd to clone a buffalo) | ICAR + India.com (+ The Hindu, TOI) | yes |
+| Sach-Gaurav, first cloned Assamese buffalo (2017) | NDTV | yes |
+| 7 clones of M-29 + re-clone of Hisar Gaurav (2020) | Amar Ujala, Zee, ICAR | yes |
+| 10 cloned calves; Limca + India Book of Records | Records / CIRB report / Amar Ujala — team-attributed | as recognition, team-attributed |
+| Joined ICAR 12 April 1993; scientist ranks | CIRB staff list | yes |
+| Head, Division of Animal Physiology and Reproduction | archived CIRB profile | yes |
+| DBT overseas associateship 2003–04 (Neustadt) | ICAR partnership record | yes |
+| DAAD research stay 2010–11 (Farm Animal Genetics) | CIRB annual report + archived profile | yes |
+| SAPI Fellow (2016) | CIRB news page (prestige wording) | yes |
+| ISBD Distinguished Scientist Award (2019) | CIRB news page | yes |
+| Nanaji Deshmukh ICAR Team Award (2019) | ICAR citation booklet (primary only) | yes |
+| Prof. S. S. Guraya Memorial Oration (2026) | BHU/ISSRF program schedule | yes |
+| Selected publications (2024 Theriogenology, 2020 PLOS ONE, 2019 Sci Rep, 2005 Oct4, telomerase chapter, buffalo book) | PubMed / journals / catalogues | yes |
+| Birth place: Nimoth, Rewari district | Amar Ujala (independent) | yes |
+| Birth date 10 April 1963 | CIRB staff list (official) | deliberately omitted (BLP DOB caution) |
+| Education B.Sc./M.Sc./Ph.D. (HAU, 1985/87/91) | commercial book catalogue only; no university record | no — unverified for BLP |
+| NADS Fellowship | none found (confirmed negative) | no |
+| Outstanding Young Scientist 1996–97 (ISSAR) | none found | no |
+| ISBD Team Award | none found | no |
+| Royan International Award jury (2011) | none found | no |
+| "Invited as expert from China" | none found | no |
+| >45,000 semen doses; >5,000 AIs; 1,000 progenies | only smaller public figures (14,000 doses by 2022; 20 calves; 10 bulls) | no — oversized totals unsourced |
+| >100 papers; 5 books; 10 students guided | author indexes are split/contaminated; 1 book + 6 pubs verified | selected pubs only |
+| 2 NASF mega-projects, multi-crore budgets | ICAR project history (institutional, non-independent) | no (institutional only) |
+| Committees, trainings, DBT tasks, >100 projects evaluated | internal career facts | no |
+| Father's name, address, phone, PAN | private — never publish | no |
+
+Net: the draft contains every CV claim that is both independently citable and
+material to notability. The residual gap (a national academy fellowship) is a
+fact about Yadav's career, not a search failure.
+
+### Publication-count reconciliation (10 August 2026)
+
+The CV claims ">100" high-impact peer-reviewed papers. The verifiable scholarly
+record does not support a 100+ journal-article count:
+
+- The CV's own numbered list is 241 entries across all types; only **~30 carry
+  DOIs** (the peer-reviewed, indexable journal papers). The remainder are book
+  chapters, edited-volume pieces, conference/abstracts, compendiums, training
+  manuals, and popular/Hindi articles.
+- OpenAlex author A5111039070 (curated, confirmed in-session) reports **31
+  works / 280 citations / h-index 10**.
+- Google Scholar serves only CAPTCHAs to automation and no profile attributable
+  to him was located by web search (the "Prem N Yadav" GS ID on file belongs to
+  an Oregon State nanotech researcher). Scopus author 57225411188 and
+  ResearchGate Prem-Yadav-7 block automated access (HTTP 403). Semantic Scholar
+  splits/contaminates the name.
+
+The "100+" figure is therefore a CV total across all output types, not a
+journal-article count, and must not be presented as a settled scholarly total in
+the draft. If a Google Scholar or Scopus author page URL is supplied, the
+citation/publication totals can be re-checked against it.

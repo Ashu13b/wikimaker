@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-10 00:54 UTC · sha 8cb8567 · host vnic-trading -->
+<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-10 11:55 UTC · sha e3ffcd5 · host vnic-trading -->
 
 # DOCS_MAP
 
@@ -34,3 +34,10 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Nature Portfolio publication review
     - Telomere, telomerase and book records
     - Patent search (10 August 2026)
+    - Acceptance-strengthening pass (10 August 2026)
+      - Newly leveraged sources
+      - Award verification upgrades
+      - Draft changes
+    - National-academy and award-significance search (10 August 2026)
+    - CV-to-source audit (10 August 2026)
+      - Publication-count reconciliation (10 August 2026)
