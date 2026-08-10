@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { targetedSearch } from "../api";
+import { targetedSearch, profileRef } from "../api";
 import type { PersonProfile, Source } from "../types";
 import { getHostname } from "../url";
 
@@ -148,7 +148,7 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
     return (
       <div style={{ display: "flex", gap: 0, marginBottom: 10, position: "relative" }}>
         {/* Year column */}
-        <div style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
+        <div className="timeline-year" style={{ width: 52, flexShrink: 0, paddingTop: 2 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: ev.year ? color : "var(--muted)" }}>
             {ev.period || "—"}
           </span>
@@ -201,8 +201,8 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
         
         // Concurrent multi-slot search (position + award)
         const [respPos, respAward] = await Promise.all([
-          targetedSearch(profile.name, "position", queryHint),
-          targetedSearch(profile.name, "award", queryHint)
+          targetedSearch(profileRef(profile), "position", queryHint),
+          targetedSearch(profileRef(profile), "award", queryHint)
         ]);
 
         // Merge sources and claims
@@ -251,7 +251,7 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
     return (
       <div id={`gap-card-${gap.startYear}-${gap.endYear}`} style={{ display: "flex", gap: 0, marginBottom: 10, position: "relative" }}>
         {/* Year range column */}
-        <div style={{ width: 52, flexShrink: 0, paddingTop: 4 }}>
+        <div className="timeline-year" style={{ width: 52, flexShrink: 0, paddingTop: 4 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: "var(--warning)" }}>
             {gap.startYear}–{gap.endYear}
           </span>

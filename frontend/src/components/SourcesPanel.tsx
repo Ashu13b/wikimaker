@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import type { PersonProfile, Source, Claim, NotabilityResult, UrlSuggestion } from "../types";
-import { addSource, addSourcePaste, deepCrawl, verifySource, rejectSource, getSession, targetedSearch, findResearcherIds, refreshPapers, fetchFromBrowser, suggestUrls, skipSuggestion } from "../api";
-import { normalizeUrl, getHostname } from "../url";
+import type { PersonProfile, Source, UrlSuggestion } from "../types";
+import { addSource, addSourcePaste, deepCrawl, getSession, findResearcherIds, refreshPapers, fetchFromBrowser, fetchBlockedSources, suggestUrls, skipSuggestion, profileRef } from "../api";
+import { normalizeUrl } from "../url";
 import { SourceCard } from "./SourceCard";
-import { FetchedByTag, RelevanceBadge, AuthorMatchBadge } from "./SourceCard";
 import { Expander } from "./WorkspaceCards";
 import BookmarkletCard from "./BookmarkletCard";
 import { ResearcherIdsStrip } from "./ProfileTab";
@@ -69,32 +68,45 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
 
-  const [verifyingUrls, setVerifyingUrls] = useState<Set<string>>(new Set());
-
   const [idsLoading, setIdsLoading] = useState(false);
   const [idsError, setIdsError] = useState<string | null>(null);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const [pipelineMsg, setPipelineMsg] = useState<string | null>(null);
 
+  // Wiki+ relay: auto-fill the paste form with the relayed page, then consume.
+  useEffect(() => {
+    if (!relayPending) return;
+    setPasteUrl(relayPending.url);
+    setPasteText(relayPending.text);
+    setExpandPaste(true);
+    onRelayConsumed?.();
+  }, [relayPending, onRelayConsumed]);
+
+  // Keep the sidebar Research operations card in sync with in-flight work.
+  useEffect(() => { onOperationStatusChange?.("suggester", suggestionsLoading); }, [suggestionsLoading]);
+  useEffect(() => { onOperationStatusChange?.("extractor", urlLoading || pasteLoading || browserFetchLoading); }, [urlLoading, pasteLoading, browserFetchLoading]);
+  useEffect(() => { onOperationStatusChange?.("crawler", crawlLoading); }, [crawlLoading]);
+  useEffect(() => { onOperationStatusChange?.("idSync", idsLoading || refreshingId !== null); }, [idsLoading, refreshingId]);
+
   async function loadSuggestions() {
     setSuggestionsLoading(true); setSuggestionsError(null);
     try {
-      const results = await suggestUrls(profile.name);
+      const results = await suggestUrls(profileRef(profile));
       setSuggestions(results);
       setSkipped(new Set());
     } catch (e) { setSuggestionsError(String(e)); }
     finally { setSuggestionsLoading(false); }
   }
 
-  useEffect(() => { loadSuggestions(); }, [profile.name]);
+  useEffect(() => { loadSuggestions(); }, [profileRef(profile)]);
 
   async function handleApproveSuggestion(url: string) {
     setUrlInput(url);
     setSkipped(s => new Set([...s, url])); // hide from queue immediately
-    setUrlLoading(true); setUrlError(null); setBlockedUrl(null); setPipelineMsg(null);
+    setUrlLoading(true); setUrlError(null); setBlockedUrl(null); setPipelineMsg(null); setSentToBrowser(false);
     try {
-      const resp = await addSource(profile.name, url);
+      const resp = await addSource(profileRef(profile), url);
       const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
       onProfileUpdate({
         ...profile,
@@ -124,9 +136,9 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
 
   async function handleAddUrl() {
     if (!urlInput.trim() || isDuplicate) return;
-    setUrlLoading(true); setUrlError(null); setBlockedUrl(null); setPipelineMsg(null);
+    setUrlLoading(true); setUrlError(null); setBlockedUrl(null); setPipelineMsg(null); setSentToBrowser(false);
     try {
-      const resp = await addSource(profile.name, urlInput.trim());
+      const resp = await addSource(profileRef(profile), urlInput.trim());
       const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
       onProfileUpdate({
         ...profile,
@@ -156,7 +168,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
     if (!pasteUrl.trim() || !pasteText.trim()) return;
     setPasteLoading(true); setPasteError(null);
     try {
-      const resp = await addSourcePaste(profile.name, pasteUrl.trim(), pasteText.trim());
+      const resp = await addSourcePaste(profileRef(profile), pasteUrl.trim(), pasteText.trim());
       onProfileUpdate({ ...profile, sources: [...profile.sources, resp.source], claims: [...profile.claims, ...resp.new_claims], notability: resp.notability });
       setPasteUrl(""); setPasteText(""); setBlockedUrl(null); setExpandPaste(false);
     } catch (e) { setPasteError(String(e)); }
@@ -169,8 +181,8 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
     const keywords = crawlKeywords.split(",").map(k => k.trim()).filter(Boolean);
     setCrawlLoading(true); setCrawlError(null); setCrawlResult(null);
     try {
-      const resp = await deepCrawl(profile.name, seeds, keywords);
-      const updated = await getSession(profile.name);
+      const resp = await deepCrawl(profileRef(profile), seeds, keywords);
+      const updated = await getSession(profileRef(profile));
       onProfileUpdate(updated);
       setCrawlResult(`Crawled ${resp.nodes_crawled} pages · ${resp.relevant_sources} relevant sources · ${resp.new_claims} new claims`);
       setCrawlSeeds(""); setCrawlKeywords("");
@@ -181,7 +193,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
   async function handleFetchFromBrowser() {
     setBrowserFetchLoading(true);
     try {
-      const resp = await fetchFromBrowser(profile.name);
+      const resp = await fetchFromBrowser(profileRef(profile));
       const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
       onProfileUpdate({
         ...profile,
@@ -196,10 +208,36 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
     finally { setBrowserFetchLoading(false); }
   }
 
+  async function handleAutoFetchBlocked() {
+    setBrowserFetchLoading(true); setUrlError(null); setPipelineMsg(null);
+    try {
+      const resp = await fetchBlockedSources(profileRef(profile));
+      if (resp.profile) {
+        onProfileUpdate({ ...resp.profile, notability: resp.notability ?? null });
+      } else {
+        const updated = await getSession(profileRef(profile));
+        onProfileUpdate(updated);
+      }
+      if (resp.walls.length > 0) {
+        await fetch("/browser/navigate", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: resp.walls[0] }),
+        });
+        if (!showBrowser && setShowBrowser) setShowBrowser(true);
+        setBlockedUrl(resp.walls[0]);
+        setSentToBrowser(true);
+        setUrlError(`Paused at a bot wall: ${resp.walls[0]} — solve it, then tap Import current page.`);
+      } else if (resp.fetched.length > 0) {
+        setPipelineMsg(`Auto-fetched ${resp.fetched.length} blocked source(s) via the browser.`);
+      }
+    } catch (e) { setUrlError(String(e)); }
+    finally { setBrowserFetchLoading(false); }
+  }
+
   async function handleFindIds() {
     setIdsLoading(true); setIdsError(null);
     try {
-      const resp = await findResearcherIds(profile.name);
+      const resp = await findResearcherIds(profileRef(profile));
       onProfileUpdate({ ...profile, researcher_ids: resp.researcher_ids, confirmed_ids: resp.confirmed_ids });
     } catch (e) { setIdsError(String(e)); }
     finally { setIdsLoading(false); }
@@ -208,7 +246,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
   async function handleRefreshPapers(idType: string, idValue: string, confirm?: boolean) {
     setRefreshingId(idType); setIdsError(null);
     try {
-      const resp = await refreshPapers(profile.name, idType, idValue, confirm);
+      const resp = await refreshPapers(profileRef(profile), idType, idValue, confirm);
       onProfileUpdate({
         ...profile,
         sources: resp.sources as PersonProfile["sources"],
@@ -238,6 +276,11 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
             <button onClick={handleFetchFromBrowser} disabled={browserFetchLoading} title="Load whatever page is currently open in the remote browser (port 7070) and add it as a source" style={{ fontSize: 12, background: "none", border: "1px solid #93c5fd", borderRadius: 6, padding: "3px 10px", cursor: "pointer", color: "#1d4ed8" }}>
               {browserFetchLoading ? "Importing…" : "Import current page"}
             </button>
+            {profile.sources.some(s => s.liveness === "blocked") && (
+              <button onClick={handleAutoFetchBlocked} disabled={browserFetchLoading} title="Walk every blocked source through the remote browser automatically; stops only at a real CAPTCHA" style={{ fontSize: 12, background: "none", border: "1px solid #f59e0b", borderRadius: 6, padding: "3px 10px", cursor: "pointer", color: "#92400e" }}>
+                {browserFetchLoading ? "Fetching…" : "Auto-fetch blocked"}
+              </button>
+            )}
             <button onClick={loadSuggestions} disabled={suggestionsLoading} style={{ fontSize: 12, background: "none", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 10px", cursor: "pointer", color: "var(--muted)" }}>
               {suggestionsLoading ? "Loading…" : "Refresh"}
             </button>
@@ -281,7 +324,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
 
             return (
               <div key={s.url} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", background: "var(--surface-dim, var(--bg))" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div className="suggestion-row" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <a href={s.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {s.title || s.url}
@@ -344,7 +387,7 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
                     <button onClick={async () => {
                       setSkipped(sk => new Set([...sk, s.url]));
                       try {
-                        await skipSuggestion(profile.name, s.url);
+                        await skipSuggestion(profileRef(profile), s.url);
                       } catch (e) {
                         console.error("Failed to skip suggestion:", e);
                       }
@@ -496,18 +539,10 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
                 key={s.url + i}
                 source={s}
                 sourceNumber={i + 1}
-                profileName={profile.name}
+                profileName={profileRef(profile)}
                 linkOpened={openedLinks.has(s.url)}
                 allClaims={profile.claims}
                 onLinkOpen={() => onLinkOpen(s.url)}
-                onVerifyingChange={(v) => {
-                  setVerifyingUrls(prev => {
-                    const next = new Set(prev);
-                    if (v) next.add(s.url);
-                    else next.delete(s.url);
-                    return next;
-                  });
-                }}
                 onVerified={(verified, newClaims, missingSlots) => {
                   const sources = profile.sources.map(src => src.url === s.url ? { ...src, human_verified: verified } : src);
                   const freshClaims = newClaims ? newClaims.filter(c => !profile.claims.some(ex => ex.source_url === c.source_url && ex.text === c.text)) : [];
@@ -519,6 +554,13 @@ export function SourcesPanel({ profile, openedLinks, onLinkOpen, onProfileUpdate
                   });
                   // New profile_links may have been extracted from this source — refresh queue
                   if (verified) loadSuggestions();
+                }}
+                onAssessed={(updatedSource, notability) => {
+                  onProfileUpdate({
+                    ...profile,
+                    sources: profile.sources.map(src => src.url === updatedSource.url ? updatedSource : src),
+                    notability,
+                  });
                 }}
                 onRejected={result => {
                   onProfileUpdate({

@@ -58,9 +58,20 @@ _NOISE_PATTERNS = (
 _ROLE_WORDS = ("scientist", "director", "head", "professor", "researcher", "fellow", "joined", "promoted", "investigator")
 _CAREER_ACTIVITY_WORDS = ("research stay", "research support", "associateship")
 _INSTITUTION_WORDS = ("institute", "university", "college", "centre", "center", "division", "department", "icar", "cirb")
-_PUBLICATION_WORDS = ("authored", "co-authored", "coauthored", "co-editor", "coeditor", "published", "publication")
+_PUBLICATION_WORDS = ("authored", "co-authored", "coauthored", "co-editor", "coeditor", "published", "publication", "first author", "paper", "study")
 _BIRTH_SUBJECT_NOISE = ("calf", "buffalo", "bull", "cow", "animal", "clone", "kg", "delivery")
 _PRIMARY_OR_PROFILE_DOMAINS = ("icar.org.in", "icar.gov.in", "cirb.res.in", "orcid.org", "doi.org", "ncbi.nlm.nih.gov", "pubmed.ncbi.nlm.nih.gov", "satishserial.com", "acspublisher.com", "intechopen.com")
+
+# Action verbs that signal a substantive research/achievement statement rather
+# than an extraction fragment. Substring match, so "co-discover" covers both
+# "co-discovered" and "co-discoverer".
+_RESEARCH_ACTIONS = (
+    "led", "pioneered", "developed", "produced", "reported", "recognized",
+    "principal investigator", "completed", "featured", "served", "submitted",
+    "co-discover", "research", "achievement", "project",
+    "found", "described", "demonstrated", "showed", "noted", "studied",
+    "assessed", "evaluated", "examined", "weighed", "identified", "compared",
+)
 _INDEPENDENT_NEWS_DOMAINS = (
     "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "nytimes.com",
     "theguardian.com", "washingtonpost.com", "timesofindia.indiatimes.com",
@@ -131,7 +142,12 @@ def _claim_exclusion(claim: Claim, source: Source | None) -> str | None:
     if text.endswith(("&", "Dr", "Dr.", "fl")):
         return "claim_looks_truncated"
     if claim.field in {"birth_date", "birth_place"}:
-        if any(word in lower for word in _BIRTH_SUBJECT_NOISE):
+        # The subject is a person, but extraction sometimes tags a cloned-calf
+        # "birth" with the person's own birth_date field. Scan the claim text
+        # AND the source title so a clean-text claim sourced to a cloned-calf
+        # article ("Born on December 11, 2015") is still caught.
+        birth_context = lower + " " + ((source.title or "") if source else "").lower()
+        if any(word in birth_context for word in _BIRTH_SUBJECT_NOISE):
             return "claim_appears_to_describe_animal"
         if claim.field == "birth_date" and not re.search(r"\b(?:18|19|20)\d{2}\b", text):
             return "birth_claim_has_no_year"
@@ -146,8 +162,7 @@ def _claim_exclusion(claim: Claim, source: Source | None) -> str | None:
     if claim.field == "known_for":
         if len(text) < 35:
             return "research_claim_too_short"
-        actions = ("led", "pioneered", "developed", "produced", "reported", "recognized", "principal investigator", "completed", "featured", "served", "submitted", "co-discoverer", "research", "achievement", "project")
-        if not any(word in lower for word in actions):
+        if not any(word in lower for word in _RESEARCH_ACTIONS):
             return "research_claim_has_no_subject_action"
     return None
 
@@ -194,10 +209,37 @@ def audit_profile(profile: PersonProfile) -> DraftAudit:
             message="Fewer than two independent secondary sources support included claims; AfC review expects independent coverage. Verify and approve independent news reports before drafting.",
             count=len(independent_hosts),
         ))
+    significant_origins = {
+        (item.source.editorial_origin or _host(item.source.url)).strip().lower()
+        for item in evidence
+        if _is_independent_secondary(item.source)
+        and item.source.coverage_depth == "significant"
+    }
+    significant_origins.discard("")
+    if len(significant_origins) < 2:
+        warnings.append(DraftIssue(
+            code="significant_coverage_not_demonstrated",
+            message="Fewer than two editorial origins have been human-assessed as significant person-focused coverage; independent event reports may not establish GNG.",
+            count=len(significant_origins),
+        ))
     warnings.append(DraftIssue(
         code="academic_notability_requires_review",
         message="Independent project coverage does not by itself prove the academic-notability guideline; a human must assess research impact or another criterion.",
     ))
+    # Separate authored/primary evidence from independent notability evidence:
+    # notability-bearing claims (known_for / award) resting only on
+    # non-independent sources are a coverage risk even when notability is shown
+    # elsewhere. Warning only — the claim stays in the draft.
+    achievement_on_primary = [
+        item for item in evidence
+        if item.claim.field in {"known_for", "achievement", "award"} and not _is_independent_secondary(item.source)
+    ]
+    if achievement_on_primary:
+        warnings.append(DraftIssue(
+            code="achievement_claim_not_independent",
+            message="Achievement claims (known_for/award) rest only on non-independent sources; AfC notability expects independent secondary coverage for these.",
+            count=len(achievement_on_primary),
+        ))
     if excluded:
         warnings.append(DraftIssue(
             code="claims_excluded",
@@ -226,9 +268,72 @@ def _clean(value: str) -> str:
     return " ".join(value.split()).replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _title_clean(value: str) -> str:
+    """Strip fetch-time junk from page titles: '...' truncation and ' | Site' suffixes.
+
+    Page titles captured by fetchers often end with an ellipsis (truncated) or a
+    '| publisher' suffix; a reviewer sees those as sloppy citations.
+    """
+    title = " ".join(value.split())
+    # 'Telomerase ... | IntechOpen' → drop the short suffix after ' | '
+    if " | " in title:
+        head, _, tail = title.rpartition(" | ")
+        if len(tail) < 40 and " " not in tail.strip():
+            title = head
+    had_ellipsis = title.endswith(("...", "…"))
+    if had_ellipsis:
+        title = title[: -len("...")] if title.endswith("...") else title[:-1]
+    if had_ellipsis:
+        # Truncation often leaves a dangling preposition: 'Central Institute for ...'
+        title = re.sub(r"\s+(?:for|and|of|at|the|in|by|on|with|from|to)\s*$", "", title)
+    if title.endswith(".") and not re.search(r"[A-Z]\.$", title):
+        title = title[:-1]
+    return title.strip().rstrip(",")
+
+
+_MONTHS = ["", "January", "February", "March", "April", "May", "June",
+           "July", "August", "September", "October", "November", "December"]
+_MONTH_NUM = {name.lower(): i for i, name in enumerate(_MONTHS) if i}
+
+
+def _format_date(value: str) -> str:
+    """Normalize source dates to the dmy style Wikipedia bios expect."""
+    v = value.strip()
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", v)
+    if m:
+        month = int(m.group(2))
+        if 1 <= month <= 12:
+            return f"{int(m.group(3))} {_MONTHS[month]} {m.group(1)}"
+    m = re.fullmatch(r"([A-Za-z]+) (\d{1,2}), (\d{4})", v)
+    if m and m.group(1).lower() in _MONTH_NUM:
+        return f"{int(m.group(2))} {_MONTH_NUM[m.group(1).lower()]} {m.group(3)}"
+    return v
+
+
+def _format_birth_date(value: str) -> str:
+    """Full dates become {{birth date and age}}, partial values pass through."""
+    m = re.fullmatch(r"([A-Za-z]+) (\d{1,2}), (\d{4})", value.strip())
+    if m and m.group(1).lower() in _MONTH_NUM:
+        return f"{{{{birth date and age|{m.group(3)}|{_MONTH_NUM[m.group(1).lower()]}|{int(m.group(2))}}}}}"
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", value.strip())
+    if m:
+        return f"{{{{birth date and age|{m.group(1)}|{int(m.group(2))}|{int(m.group(3))}}}}}"
+    return _format_date(value)
+
+
 def _display_name(profile: PersonProfile) -> str:
     value = profile.full_name or profile.name
     return _clean(re.sub(r"^(?:Dr\.?|Prof\.?)\s+", "", value, flags=re.I))
+
+
+def _short_description(profile: PersonProfile) -> str:
+    nationality = _clean(profile.nationality or "")
+    if profile.field:
+        focus = re.split(r"\s*(?:&|\band\b|,)\s*", profile.field, maxsplit=1, flags=re.I)[0]
+        value = f"{nationality} {focus.lower()} researcher".strip()
+    else:
+        value = f"{nationality} scientist".strip()
+    return value[:1].upper() + value[1:]
 
 
 def _cite_value(value: str) -> str:
@@ -239,23 +344,36 @@ def _ref_name(url: str) -> str:
     return "src-" + hashlib.sha1(normalize_url(url).encode()).hexdigest()[:10]
 
 
+def _archive_date(archive_url: str) -> str | None:
+    """Extract the snapshot date from a Wayback URL: /web/YYYYMMDDHHMMSS/."""
+    match = re.search(r"/web/(\d{4})(\d{2})(\d{2})\d{6}/", archive_url)
+    if not match:
+        return None
+    year, month, day = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    if not 1 <= month <= 12:
+        return None
+    return f"{day} {_MONTHS[month]} {year}"
+
+
 def _citation(source: Source, used: set[str]) -> str:
     name = _ref_name(source.url)
     if name in used:
         return f'<ref name="{name}" />'
     used.add(name)
-    cite_url = source.archive_url or source.url
     fields = [
         "{{cite web",
-        f"url={_cite_value(cite_url)}",
-        f"title={_cite_value(source.title or source.url)}",
+        f"url={_cite_value(source.url)}",
+        f"title={_cite_value(_title_clean(source.title or source.url))}",
     ]
     if source.publisher:
         fields.append(f"website={_cite_value(source.publisher)}")
     if source.date:
-        fields.append(f"date={_cite_value(source.date)}")
+        fields.append(f"date={_cite_value(_format_date(source.date))}")
     if source.archive_url:
         fields.append(f"archive-url={_cite_value(source.archive_url)}")
+        archive_date = _archive_date(source.archive_url)
+        if archive_date:
+            fields.append(f"archive-date={_cite_value(archive_date)}")
     return f'<ref name="{name}">' + "|".join(fields) + "}}</ref>"
 
 
@@ -270,7 +388,7 @@ def _claim_text(item: DraftEvidence) -> str:
 
 def _item_year(item: DraftEvidence) -> int | None:
     """Return the first explicit year attached to a claim or its source."""
-    values = (item.claim.date_context, item.source.date, item.claim.draft_text, item.claim.text)
+    values = (item.claim.date_context, item.claim.draft_text, item.claim.text, item.source.date)
     for value in values:
         match = re.search(r"\b(?:18|19|20)\d{2}\b", value or "")
         if match:
@@ -284,6 +402,39 @@ def _render_items(items: list[DraftEvidence], used_refs: set[str], limit: int | 
     if bulleted:
         return [f"* {line}" for line in rendered]
     return [" ".join(rendered)] if rendered else []
+
+
+def _infobox(profile: PersonProfile, audit: DraftAudit) -> str:
+    """Build an infobox only from structured values with approved evidence.
+
+    A structured value is not enough by itself: the corresponding field must
+    also have draft-approved evidence. This keeps a removed private or weakly
+    sourced fact from leaking back into the AfC through the infobox.
+    """
+    evidenced_fields = {item.claim.field for item in audit.evidence}
+    rows = [f"| name = {_display_name(profile)}"]
+    if profile.birth_date and "birth_date" in evidenced_fields:
+        rows.append(f"| birth_date = {_format_birth_date(profile.birth_date)}")
+    if profile.birth_place and "birth_place" in evidenced_fields:
+        rows.append(f"| birth_place = {_clean(profile.birth_place)}")
+    if profile.nationality and "nationality" in evidenced_fields:
+        rows.append(f"| nationality = {_clean(profile.nationality)}")
+    if profile.field and "field" in evidenced_fields:
+        rows.append(f"| field = {_clean(profile.field)}")
+    if profile.affiliation and evidenced_fields.intersection({"affiliation", "position", "career"}):
+        rows.append(f"| workplaces = {_clean(profile.affiliation)}")
+    if profile.known_for and "known_for" in evidenced_fields:
+        rows.append(f"| known_for = {_clean(profile.known_for)}")
+    if len(rows) == 1:
+        return ""
+    return "{{Infobox scientist\n" + "\n".join(rows) + "\n}}"
+
+
+def _defaultsort(name: str) -> str:
+    parts = [p for p in name.replace("Dr.", "").split() if p]
+    if len(parts) < 2:
+        return name
+    return f"{parts[-1]}, {' '.join(parts[:-1])}"
 
 
 def render_draft(profile: PersonProfile, audit: DraftAudit | None = None) -> str:
@@ -321,18 +472,27 @@ def render_draft(profile: PersonProfile, audit: DraftAudit | None = None) -> str
         lead_parts.append(f"{_claim_text(position_item)}{_citation(position_item.source, used_refs)}.")
     elif affiliation_item:
         lead_parts.append(f"{_claim_text(affiliation_item)}{_citation(affiliation_item.source, used_refs)}.")
+    known_item = next(iter(by_field.get("known_for", [])), None)
+    if known_item:
+        lead_parts.append(f"{_claim_text(known_item)}{_citation(known_item.source, used_refs)}.")
+    award_item = next(iter(by_field.get("award", [])), None)
+    if award_item:
+        lead_parts.append(f"{_claim_text(award_item)}{_citation(award_item.source, used_refs)}.")
 
     lines = [
         "{{Draft article}}",
-        "{{Short description|Animal cloning researcher}}",
+        f"{{{{Short description|{_short_description(profile)}}}}}",
         "",
-        *lead_parts,
     ]
+    infobox = _infobox(profile, audit)
+    if infobox:
+        lines.extend([infobox, ""])
+    lines.extend(lead_parts)
 
     sections = (
         ("Education", ("birth_date", "birth_place", "education"), None, False),
         ("Career", ("career", "affiliation", "position"), None, False),
-        ("Research", ("known_for",), 12, False),
+        ("Research", ("known_for", "achievement"), 20, False),
         ("Selected publications", ("publication",), 10, True),
         ("Awards and recognition", ("award",), None, False),
     )
@@ -340,8 +500,11 @@ def render_draft(profile: PersonProfile, audit: DraftAudit | None = None) -> str
         items = _items_for(audit, fields)
         if title == "Career" and position_item is not None:
             items = [item for item in items if item is not position_item]
-        # Claims already represented in the lead may still appear in Career; the
-        # repeated named ref keeps that repetition auditable during human review.
+        if title == "Research" and known_item is not None:
+            # The lead's known_for sentence must not repeat at the top of Research.
+            items = [item for item in items if item is not known_item]
+        if title == "Awards and recognition" and award_item is not None:
+            items = [item for item in items if item is not award_item]
         if not items:
             continue
         if title == "Selected publications":
@@ -350,5 +513,6 @@ def render_draft(profile: PersonProfile, audit: DraftAudit | None = None) -> str
             items.sort(key=lambda item: _item_year(item) or 9999)
         lines.extend(["", f"=={title}==", *_render_items(items, used_refs, limit, bulleted)])
 
-    lines.extend(["", "==References==", "{{reflist}}", "", "[[Category:Living people]]"])
+    lines.extend(["", "==References==", "{{reflist}}", "", "{{Authority control}}",
+                  f"{{{{DEFAULTSORT:{_defaultsort(name)}}}}}", "[[Category:Living people]]"])
     return "\n".join(lines).strip() + "\n"

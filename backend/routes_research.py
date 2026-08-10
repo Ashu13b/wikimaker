@@ -1,16 +1,16 @@
-"""FastAPI routes for the wikimaker API."""
+"""Research, source, and claim routes."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from . import store
+
+from . import pipelines
 from .schemas import (
     IdentifyRequest, ResearchRequest, AddSourceRequest, AddDocumentFact,
     AddSourcedClaimRequest, VerifyClaimRequest, AddSourcePaste, CrawlRequest,
-    TargetedSearchRequest, DraftRequest, FindIdsRequest, RefreshPapersRequest,
+    TargetedSearchRequest, FindIdsRequest, RefreshPapersRequest, AssessSourceRequest,
 )
-from . import store
-from . import pipelines
-from .routes_sessions import sessions_router, resume_session  # noqa: F401
 
 from engine.models import PersonProfile, Claim, VerificationState
 from engine.researcher import (
@@ -22,34 +22,115 @@ from engine.notability import score_notability
 from engine.extractor import extract_claims, find_missing_slots
 from engine.relevance import flag_sources
 from engine.crawler import crawl
-from engine.researcher_ids import (
-    extract_ids_from_sources, is_sd_article_url, is_sd_author_url,
-)
+from engine.researcher_ids import extract_ids_from_sources, is_sd_article_url, is_sd_author_url
 from engine.provenance import normalize_url
-from wiki.wiki_check import check_existing_page, draft_generation_allowed
-from wiki.draft import audit_profile, render_draft
+from wiki.wiki_check import check_existing_page
 
-router = APIRouter()
-router.include_router(sessions_router)
+research_router = APIRouter()
 
-# Endpoints ──────────────────────────────────────────────────────────────────────────
-
-@router.post("/identify")
+@research_router.post("/identify")
 def identify(req: IdentifyRequest) -> dict:
-    """Quick web search preview to confirm we're researching the right person."""
-    from engine.researcher import _google_cse, _duckduckgo_html
-    sources = _google_cse(req.name, req.field, req.affiliation) or _duckduckgo_html(req.name, req.field, req.affiliation)
+    """Preview identity clues to confirm the right person.
+
+    Wikipedia/Wikidata candidates carry stable identifiers (wikidata_id,
+    wikipedia_url) the user can confirm into the session; generic web snippets
+    are corroborating clues only.
+    """
+    hints = " ".join(x for x in (req.field, req.affiliation) if x)
+    identity = []
+    try:
+        from engine.identifier import find_candidates
+        identity = find_candidates(req.name, hints)
+    except Exception:
+        identity = []
+
+    web = []
+    try:
+        from engine.researcher import _google_cse, _duckduckgo_html
+        web = _google_cse(req.name, req.field, req.affiliation) or _duckduckgo_html(req.name, req.field, req.affiliation) or []
+    except Exception:
+        web = []
+
     results = [
-        {"title": s.title, "url": s.url, "snippet": s.snippet, "publisher": s.publisher}
-        for s in sources[:5]
+        {
+            "kind": "identity",
+            "title": c.name,
+            "url": c.wikipedia_url or f"https://www.wikidata.org/wiki/{c.wikidata_id}",
+            "snippet": c.bio_snippet or "",
+            "publisher": "Wikipedia/Wikidata",
+            "wikidata_id": c.wikidata_id,
+            "wikipedia_url": c.wikipedia_url,
+            "photo_url": c.photo_url,
+            "birth_year": c.birth_year,
+            "nationality": c.nationality,
+            "field": c.field,
+            "affiliation": c.affiliation,
+        }
+        for c in identity
     ]
-    return {"results": results}
+    results += [
+        {"kind": "web", "title": s.title, "url": s.url, "snippet": s.snippet, "publisher": s.publisher}
+        for s in web[:5]
+    ]
+
+    # Show the Wikimedia routing outcome up front so the user knows before
+    # starting whether this will be new-article or existing-article/draft mode.
+    # Prefer the confirmed identity match's article title when one is offered.
+    wiki_status = None
+    try:
+        from wiki.wiki_check import check_existing_page, check_title_for
+        title = check_title_for(req.name, identity[0].wikipedia_url) if identity and identity[0].wikipedia_url else req.name
+        wiki_status = check_existing_page(title).model_dump()
+    except Exception:
+        wiki_status = None
+
+    return {"results": results, "wiki_status": wiki_status}
 
 
-@router.post("/research/start")
+@research_router.post("/research/start")
 def research_start(req: ResearchRequest) -> dict:
-    """Initialize session, run wiki check, fetch + classify sources, score notability."""
-    wiki_status = check_existing_page(req.name)
+    """Initialize session, run wiki check, fetch + classify sources, score notability.
+
+    Same-identity collision policy: if a session with the same display name AND a
+    matching identity hint already exists (wikidata_id equal, or neither has one),
+    it is resumed instead of creating a duplicate. Same name with a different
+    identity hint creates a distinct session — same-named people never collide.
+    """
+    # ── Identity-collision check (in-memory first, then disk) ────────────────
+    existing = next(
+        (p for p in store._sessions.values()
+         if store._identity_matches({"name": p.name, "wikidata_id": p.wikidata_id},
+                                    req.name, req.wikidata_id)),
+        None)
+    if existing is None:
+        hit = store._find_session_on_disk(
+            lambda d: store._identity_matches(d, req.name, req.wikidata_id))
+        if hit is not None:
+            data, path = hit
+            profile = PersonProfile(**data["profile"])
+            existing = store._activate_session(
+                profile, data.get("wiki_status", {"status": "clear", "url": None, "note": None}))
+            sid = store._ensure_session_id(existing)
+            store._save_session(sid)
+            id_path = store._session_path(sid)
+            if path != id_path and id_path.exists():
+                path.unlink()  # drop the legacy name-based file now migrated
+    resumed = existing is not None
+
+    if existing is not None:
+        sid = store._ensure_session_id(existing)
+        return {
+            "wiki_status": store._wiki_statuses.get(sid),
+            "notability": existing.notability.model_dump() if existing.notability else None,
+            "profile": existing.model_dump(),
+            "resumed": resumed,
+        }
+
+    # A confirmed wikipedia_url routes precisely: the article's real title may
+    # differ from the typed name (e.g. a parenthetical disambiguator), so check
+    # that title directly instead of only the raw name.
+    from wiki.wiki_check import check_title_for
+    wiki_status = check_existing_page(check_title_for(req.name, req.wikipedia_url))
 
     # Never choose a Wikidata image from a name alone: same-name people are
     # common. Enrich from Wikidata only when the user confirmed a specific QID.
@@ -60,6 +141,7 @@ def research_start(req: ResearchRequest) -> dict:
 
     profile = PersonProfile(
         name=req.name,
+        session_id=store._new_session_id(req.name),
         wikidata_id=req.wikidata_id,
         wikipedia_url=req.wikipedia_url,
         photo_url=photo_url,
@@ -95,18 +177,20 @@ def research_start(req: ResearchRequest) -> dict:
     profile.notability = score_notability(req.name, [])
     profile.missing_slots = find_missing_slots(profile, [])
 
-    store._sessions[req.name] = profile
-    store._wiki_statuses[req.name] = wiki_status.model_dump()
-    store._save_session(req.name)
+    sid = store._ensure_session_id(profile)
+    with store._lock:
+        store._sessions[sid] = profile
+        store._wiki_statuses[sid] = wiki_status.model_dump()
+    store._save_session(sid)
 
     return {
         "wiki_status": wiki_status.model_dump(),
         "notability": profile.notability.model_dump(),
         "profile": profile.model_dump(),
+        "resumed": False,
     }
 
-
-@router.post("/research/add-source")
+@research_router.post("/research/add-source")
 def add_source(req: AddSourceRequest) -> dict:
     """User pastes a URL — fetch it, classify it, extract claims from it.
 
@@ -147,7 +231,7 @@ def add_source(req: AddSourceRequest) -> dict:
 
     profile.sources.append(source)
     # Claims are extracted on confirmation, not on add
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     # If blocked, push to human browser_server if it's running
@@ -166,7 +250,7 @@ def add_source(req: AddSourceRequest) -> dict:
     }
 
 
-@router.post("/research/add-document-fact")
+@research_router.post("/research/add-document-fact")
 def add_document_fact(req: AddDocumentFact) -> dict:
     """User types a fact from a document — no URL, timeline-only, marked unsourced."""
     profile = store._get_profile(req.profile_name)
@@ -182,7 +266,7 @@ def add_document_fact(req: AddDocumentFact) -> dict:
     return {"claim": claim.model_dump()}
 
 
-@router.post("/research/add-sourced-claim")
+@research_router.post("/research/add-sourced-claim")
 def add_sourced_claim(req: AddSourcedClaimRequest) -> dict:
     """Bind a fact the user read in a source to that source's URL.
 
@@ -206,7 +290,7 @@ def add_sourced_claim(req: AddSourcedClaimRequest) -> dict:
     claim = evaluate_claim_trust(claim, source, profile)
     profile.claims.append(claim)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
     return {
         "claim": claim.model_dump(),
@@ -215,7 +299,7 @@ def add_sourced_claim(req: AddSourcedClaimRequest) -> dict:
     }
 
 
-@router.post("/research/verify-claim")
+@research_router.post("/research/verify-claim")
 def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     profile = store._get_profile(name)
     if req.claim_index >= len(profile.claims):
@@ -251,7 +335,7 @@ def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     return {"claim": claim.model_dump()}
 
 
-@router.post("/research/add-source-paste")
+@research_router.post("/research/add-source-paste")
 def add_source_paste(req: AddSourcePaste) -> dict:
     """User pasted text from a blocked page (or typed from a screenshot/PDF)."""
     profile = store._get_profile(req.profile_name)
@@ -262,7 +346,7 @@ def add_source_paste(req: AddSourcePaste) -> dict:
     new_claims = extract_claims(profile, [source], store.llm())
     profile.sources.append(source)
     profile.claims.extend(new_claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
     return {
         "source": source.model_dump(),
@@ -271,7 +355,7 @@ def add_source_paste(req: AddSourcePaste) -> dict:
     }
 
 
-@router.post("/research/crawl")
+@research_router.post("/research/crawl")
 def deep_crawl(req: CrawlRequest) -> dict:
     """Start from seed URLs and crawl outward — follow links to find more sources."""
     profile = store._get_profile(req.profile_name)
@@ -302,7 +386,7 @@ def deep_crawl(req: CrawlRequest) -> dict:
 
     new_claims = []
     profile.sources.extend(relevant)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {
@@ -314,7 +398,7 @@ def deep_crawl(req: CrawlRequest) -> dict:
     }
 
 
-@router.post("/research/targeted-search")
+@research_router.post("/research/targeted-search")
 def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     """Search for sources likely to fill a specific Wikipedia slot."""
     profile = store._get_profile(req.profile_name)
@@ -339,11 +423,12 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     new_sources = [
         s for s in new_sources
         if s.reliability.value not in ("self_published", "unreliable")
+        and s.relevance_flag == "relevant"
     ]
     new_claims = []
     profile.sources.extend(new_sources)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {
@@ -354,7 +439,7 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     }
 
 
-@router.post("/research/auto-enrich")
+@research_router.post("/research/auto-enrich")
 def auto_enrich_endpoint(body: dict) -> dict:
     """Autonomous discovery loop — inspects missing slots and recursively iterates search queries."""
     profile_name = body["profile_name"]
@@ -398,7 +483,7 @@ def auto_enrich_endpoint(body: dict) -> dict:
             added_claims.extend(new_claims)
 
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {
@@ -410,47 +495,35 @@ def auto_enrich_endpoint(body: dict) -> dict:
     }
 
 
-@router.get("/draft/audit/{name}")
-def draft_audit(name: str) -> dict:
-    """Return server-computed draft readiness without generating text."""
-    audit = audit_profile(store._get_profile(name))
-    return {"audit": audit.model_dump(exclude={"evidence"})}
+@research_router.post("/research/article-proposal")
+def article_proposal(body: dict) -> dict:
+    """Existing-article mode: compare confirmed claims against the live article
+    and emit a structured edit proposal (covered vs candidate additions)."""
+    from wiki.article_compare import build_article_proposal, fetch_article_text, title_from_url
 
+    profile = store._get_profile(body["profile_name"])
+    status = store._wiki_statuses.get(profile.name, {})
+    if status.get("status") != "exists":
+        raise HTTPException(400, "Article comparison is only available when an article already exists.")
+    url = status.get("url")
+    if not url:
+        raise HTTPException(400, "No article URL recorded for this session.")
 
-@router.post("/draft")
-def generate_draft(req: DraftRequest) -> dict:
-    """Generate and persist a deterministic draft from the server-owned session."""
-    profile = store._get_profile(req.profile_name)
-    wiki_status = store._wiki_statuses.get(profile.name, {"status": "clear"})
-    status = wiki_status.get("status", "clear")
-    if not draft_generation_allowed(status):
-        if status == "exists":
-            detail = "An article already exists. Prepare improvements instead of a duplicate draft."
-        else:
-            detail = "A prior deletion must be reviewed before generating another draft."
-        raise HTTPException(409, detail)
+    title = title_from_url(url)
+    try:
+        article_text = fetch_article_text(title)
+    except Exception as exc:
+        raise HTTPException(502, f"Could not fetch the live article: {exc}")
 
-    audit = audit_profile(profile)
-    if not audit.ready:
-        raise HTTPException(422, {
-            "message": "The evidence audit found blockers.",
-            "audit": audit.model_dump(exclude={"evidence"}),
-        })
+    proposal = build_article_proposal(profile, title, url, article_text)
+    return {"proposal": proposal.model_dump()}
 
-    profile.wikitext_en = render_draft(profile, audit)
-    profile.wikitext_hi = None
-    store._save_session(profile.name)
-    return {
-        "profile": profile.model_dump(),
-        "audit": audit.model_dump(exclude={"evidence"}),
-    }
-
-@router.get("/session/{name}")
+@research_router.get("/session/{name}")
 def get_session(name: str) -> dict:
     return {"profile": store._get_profile(name).model_dump()}
 
 
-@router.post("/research/source/verify")
+@research_router.post("/research/source/verify")
 def verify_source(body: dict) -> dict:
     """Mark a source as human-verified. On verify, extract claims from it."""
     profile = store._get_profile(body["profile_name"])
@@ -480,7 +553,7 @@ def verify_source(body: dict) -> dict:
         else:
             new_claims = existing_for_url
 
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
     return {
         "ok": True,
@@ -490,7 +563,7 @@ def verify_source(body: dict) -> dict:
     }
 
 
-@router.post("/research/source/reject")
+@research_router.post("/research/source/reject")
 def reject_source(body: dict) -> dict:
     """Remove a source and all claims extracted from it."""
     profile = store._get_profile(body["profile_name"])
@@ -498,7 +571,7 @@ def reject_source(body: dict) -> dict:
     profile.sources = [s for s in profile.sources if s.url != url]
     removed = [c for c in profile.claims if c.source_url == url]
     profile.claims = [c for c in profile.claims if c.source_url != url]
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
     return {
         "removed_claim_count": len(removed),
@@ -508,7 +581,7 @@ def reject_source(body: dict) -> dict:
     }
 
 
-@router.post("/research/skip-suggestion")
+@research_router.post("/research/skip-suggestion")
 def skip_suggestion(body: dict) -> dict:
     """Record a suggestion as skipped so discovery stops re-offering it."""
     profile = store._get_profile(body["profile_name"])
@@ -519,54 +592,7 @@ def skip_suggestion(body: dict) -> dict:
     return {"ok": True}
 
 
-@router.get("/sessions")
-def list_sessions() -> dict:
-    """List all saved research sessions from disk."""
-    sessions = []
-    for path in sorted(store.SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
-        data = store._load_session_file(path)
-        if not data:
-            continue
-        profile = data.get("profile", {})
-        notability = profile.get("notability") or {}
-        sessions.append({
-            "name": profile.get("name", path.stem.replace("_", " ")),
-            "field": profile.get("field"),
-            "affiliation": profile.get("affiliation"),
-            "photo_url": profile.get("photo_url"),
-            "source_count": len(profile.get("sources", [])),
-            "claim_count": len(profile.get("claims", [])),
-            "notability_label": notability.get("label", "Unknown"),
-            "notability_score": notability.get("score", 0),
-            "saved_at": data.get("saved_at"),
-            "file": path.name,
-        })
-    return {"sessions": sessions}
-
-
-@router.delete("/sessions/{filename}")
-def delete_session(filename: str) -> dict:
-    """Delete a saved session file and remove from in-memory cache."""
-    if "/" in filename or "\\" in filename or not filename.endswith(".json"):
-        raise HTTPException(400, "Invalid filename")
-    path = store.SESSIONS_DIR / filename
-    if not path.exists():
-        raise HTTPException(404, f"Session file not found: {filename}")
-    # Derive person name from file to evict in-memory session
-    data = store._load_session_file(path)
-    if data:
-        person_name = data.get("profile", {}).get("name")
-        if person_name and person_name in store._sessions:
-            del store._sessions[person_name]
-        if person_name and person_name in store._wiki_statuses:
-            del store._wiki_statuses[person_name]
-    path.unlink()
-    return {"deleted": filename}
-
-
-
-
-@router.post("/research/find-researcher-ids")
+@research_router.post("/research/find-researcher-ids")
 def find_researcher_ids_endpoint(req: FindIdsRequest) -> dict:
     """Search for ORCID, Google Scholar, Scopus, ResearchGate IDs and validate ORCID."""
     from engine.researcher_ids import search_researcher_ids, validate_orcid
@@ -591,7 +617,7 @@ def find_researcher_ids_endpoint(req: FindIdsRequest) -> dict:
     }
 
 
-@router.post("/research/refresh-papers")
+@research_router.post("/research/refresh-papers")
 def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     """Re-fetch publications from ORCID or Semantic Scholar for a confirmed ID."""
     from engine.researcher_ids import fetch_orcid_works, fetch_s2_author_papers, validate_orcid
@@ -620,7 +646,7 @@ def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     profile.sources.extend(new_sources)
     profile.claims.extend(new_claims)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {
@@ -634,7 +660,7 @@ def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     }
 
 
-@router.post("/research/fetch-from-browser")
+@research_router.post("/research/fetch-from-browser")
 def fetch_from_browser(body: dict) -> dict:
     """Pull the current page from browser_server and add it as a source."""
     profile = store._get_profile(body["profile_name"])
@@ -661,7 +687,7 @@ def fetch_from_browser(body: dict) -> dict:
     store._check_doi_sources([source], profile.name, profile.affiliation or "")
 
     profile.sources.append(source)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {
@@ -675,12 +701,83 @@ def fetch_from_browser(body: dict) -> dict:
     }
 
 
-@router.post("/research/suggest")
+@research_router.post("/research/fetch-blocked")
+def fetch_blocked(body: dict) -> dict:
+    """Auto-fetch blocked sources through the remote browser.
+
+    Walks sources whose liveness is 'blocked', navigating the companion browser
+    to each and capturing the rendered page. Stops at the first bot wall so the
+    human can solve it in the companion browser, then resume. Playwright does
+    the navigation and capture; a genuine CAPTCHA is the only thing that pauses.
+    """
+    profile = store._get_profile(body["profile_name"])
+    try:
+        from browser_server import _dispatch, _running, looks_like_wall
+        if not _running:
+            raise HTTPException(503, "Remote browser is not running — open the companion browser first.")
+    except ImportError:
+        raise HTTPException(503, "Remote browser is not available")
+
+    targets = [s for s in profile.sources if s.liveness == "blocked"]
+    fetched, walls = [], []
+    for source in targets:
+        _dispatch("navigate", url=source.url)
+        data = _dispatch("content")
+        text = (data.get("text") or "").strip()
+        if len(text) < 200 or looks_like_wall(text):
+            walls.append(source.url)
+            break
+        source.snippet = text[:400]
+        source.liveness = "alive"
+        source.fetched_by = "browser"
+        [source] = classify_sources([source], store.llm())
+        flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
+        store._check_doi_sources([source], profile.name, profile.affiliation or "")
+        fetched.append(source.url)
+
+    store._save_session(profile.name)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
+    return {
+        "fetched": fetched,
+        "walls": walls,
+        "profile": profile.model_dump(),
+        "notability": profile.notability.model_dump() if profile.notability else None,
+    }
+
+
+@research_router.post("/research/suggest")
 def suggest_urls(body: dict) -> dict:
     """Return a ranked queue of URL suggestions based on what the profile is missing."""
     from engine.suggester import suggest_next_urls
+    from engine.models import UrlSuggestion
     profile = store._get_profile(body["profile_name"])
     suggestions = suggest_next_urls(profile, max_results=body.get("max_results", 8))
-    return {"suggestions": suggestions}
+    validated = [UrlSuggestion(**s).model_dump() for s in suggestions]
+    return {"suggestions": validated}
 
+
+
+@research_router.post("/research/source/assess")
+def assess_source(req: AssessSourceRequest) -> dict:
+    """Persist coverage depth, editorial origin, and durable research notes.
+
+    Assessment affects the informational notability signal, never whether a
+    confirmed claim remains available in the research dossier.
+    """
+    profile = store._get_profile(req.profile_name)
+    source = next((item for item in profile.sources if item.url == req.url), None)
+    if source is None:
+        raise HTTPException(404, "Source not found in this session")
+    if req.coverage_depth == "significant" and not source.human_verified:
+        raise HTTPException(400, "Verify the source before marking significant coverage")
+
+    source.coverage_depth = req.coverage_depth
+    source.editorial_origin = (req.editorial_origin or "").strip() or None
+    source.research_notes = req.research_notes.strip()
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
+    store._save_session(profile.name)
+    return {
+        "source": source.model_dump(),
+        "notability": profile.notability.model_dump() if profile.notability else None,
+    }
 

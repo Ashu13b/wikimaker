@@ -19,6 +19,17 @@ def draft_generation_allowed(status: str) -> bool:
     return status in {"clear", "draft"}
 
 
+def check_title_for(name: str, wikipedia_url: str | None = None) -> str:
+    """The article title to check. A confirmed wikipedia_url wins over the typed
+    name because the real article may carry a parenthetical disambiguator."""
+    if wikipedia_url:
+        from urllib.parse import unquote, urlsplit
+        derived = unquote(urlsplit(wikipedia_url).path.rsplit("/wiki/", 1)[-1]).replace("_", " ")
+        if derived:
+            return derived
+    return name
+
+
 def check_existing_page(title: str) -> WikiStatus:
     if _page_exists(title):
         return WikiStatus(

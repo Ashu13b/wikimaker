@@ -26,12 +26,23 @@ HIGH_TRUST_DOMAINS = {
     "nytimes.com", "theguardian.com", "washingtonpost.com", "reuters.com",
     "apnews.com", "thehindu.com", "indianexpress.com", "timesofindia.indiatimes.com",
     "biomedcentral.com", "plos.org", "ieee.org", "acm.org", "springer.com",
-    "wiley.com", "tandfonline.com", "oup.com", "cambridge.org", "ncbi.nlm.nih.gov"
+    "wiley.com", "tandfonline.com", "oup.com", "cambridge.org", "ncbi.nlm.nih.gov",
+    # Indian press
+    "news18.com", "bhaskar.com", "tv9hindi.com", "punjabkesari.in",
+    "devdiscourse.com", "livevns.news", "jagran.com", "amarujala.com",
+    "tribuneindia.com", "hindustantimes.com", "ndtv.com", "theprint.in",
+    "moneycontrol.com", "business-standard.com", "indiatoday.in",
+    "outlookindia.com", "deccanherald.com", "financialexpress.com",
+    "newindianexpress.com", "thestatesman.com", "indiatvnews.com",
+    "abplive.com", "aajtak.in", "zeenews.india.com", "dainikjagran.com",
+    "patrika.com", "navbharattimes.indiatimes.com", "divyabhaskar.co.in",
+    "etvbharat.com", "kisantak.in",
 }
 
 MEDIUM_TRUST_DOMAINS = {
     "wikipedia.org", "wikidata.org", "britannica.com", "researchgate.net",
-    "academia.edu", "semanticscholar.org", "orcid.org"
+    "academia.edu", "semanticscholar.org", "orcid.org",
+    "sgttimes.com",
 }
 
 UNTRUSTED_DOMAINS = {
@@ -96,10 +107,21 @@ def classify_source_provenance(source: Source, subject_name: str = "") -> Source
         source.reliability = SourceReliability.primary
         return source
 
+    academic_domains = (
+        "doi.org", "pubmed.ncbi.nlm.nih.gov", "pmc.ncbi.nlm.nih.gov",
+        "semanticscholar.org", "openalex.org", "orcid.org",
+        "researchgate.net", "sciencedirect.com",
+    )
+    academic_paths = (
+        "nature.com/articles/", "journals.plos.org/", "link.springer.com/chapter/",
+        "intechopen.com/chapters/", "acspublisher.com/journals/",
+    )
     # Academic authored publication
     if (
         source.fetched_by == "semantic_scholar"
         or source.author_match_status in ("confirmed", "possible")
+        or any(hostname == domain or hostname.endswith("." + domain) for domain in academic_domains)
+        or any(path in url_lower for path in academic_paths)
         or any(k in url_lower for k in ("doi.org", "arxiv.org", "paper", "article/abstract"))
         or "journal" in pub_lower
     ):
@@ -127,7 +149,7 @@ def classify_source_provenance(source: Source, subject_name: str = "") -> Source
         return source
 
     # Independent secondary coverage (news, reputable magazine, encyclopedia)
-    if domain_trust in ("high", "medium") or source.fetched_by in ("google_search", "duckduckgo", "crawl"):
+    if domain_trust in ("high", "medium"):
         source.provenance_category = "independent_secondary"
         source.is_independent = True
         source.reliability = SourceReliability.reliable_secondary

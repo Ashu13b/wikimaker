@@ -9,30 +9,6 @@ WIKI_API = "https://en.wikipedia.org/w/api.php"
 WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 
 
-def fetch_wikidata_photo(name: str) -> str | None:
-    """Try Wikidata for a photo. Only uses results whose name tokens exactly match."""
-    try:
-        resp = requests.get(WIKIDATA_API, params={
-            "action": "wbsearchentities", "search": name,
-            "language": "en", "type": "item", "limit": "3", "format": "json",
-        }, headers=HEADERS, timeout=8)
-        resp.raise_for_status()
-    except Exception:
-        return None
-
-    searched_tokens = set(_significant_tokens(name))
-    for r in resp.json().get("search", []):
-        label = r.get("label", "")
-        if set(_significant_tokens(label)) != searched_tokens:
-            continue
-        if not _looks_like_person(r.get("description", "")):
-            continue
-        detail = _wikidata_detail(r["id"])
-        if detail.get("photo_url"):
-            return detail["photo_url"]
-    return None
-
-
 def fetch_wikidata_photo_by_id(qid: str) -> str | None:
     """Return a Wikidata image only after a specific item has been confirmed."""
     if not re.fullmatch(r"Q[1-9]\d*", qid):

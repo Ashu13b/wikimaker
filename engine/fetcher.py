@@ -1,11 +1,19 @@
 """Multi-strategy URL fetcher with fallbacks for blocked sources."""
 from __future__ import annotations
+import re
 import requests
 from urllib.parse import quote_plus, urlparse
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 BOT_HEADERS = {"User-Agent": "wikimaker/0.1 (ay.yadav53@gmail.com)"}  # for APIs that want bot UA
 TIMEOUT = 10
+
+# Bot-wall / challenge signatures, shared by the headless fetcher and the remote
+# browser's wall detection so the two vocabularies can't drift apart.
+BOT_WALL_RE = re.compile(
+    r"captcha|cf-browser-verification|just a moment|access denied|"
+    r"unusual activity|please verify|verify you are human|enable javascript|"
+    r"403 forbidden", re.I)
 
 
 def check_liveness(url: str) -> tuple[str, str | None]:
@@ -41,32 +49,42 @@ def get_wayback_url(url: str) -> str | None:
 
 
 class FetchResult:
-    def __init__(self, url: str, text: str, method: str, blocked: bool = False, raw_html: str = ""):
+    def __init__(self, url: str, text: str, method: str, blocked: bool = False, raw_html: str = "", final_url: str = ""):
         self.url = url
         self.text = text          # extracted text content (paragraphs only)
         self.raw_html = raw_html  # full HTML — for link extraction in crawler
         self.method = method      # direct | wayback | orcid | blocked
         self.blocked = blocked    # True = needs user paste or screenshot
+        self.final_url = final_url  # URL the page really loaded at (after redirects), "" if unknown
 
 
-BROWSER_SERVER = "http://localhost:7070"
+# The remote browser is mounted at /browser on the unified server (port 3890);
+# the legacy standalone server ran on 7070. Probe whichever responds.
+_BROWSER_BASES = ("http://localhost:3890/browser", "http://localhost:7070")
 
 
 def _try_browser_server(url: str) -> FetchResult | None:
     """Fetch via the human browser_server if it's running. Returns None if unavailable."""
+    base = None
+    for candidate in _BROWSER_BASES:
+        try:
+            if requests.get(f"{candidate}/status", timeout=1).json().get("running"):
+                base = candidate
+                break
+        except Exception:
+            continue
+    if not base:
+        return None
     try:
-        st = requests.get(f"{BROWSER_SERVER}/status", timeout=1).json()
-        if not st.get("running"):
-            return None
-        nav = requests.post(f"{BROWSER_SERVER}/navigate", json={"url": url}, timeout=30).json()
+        nav = requests.post(f"{base}/navigate", json={"url": url}, timeout=30).json()
         if nav.get("error"):
             return None
-        data = requests.get(f"{BROWSER_SERVER}/content", timeout=5).json()
+        data = requests.get(f"{base}/content", timeout=5).json()
         text = data.get("text", "").strip()
         # Treat short content as possible CAPTCHA / block page
         if len(text) < 200:
             return FetchResult(url, "", method="blocked", blocked=True)
-        return FetchResult(url, text, method="browser")
+        return FetchResult(url, text, method="browser", final_url=data.get("url", ""))
     except Exception:
         return None
 
@@ -82,8 +100,8 @@ def fetch_url(url: str) -> FetchResult:
     # 2. Direct fetch
     result = _direct_fetch(url)
     if result:
-        text, raw_html = result
-        return FetchResult(url, text, method="direct", raw_html=raw_html)
+        text, raw_html, final_url = result
+        return FetchResult(url, text, method="direct", raw_html=raw_html, final_url=final_url)
 
     # 3. ORCID — if it looks like a researcher profile
     if "orcid.org" in url:
@@ -106,36 +124,8 @@ def fetch_url(url: str) -> FetchResult:
     return FetchResult(url, "", method="blocked", blocked=True)
 
 
-def fetch_orcid_by_name(name: str) -> FetchResult | None:
-    """Search ORCID by name — returns profile text if found."""
-    try:
-        resp = requests.get(
-            "https://pub.orcid.org/v3.0/search/",
-            params={"q": f'given-and-family-names:"{name}"', "rows": 3},
-            headers={**HEADERS, "Accept": "application/json"},
-            timeout=TIMEOUT,
-        )
-        resp.raise_for_status()
-        results = resp.json().get("result", [])
-        if not results:
-            return None
-
-        orcid_id = results[0].get("orcid-identifier", {}).get("path")
-        if not orcid_id:
-            return None
-
-        return _fetch_orcid_id(orcid_id)
-    except Exception:
-        return None
-
-
-def fetch_text_paste(url: str, pasted_text: str) -> FetchResult:
-    """Accept user-pasted text for a blocked URL."""
-    return FetchResult(url, pasted_text, method="user_paste")
-
-
-def _direct_fetch(url: str) -> tuple[str, str] | None:
-    """Returns (text, raw_html) or None if blocked."""
+def _direct_fetch(url: str) -> tuple[str, str, str] | None:
+    """Returns (text, raw_html, final_url) or None if blocked."""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
         if resp.status_code in (401, 403, 407, 429):
@@ -144,9 +134,9 @@ def _direct_fetch(url: str) -> tuple[str, str] | None:
         ct = resp.headers.get("content-type", "")
         if "application/pdf" in ct or url.lower().split("?")[0].endswith(".pdf"):
             text = _pdf_extract(resp.content)
-            return text, ""  # no raw HTML for PDFs
+            return text, "", resp.url  # no raw HTML for PDFs
         raw = resp.text
-        return _extract_text(raw), raw
+        return _extract_text(raw), raw, resp.url
     except Exception:
         return None
 

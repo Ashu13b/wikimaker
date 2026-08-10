@@ -55,24 +55,25 @@ def extract_profile_links(raw_html: str, person_name: str, base_url: str) -> lis
         anchor = a.get_text(" ", strip=True).lower()
 
         is_profile = False
+        name_in_anchor = name_lower in anchor or (
+            len(name_parts) >= 2 and all(p in anchor for p in name_parts[:2])
+        )
+        url_text = (path + " " + parsed.query.lower()).replace("-", " ").replace("_", " ")
+        name_in_url = len(name_parts) >= 2 and all(p in url_text for p in name_parts[:2])
 
-        # Known profile domains
+        # A profile-shaped domain/path is only a lead when the link itself is
+        # person-specific. This rejects generic author indexes, company pages,
+        # social share links and staff directories.
         for pd in _PROFILE_DOMAINS:
             if domain == pd or domain.endswith("." + pd):
-                is_profile = True
+                is_profile = name_in_anchor or name_in_url
                 break
 
-        # Profile path pattern on any domain
         if not is_profile:
             for frag in _PROFILE_PATH_FRAGMENTS:
                 if frag in path:
-                    is_profile = True
+                    is_profile = name_in_anchor or name_in_url
                     break
-
-        # Anchor text contains the person's name
-        if not is_profile:
-            if name_lower in anchor or (len(name_parts) >= 2 and all(p in anchor for p in name_parts[:2])):
-                is_profile = True
 
         if is_profile and url not in seen:
             seen.add(url)

@@ -104,12 +104,20 @@ def fetch_url_source(url: str, person_name: str = "") -> tuple[Source, bool]:
 
     profile_links = extract_profile_links(result.raw_html, person_name, url) if person_name else []
 
-    return Source(
+    source = Source(
         url=url, title=title, publisher=_extract_publisher(url),
         reliability=SourceReliability.primary,  # classifier will re-tag
         snippet=result.text[:400], user_provided=True,
         profile_links=profile_links,
-    ), False
+    )
+
+    if result.final_url:
+        from .relevance import is_meaningful_redirect
+        if is_meaningful_redirect(url, result.final_url):
+            source.redirected_to = result.final_url
+            source.relevance_flag = "uncertain"  # human/LLM decides; kept out of "relevant"
+
+    return source, False
 
 
 def fetch_url_source_with_paste(url: str, pasted_text: str) -> Source:
@@ -341,21 +349,33 @@ def targeted_slot_search(
     """Search web using multiple iterative queries for a specific slot, including bilingual native script expansion."""
     template = _SLOT_QUERIES.get(slot, '"{name}"')
     q1 = template.format(name=person_name)
+    context = _disambiguator(affiliation, field)
     if hint:
         q1 += f" {hint}"
-    elif affiliation:
-        q1 += f" {affiliation}"
+    if context:
+        q1 += f" {context}"
 
-    q2 = f'"{person_name}" {slot} university alumni graduation BSc MSc PhD'
-    if field:
-        q2 += f" {field}"
-
-    q3 = f'"{person_name}" biography profile education'
-    q4 = f'"डॉ. {person_name}" शिक्षा विश्वविद्यालय डिग्री'
+    # Each slot gets its own query family. The previous implementation used
+    # education queries for every slot, which made an award search collect
+    # unrelated alumni, politicians, books and namesakes.
+    slot_terms: dict[str, tuple[str, str, str]] = {
+        "birth_date": ("biography born date of birth", "profile born", "जन्म जीवनी"),
+        "birth_place": ("biography birthplace born", "profile native village", "जन्म स्थान जीवनी"),
+        "education": ("education university degree BSc MSc PhD", "alumni graduation doctorate", "शिक्षा विश्वविद्यालय डिग्री"),
+        "position": ("scientist position career appointment", "principal scientist head director", "वैज्ञानिक पद करियर"),
+        "award": ("award prize honour citation", "award team leader selection", "पुरस्कार सम्मान"),
+        "known_for": ("research contribution impact", "scientific achievement project leader", "अनुसंधान योगदान उपलब्धि"),
+        "nationality": ("biography nationality", "profile scientist", "वैज्ञानिक जीवनी"),
+        "full_name": ("biography profile", "scientist full name", "वैज्ञानिक परिचय"),
+        "affiliation": ("institute department staff", "scientist affiliation profile", "संस्थान वैज्ञानिक"),
+    }
+    terms = slot_terms.get(slot, (slot, f"biography {slot}", f"वैज्ञानिक {slot}"))
+    suffix = f" {context}" if context else ""
+    queries = [q1, *(f'"{person_name}" {term}{suffix}' for term in terms)]
 
     sources: list[Source] = []
     seen: set[str] = set()
-    for q in [q1, q2, q3, q4]:
+    for q in queries:
         results = _search_web(q)
         for s in results:
             if s.url not in seen:

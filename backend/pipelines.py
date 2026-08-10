@@ -20,7 +20,7 @@ def _add_sd_article(profile, url: str) -> dict:
         source, blocked = fetch_url_source(url, profile.name)
         [source] = classify_sources([source], store.llm())
         profile.sources.append(source)
-        profile.notability = score_notability(profile.name, profile.sources)
+        profile.notability = score_notability(profile.name, profile.sources, profile.claims)
         store._save_session(profile.name)
         return {"source": source.model_dump(), "blocked": blocked, "new_claims": [],
                 "notability": profile.notability.model_dump(), "pipeline": None,
@@ -79,7 +79,7 @@ def _add_sd_article(profile, url: str) -> dict:
     profile.sources.extend(new_sources)
     profile.claims.extend(new_claims)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     # Return the canonical article source as the "added source" for UI
@@ -158,7 +158,7 @@ def _add_sd_author_profile(profile, url: str) -> dict:
         profile.claims.extend(new_claims)
 
     profile.missing_slots = find_missing_slots(profile, profile.claims)
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
 
     return {

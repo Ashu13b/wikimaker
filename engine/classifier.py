@@ -20,6 +20,15 @@ _RS_DOMAINS = {
     "ndtv.com", "pib.gov.in", "indianexpress.com", "timesofindia.com",
     "scroll.in", "thewire.in", "livemint.com", "economictimes.indiatimes.com",
     "telegraphindia.com", "deccanherald.com", "tribuneindia.com",
+    # Indian press (regional + digital)
+    "news18.com", "bhaskar.com", "tv9hindi.com", "punjabkesari.in",
+    "devdiscourse.com", "livevns.news", "jagran.com", "amarujala.com",
+    "theprint.in", "moneycontrol.com", "indiatoday.in", "outlookindia.com",
+    "financialexpress.com", "newindianexpress.com", "thestatesman.com",
+    "indiatvnews.com", "abplive.com", "aajtak.in", "zeenews.india.com",
+    "dainikjagran.com", "patrika.com", "etvbharat.com", "kisantak.in",
+    "navbharattimes.indiatimes.com", "divyabhaskar.co.in", "business-standard.com",
+    "sgttimes.com",
     # Indian government / institutional press
     "icar.org.in", "dst.gov.in", "dbt.gov.in", "csir.res.in",
     # Entertainment trade press (independent coverage)

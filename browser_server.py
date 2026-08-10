@@ -28,10 +28,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
+# Challenge/bot-wall signatures — one shared vocabulary with the headless
+# fetcher (engine.fetcher.BOT_WALL_RE) so the two can't drift.
+from engine.fetcher import BOT_WALL_RE as _WALL_SIGNALS
+
 PROFILE_DIR = Path.home() / ".wikimaker" / "browser_profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 XVFB_DISPLAY = ":99"
 PORT = 7070
+
+# Present as a normal desktop Chrome, not HeadlessChrome — several Indian press
+# sites 403 the headless UA even though they serve humans fine.
+_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+
+def looks_like_wall(text: str) -> bool:
+    """True when rendered page text is a bot-wall/challenge, not real content."""
+    return bool(text and _WALL_SIGNALS.search(text.lower()))
 
 # ── Command queue — all Playwright calls go through this ──────────────────────
 # Playwright's sync API is thread-bound; endpoints dispatch here and wait.
@@ -50,18 +63,57 @@ _running = False
 _xvfb: Optional[subprocess.Popen] = None
 
 
-def _dispatch(action: str, **args) -> Any:
+def _dispatch(action: str, timeout: float = 35.0, **args) -> Any:
     """Send a command to the browser thread and wait for the result."""
     global _running
     if not _running and action != "status":
         start_browser()
     cmd = _Cmd(action=action, args=args)
     _q.put(cmd)
-    if not cmd.done.wait(timeout=35):
+    if not cmd.done.wait(timeout=timeout):
         raise TimeoutError(f"browser command '{action}' timed out")
     if cmd.error:
         raise RuntimeError(cmd.error)
     return cmd.result
+
+
+def browser_link_status(ctx: Any, urls: list[str]) -> dict[str, dict]:
+    """Render each URL in a throwaway page (real fingerprint, JS runs, stealth).
+
+    Fallback adjudicator for links plain requests cannot classify: a real
+    browser either loads content (ok) or hits a challenge/wall (blocked). A new
+    page is opened so the user's current companion page is left untouched.
+    Returns the same shape as wiki.draft.check_draft_links.
+    """
+    page = ctx.new_page()
+    try:
+        try:
+            from playwright_stealth import Stealth
+            Stealth().apply_stealth_sync(page)
+        except Exception:
+            pass
+        return _page_link_status(page, urls)
+    finally:
+        page.close()
+
+
+def _page_link_status(page: Any, urls: list[str]) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for u in urls:
+        try:
+            resp = page.goto(u, wait_until="domcontentloaded", timeout=20_000)
+            code = resp.status if resp else 200
+            final = page.url
+            body = page.evaluate("document.body ? document.body.innerText : ''") or ""
+            if code in (403, 429, 503) and _WALL_SIGNALS.search(body.lower()):
+                out[u] = {"status": "blocked", "status_code": code, "final_url": final}
+            elif 200 <= code < 400:
+                out[u] = {"status": "ok", "status_code": code, "final_url": final}
+            else:
+                out[u] = {"status": "blocked", "status_code": code, "final_url": final}
+        except Exception:
+            out[u] = {"status": "unknown", "status_code": None, "final_url": u}
+    return out
 
 
 def _try_start_xvfb() -> bool:
@@ -100,6 +152,7 @@ def _browser_thread():
         ctx = pw.chromium.launch_persistent_context(
             str(PROFILE_DIR),
             headless=not _headed,
+            user_agent=_UA,
             args=["--no-sandbox", "--disable-dev-shm-usage",
                   "--disable-setuid-sandbox",
                   "--disable-blink-features=AutomationControlled"],
@@ -163,6 +216,8 @@ def _browser_thread():
                     w, h = cmd.args["width"], cmd.args["height"]
                     page.set_viewport_size({"width": w, "height": h})
                     cmd.result = {"ok": True, "width": w, "height": h}
+                elif a == "link_status_page":
+                    cmd.result = browser_link_status(ctx, cmd.args.get("urls") or [])
                 elif a == "status":
                     cmd.result = {"running": True, "headed": _headed, "url": page.url}
                 else:
@@ -301,366 +356,13 @@ def status():
 
 @app.get("/")
 def index():
-    return HTMLResponse(BROWSER_HTML)
+    return HTMLResponse(_browser_html())
 
 
-BROWSER_HTML = r"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Remote Browser</title>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-:root {
-  --bg: #18181b;
-  --surface: #27272a;
-  --border: #3f3f46;
-  --text: #e4e4e7;
-  --muted: #71717a;
-  --accent: #3b82f6;
-  --accent-dim: rgba(59,130,246,0.15);
-}
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
-body { display: flex; flex-direction: column; }
-
-/* ── Toolbar ── */
-#toolbar {
-  display: flex; align-items: center; gap: 5px;
-  padding: 7px 8px; background: var(--surface);
-  border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.nav-btn {
-  background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  width: 34px; height: 34px; border-radius: 8px; font-size: 18px;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  user-select: none; flex-shrink: 0;
-}
-.nav-btn:active { background: var(--border); }
-#url-bar {
-  flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border);
-  color: var(--text); padding: 7px 11px; border-radius: 8px; font-size: 13px;
-  outline: none;
-}
-#url-bar:focus { border-color: var(--accent); }
-#go-btn {
-  background: var(--accent); border: none; color: white;
-  padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
-  cursor: pointer; flex-shrink: 0;
-}
-#go-btn:active { opacity: 0.85; }
-
-/* ── Viewport ── */
-#viewport {
-  flex: 1; background: #000; overflow: hidden; position: relative;
-  display: flex; align-items: flex-start; justify-content: center; touch-action: none;
-}
-#screen {
-  width: 100%; height: 100%; object-fit: contain; object-position: top center;
-  display: block; cursor: crosshair; user-select: none; -webkit-user-select: none;
-}
-#overlay {
-  position: absolute; inset: 0; pointer-events: none;
-  display: flex; align-items: center; justify-content: center;
-}
-#loading-msg {
-  background: rgba(0,0,0,0.7); color: var(--muted); padding: 8px 16px;
-  border-radius: 8px; font-size: 13px; display: none;
-}
-#url-status {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: rgba(0,0,0,0.65); color: var(--muted); font-size: 11px;
-  padding: 2px 8px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
-  pointer-events: none; opacity: 0; transition: opacity 0.5s;
-}
-
-/* ── Bottom bar ── */
-#bottom {
-  display: flex; align-items: center; gap: 5px;
-  padding: 7px 8px; background: var(--surface);
-  border-top: 1px solid var(--border); flex-shrink: 0;
-}
-#type-input {
-  flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border);
-  color: var(--text); padding: 7px 11px; border-radius: 8px; font-size: 14px;
-  outline: none; autocomplete: off;
-}
-#type-input:focus { border-color: var(--accent); }
-.act-btn {
-  background: var(--bg); border: 1px solid var(--border); color: var(--text);
-  padding: 7px 11px; border-radius: 8px; font-size: 13px; cursor: pointer;
-  white-space: nowrap; flex-shrink: 0;
-}
-.act-btn:active { background: var(--border); }
-#wiki-btn {
-  background: var(--accent-dim); border: 1px solid var(--accent);
-  color: var(--accent); padding: 7px 10px; border-radius: 8px; font-size: 12px;
-  font-weight: 700; cursor: pointer; flex-shrink: 0;
-}
-#wiki-btn:active { background: var(--accent); color: white; }
-
-/* ── Toast ── */
-#toast {
-  position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
-  background: rgba(0,0,0,0.85); color: var(--text); padding: 8px 16px;
-  border-radius: 10px; font-size: 13px; z-index: 100; display: none;
-  white-space: nowrap; max-width: 90vw; text-overflow: ellipsis; overflow: hidden;
-}
-</style>
-</head>
-<body>
-
-<div id="toolbar">
-  <button class="nav-btn" id="btn-back" title="Back">&#8249;</button>
-  <button class="nav-btn" id="btn-fwd" title="Forward">&#8250;</button>
-  <button class="nav-btn" id="btn-reload" title="Reload">&#8635;</button>
-  <input id="url-bar" type="url" inputmode="url" autocomplete="off"
-         autocorrect="off" autocapitalize="none" spellcheck="false"
-         placeholder="https://...">
-  <button id="go-btn">Go</button>
-</div>
-
-<div id="viewport">
-  <img id="screen" src="" alt="browser viewport" draggable="false">
-  <div id="overlay"><div id="loading-msg">Navigating…</div></div>
-  <div id="url-status"></div>
-</div>
-
-<div id="bottom">
-  <input id="type-input" type="text" inputmode="text"
-         autocomplete="off" autocorrect="off" autocapitalize="none"
-         spellcheck="false" placeholder="Type and tap Send…">
-  <button class="act-btn" id="btn-send">Send</button>
-  <button class="act-btn" id="btn-enter">&#8629;</button>
-  <button class="act-btn" id="btn-bs">&#9003;</button>
-  <button id="wiki-btn" title="Send page to wikimaker">Wiki+</button>
-</div>
-
-<div id="toast"></div>
-
-<script>
-const POLL_MS = 600;
-let pollTimer = null;
-let navigating = false;
-
-// ── Viewport sync ─────────────────────────────────────────────────────────────
-async function syncViewport() {
-  const vp = document.getElementById('viewport');
-  const w = Math.round(vp.clientWidth);
-  const h = Math.round(vp.clientHeight);
-  if (w < 50 || h < 50) return;
-  try {
-    await fetch('./viewport', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ width: w, height: h }),
-    });
-  } catch (_) {}
-}
-window.addEventListener('resize', () => { syncViewport().then(() => refreshShot()); });
-
-// ── Screenshot polling ────────────────────────────────────────────────────────
-function startPoll() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(refreshShot, POLL_MS);
-  syncViewport().then(() => refreshShot());
-}
-
-function refreshShot() {
-  const img = document.getElementById('screen');
-  img.src = './screenshot?' + Date.now();
-}
-
-async function refreshInfo() {
-  try {
-    const d = await fetch('./info').then(r => r.json());
-    if (d.url && d.url !== 'about:blank') {
-      document.getElementById('url-bar').value = d.url;
-      document.title = (d.title || 'Remote Browser').slice(0, 60);
-      const st = document.getElementById('url-status');
-      st.textContent = d.url;
-      st.style.opacity = '1';
-      setTimeout(() => { st.style.opacity = '0'; }, 2000);
-    }
-  } catch (_) {}
-}
-
-// ── Navigation ────────────────────────────────────────────────────────────────
-async function navigate() {
-  const url = document.getElementById('url-bar').value.trim();
-  if (!url) return;
-  setLoading(true);
-  try {
-    const d = await fetch('./navigate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-    }).then(r => r.json());
-    if (d.url) document.getElementById('url-bar').value = d.url;
-    if (d.error) toast('Error: ' + d.error);
-  } finally {
-    setLoading(false);
-    setTimeout(() => { refreshShot(); refreshInfo(); }, 200);
-  }
-}
-
-function setLoading(on) {
-  navigating = on;
-  document.getElementById('loading-msg').style.display = on ? 'block' : 'none';
-}
-
-async function navAction(path) {
-  setLoading(true);
-  try {
-    await fetch(path);
-  } finally {
-    setLoading(false);
-    setTimeout(() => { refreshShot(); refreshInfo(); }, 400);
-  }
-}
-
-// ── Click / tap handling ──────────────────────────────────────────────────────
-let touchStart = null;
-
-const screen = document.getElementById('screen');
-
-screen.addEventListener('touchstart', e => {
-  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-}, { passive: true });
-
-screen.addEventListener('touchmove', async e => {
-  if (!touchStart) return;
-  const dy = touchStart.y - e.touches[0].clientY;
-  const dx = touchStart.x - e.touches[0].clientX;
-  touchStart.x = e.touches[0].clientX;
-  touchStart.y = e.touches[0].clientY;
-  if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 3) {
-    await fetch('./scroll', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ delta: dy * 2.5 }),
-    });
-    refreshShot();
-  }
-}, { passive: true });
-
-// Map a tap position on the <img> element to actual image coordinates,
-// accounting for object-fit:contain letterboxing (object-position: top center).
-function tapToImageCoords(tapX, tapY, imgEl) {
-  const elW = imgEl.clientWidth;
-  const elH = imgEl.clientHeight;
-  const natW = imgEl.naturalWidth || 390;
-  const natH = imgEl.naturalHeight || 844;
-  const scale = Math.min(elW / natW, elH / natH);
-  const rendW = natW * scale;
-  const rendH = natH * scale;
-  const offX = (elW - rendW) / 2; // center horizontally
-  const offY = 0;                  // top vertically (object-position: top)
-  return { x: tapX - offX, y: tapY - offY, img_w: rendW, img_h: rendH };
-}
-
-screen.addEventListener('touchend', async e => {
-  if (!touchStart) return;
-  const dt = Date.now() - touchStart.t;
-  const endX = e.changedTouches[0].clientX;
-  const endY = e.changedTouches[0].clientY;
-  const moved = Math.hypot(endX - touchStart.x, endY - touchStart.y);
-  touchStart = null;
-  if (moved > 10 || dt > 600) return; // swipe or long-press, not a tap
-  e.preventDefault();
-  const rect = screen.getBoundingClientRect();
-  const coords = tapToImageCoords(endX - rect.left, endY - rect.top, screen);
-  await fetch('./click', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(coords),
-  });
-  setTimeout(() => { refreshShot(); refreshInfo(); }, 500);
-}, { passive: false });
-
-// Desktop mouse click fallback
-screen.addEventListener('click', async e => {
-  if ('ontouchstart' in window) return; // handled above
-  const rect = screen.getBoundingClientRect();
-  const coords = tapToImageCoords(e.clientX - rect.left, e.clientY - rect.top, screen);
-  await fetch('./click', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(coords),
-  });
-  setTimeout(() => { refreshShot(); refreshInfo(); }, 500);
-});
-
-// ── Keyboard ──────────────────────────────────────────────────────────────────
-async function sendType() {
-  const inp = document.getElementById('type-input');
-  if (!inp.value) return;
-  await fetch('./type', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: inp.value }) });
-  inp.value = '';
-  setTimeout(refreshShot, 300);
-}
-
-async function sendKey(key) {
-  await fetch('./key', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
-  setTimeout(() => { refreshShot(); refreshInfo(); }, 350);
-}
-
-// ── Wiki+ relay ───────────────────────────────────────────────────────────────
-async function sendToWikimaker() {
-  toast('Reading page content…');
-  try {
-    const d = await fetch('./content').then(r => r.json());
-    const params = new URLSearchParams({ relay_url: d.url, relay_text: d.text.slice(0, 30000) });
-    
-    // Check if we are embedded in an iframe
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage({
-        type: 'WIKIMAKER_RELAY',
-        url: d.url,
-        text: d.text.slice(0, 30000)
-      }, '*');
-      toast('Sent content directly to wikimaker!');
-    } else {
-      // Unified mode: open root of the same host (same port)
-      window.open('/?' + params.toString(), '_blank');
-      toast('Sent to wikimaker — switch to that tab');
-    }
-  } catch (e) {
-    toast('Could not reach wikimaker: ' + e.message);
-  }
-}
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-let toastTimer = null;
-function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.display = 'block';
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
-}
-
-// ── Wire up buttons ───────────────────────────────────────────────────────────
-document.getElementById('btn-back').addEventListener('click', () => navAction('./back'));
-document.getElementById('btn-fwd').addEventListener('click', () => navAction('./forward'));
-document.getElementById('btn-reload').addEventListener('click', () => navAction('./reload'));
-document.getElementById('go-btn').addEventListener('click', navigate);
-document.getElementById('url-bar').addEventListener('keydown', e => { if (e.key === 'Enter') navigate(); });
-document.getElementById('btn-send').addEventListener('click', sendType);
-document.getElementById('btn-enter').addEventListener('click', () => sendKey('Enter'));
-document.getElementById('btn-bs').addEventListener('click', () => sendKey('Backspace'));
-document.getElementById('wiki-btn').addEventListener('click', sendToWikimaker);
-document.getElementById('type-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendType(); });
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
-startPoll();
-setInterval(refreshInfo, 2000);
-</script>
-</body>
-</html>
-"""
+def _browser_html() -> str:
+    """The embedded companion-browser UI, kept in browser_ui.html so the
+    module stays about browser automation instead of ~13k chars of HTML."""
+    return (Path(__file__).parent / "browser_ui.html").read_text()
 
 
 def start_browser() -> None:

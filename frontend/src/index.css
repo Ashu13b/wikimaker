@@ -174,6 +174,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .workspace-tabs > button { flex: 0 0 auto; }
 
+.mobile-tabbar { display: none; }
+
 /* Responsive grid layouts */
 .hub-grid {
   display: grid;
@@ -244,6 +246,73 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   }
 
   input { min-height: 44px; }
+
+  /* ── Mobile layout overrides (inline styles can't be reached otherwise) ── */
+  .hub-grid > div { min-width: 0; }
+
+  /* Stage header: steps wrap, the single action spans the full width */
+  .stage-header { align-items: stretch; }
+  .stage-header-action { width: 100%; }
+  .stage-header-action button { flex: 1; }
+
+  /* Profile slot rows: label above value instead of a 130px side rail */
+  .slot-row { grid-template-columns: 1fr !important; gap: 6px !important; }
+
+  /* SourceCard actions stack and fill the row for thumb-sized taps */
+  .source-actions { flex-direction: column; }
+  .source-actions button { width: 100%; }
+
+  /* Timeline: tighter year column frees room for event text */
+  .timeline-year { width: 40px !important; }
+
+  /* Draft page: header and the submission banner stack */
+  .draft-header { flex-direction: column; align-items: stretch !important; gap: 12px; }
+  .draft-banner { flex-direction: column; align-items: stretch !important; gap: 10px; }
+  .draft-banner a { width: 100%; }
+  .draft-banner a button { width: 100%; }
+
+  /* Suggestion queue rows: keep the Add/View/Skip stack reachable */
+  .workspace-tabs > button { padding: 10px 12px; }
+
+  /* Suggestion queue: stack content and action buttons */
+  .suggestion-row { flex-direction: column; align-items: stretch !important; }
+  .suggestion-row > div:last-child { flex-direction: row; }
+  .suggestion-row > div:last-child button { flex: 1; }
+
+  /* Claims review: action buttons become thumb-sized */
+  .claim-action { width: 44px !important; height: 44px !important; }
+
+  /* ── Mobile bottom navigation ── */
+  .workspace-tabs { display: none; }
+  .hub-root { padding-bottom: 96px !important; }
+
+  .mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1500;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.08);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mobile-tabbar .tab-btn {
+    flex: 1;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2px !important;
+    padding: 10px 4px !important;
+    border-bottom: none !important;
+    font-size: 11px !important;
+    min-height: 52px;
+  }
+  .mobile-tabbar .tab-btn-active {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary) !important;
+    font-weight: 700 !important;
+  }
 }
 
 @media (max-width: 520px) {

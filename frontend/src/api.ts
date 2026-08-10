@@ -7,6 +7,7 @@ import type {
   CrawlResponse,
   DraftResponse,
   DraftAudit,
+  NotabilityResult,
 } from "./types";
 
 // Configurable for mobile builds (set VITE_API_BASE env var to the device's server IP)
@@ -47,17 +48,26 @@ async function apiDelete<T>(path: string): Promise<T> {
 }
 
 export interface IdentifyResult {
+  kind: "identity" | "web";
   title: string;
   url: string;
   snippet: string;
   publisher: string;
+  wikidata_id?: string | null;
+  wikipedia_url?: string | null;
+  photo_url?: string | null;
+  birth_year?: string | null;
+  nationality?: string | null;
+  field?: string | null;
+  affiliation?: string | null;
 }
 
 export async function identifyPerson(
   name: string, field: string | null, affiliation: string | null
-): Promise<IdentifyResult[]> {
-  const data = await apiPost<{ results: IdentifyResult[] }>("/identify", { name, field, affiliation });
-  return data.results;
+): Promise<{ results: IdentifyResult[]; wiki_status: import("./types").WikiStatus | null }> {
+  const data = await apiPost<{ results: IdentifyResult[]; wiki_status: import("./types").WikiStatus | null }>(
+    "/identify", { name, field, affiliation });
+  return data;
 }
 
 export async function startResearch(
@@ -86,6 +96,15 @@ export async function addSource(profileName: string, url: string): Promise<AddSo
 
 export async function fetchFromBrowser(profileName: string): Promise<AddSourceResponse> {
   return apiPost("/research/fetch-from-browser", { profile_name: profileName });
+}
+
+export async function fetchBlockedSources(profileName: string): Promise<{
+  fetched: string[];
+  walls: string[];
+  profile?: PersonProfile;
+  notability?: NotabilityResult | null;
+}> {
+  return apiPost("/research/fetch-blocked", { profile_name: profileName });
 }
 
 export async function skipSuggestion(profileName: string, url: string): Promise<{ ok: boolean }> {
@@ -141,6 +160,20 @@ export async function verifySource(
   return apiPost("/research/source/verify", { profile_name: profileName, url, verified });
 }
 
+export async function assessSource(
+  profileName: string,
+  url: string,
+  coverageDepth: import("./types").Source["coverage_depth"],
+  editorialOrigin: string,
+  researchNotes: string,
+): Promise<{ source: import("./types").Source; notability: NotabilityResult | null }> {
+  return apiPost("/research/source/assess", {
+    profile_name: profileName,
+    url, coverage_depth: coverageDepth,
+    editorial_origin: editorialOrigin || null,
+    research_notes: researchNotes,
+  });
+}
 export async function rejectSource(
   profileName: string,
   url: string,
@@ -154,11 +187,51 @@ export async function getDraftAudit(profileName: string): Promise<DraftAudit> {
   return data.audit;
 }
 
+export async function getDraftLinks(profileName: string): Promise<import("./types").DraftLink[]> {
+  const data = await apiPost<{ links: import("./types").DraftLink[] }>("/draft/links", { profile_name: profileName });
+  return data.links;
+}
+
+export async function getDraftPreview(profileName: string): Promise<string> {
+  const data = await apiPost<{ html: string }>("/draft/preview", { profile_name: profileName });
+  return data.html;
+}
+
+export async function getDraftQa(profileName: string): Promise<import("./types").DraftQaReport> {
+  return apiPost("/draft/qa", { profile_name: profileName });
+}
+
 export async function generateDraft(profileName: string): Promise<DraftResponse> {
   return apiPost("/draft", { profile_name: profileName });
 }
 
+export interface ClaimCoverage {
+  claim_index: number;
+  field: string;
+  text: string;
+  date_context: string | null;
+  source_url: string | null;
+  covered: boolean;
+  score: number;
+  note: string;
+}
+
+export interface ArticleProposal {
+  article_title: string;
+  article_url: string;
+  article_excerpt: string;
+  covered_count: number;
+  missing_count: number;
+  coverage: ClaimCoverage[];
+}
+
+export async function getArticleProposal(profileName: string): Promise<ArticleProposal> {
+  const data = await apiPost<{ proposal: ArticleProposal }>("/research/article-proposal", { profile_name: profileName });
+  return data.proposal;
+}
+
 export interface SessionSummary {
+  id: string | null;
   name: string;
   field: string | null;
   affiliation: string | null;
@@ -171,17 +244,22 @@ export interface SessionSummary {
   file: string;
 }
 
+/** Stable session reference: the immutable session id when present, else the name. */
+export function profileRef(profile: { session_id?: string | null; name: string }): string {
+  return profile.session_id ?? profile.name;
+}
+
 export async function listSessions(): Promise<SessionSummary[]> {
   const data = await apiGet<{ sessions: SessionSummary[] }>("/sessions");
   return data.sessions;
 }
 
-export async function resumeSession(file: string): Promise<{ profile: PersonProfile; wiki_status: import("./types").WikiStatus }> {
-  return apiPost("/sessions/resume", { file });
+export async function resumeSession(ref: string): Promise<{ profile: PersonProfile; wiki_status: import("./types").WikiStatus }> {
+  return apiPost("/sessions/resume", { file: ref, session_id: ref });
 }
 
-export async function deleteSession(file: string): Promise<void> {
-  await apiDelete(`/sessions/${encodeURIComponent(file)}`);
+export async function deleteSession(ref: string): Promise<void> {
+  await apiDelete(`/sessions/${encodeURIComponent(ref)}`);
 }
 
 export interface TargetedSearchResponse {
@@ -197,22 +275,6 @@ export async function addDocumentFact(
   text: string,
 ): Promise<{ claim: import("./types").Claim }> {
   return apiPost("/research/add-document-fact", { profile_name: profileName, field, text });
-}
-
-export async function addSourcedClaim(
-  profileName: string,
-  url: string,
-  field: string,
-  text: string,
-  dateContext?: string,
-): Promise<{ claim: import("./types").Claim; missing_slots: string[] }> {
-  return apiPost("/research/add-sourced-claim", {
-    profile_name: profileName,
-    url,
-    field,
-    text,
-    date_context: dateContext,
-  });
 }
 
 export async function targetedSearch(

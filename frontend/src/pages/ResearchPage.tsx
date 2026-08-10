@@ -4,42 +4,27 @@ import type { PersonCandidate, PersonProfile, WikiStatus } from "../types";
 
 interface Props {
   candidate: PersonCandidate;
-  onDone: (profile: PersonProfile, wikiStatus: WikiStatus) => void;
+  onDone: (profile: PersonProfile, wikiStatus: WikiStatus, resumed?: boolean) => void;
   onBack: () => void;
 }
 
-const STEPS = [
-  "Checking Wikipedia, draft, and deletion status...",
-  "Discovering candidate academic and web sources...",
-  "Classifying source reliability...",
-  "Checking sources for same-name conflicts...",
-  "Building research workspace...",
-];
+const STATUS = "Discovering sources and checking Wikimedia status — this can take a minute.";
 
 export default function ResearchPage({ candidate, onDone, onBack }: Props) {
-  const [stepIndex, setStepIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-
-    const interval = setInterval(() => {
-      setStepIndex(i => Math.min(i + 1, STEPS.length - 1));
-    }, 2500);
-
     startResearch(candidate)
       .then(result => {
         if (!alive) return;
-        clearInterval(interval);
-        onDone(result.profile, result.wiki_status);
+        onDone(result.profile, result.wiki_status, result.resumed);
       })
       .catch(e => {
         if (!alive) return;
-        clearInterval(interval);
         setError(String(e));
       });
-
-    return () => { alive = false; clearInterval(interval); };
+    return () => { alive = false; };
   }, []);
 
   return (
@@ -68,18 +53,11 @@ export default function ResearchPage({ candidate, onDone, onBack }: Props) {
         ) : (
           <>
             <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 24 }}>
-              {STEPS[stepIndex]}
+              {STATUS}
             </p>
-            <div style={{
-              height: 4, background: "var(--bg)", borderRadius: 2, overflow: "hidden",
-            }}>
-              <div style={{
-                height: "100%",
-                width: `${((stepIndex + 1) / STEPS.length) * 100}%`,
-                background: "var(--primary)",
-                transition: "width 0.5s ease",
-              }} />
-            </div>
+            <button className="btn-ghost" onClick={onBack} style={{ marginTop: 4, fontSize: 12 }}>
+              Cancel — research can be resumed later
+            </button>
           </>
         )}
       </div>

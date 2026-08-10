@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { Source, Claim, NotabilityResult, UrlSuggestion } from "../types";
-import { verifySource, rejectSource } from "../api";
+import type { Source, Claim, NotabilityResult } from "../types";
+import { verifySource, rejectSource, assessSource } from "../api";
 import { getHostname } from "../url";
 import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
-export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onVerifyingChange, allClaims }: {
+export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onAssessed, onVerifyingChange, allClaims }: {
   source: Source;
   sourceNumber: number;
   profileName: string;
@@ -12,6 +12,7 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
   onLinkOpen: () => void;
   onVerified: (v: boolean, newClaims?: Claim[], missingSlots?: string[]) => void;
   onRejected: (result: { sources: Source[]; claims: Claim[]; notability: NotabilityResult }) => void;
+  onAssessed: (source: Source, notability: NotabilityResult | null) => void;
   onVerifyingChange?: (verifying: boolean) => void;
   allClaims?: Claim[];
 }) {
@@ -20,12 +21,16 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
   const [showReject, setShowReject] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
+  const [coverageDepth, setCoverageDepth] = useState<Source["coverage_depth"]>(source.coverage_depth ?? "unassessed");
+  const [editorialOrigin, setEditorialOrigin] = useState(source.editorial_origin ?? "");
+  const [researchNotes, setResearchNotes] = useState(source.research_notes ?? "");
+  const [assessing, setAssessing] = useState(false);
+  const [assessmentError, setAssessmentError] = useState<string | null>(null);
 
   const tagClass = SOURCE_TAG_CLASS;
   const tagLabel = SOURCE_TAG_LABEL;
 
   const sourceClaims = (allClaims ?? []).filter(c => c.source_url === source.url);
-  const suggestedCount = sourceClaims.filter(c => c.verification === "unverified").length;
   const confirmedCount = sourceClaims.filter(c => c.verification === "confirmed" || c.verification === "edited").length;
   const draftCount = sourceClaims.filter(c => c.draft_approved).length;
 
@@ -52,6 +57,19 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
     } catch { setRejecting(false); setShowReject(false); }
   }
 
+  async function handleAssess() {
+    setAssessing(true);
+    setAssessmentError(null);
+    try {
+      const result = await assessSource(profileName, source.url, coverageDepth, editorialOrigin, researchNotes);
+      onAssessed(result.source, result.notability);
+    } catch (e) {
+      setAssessmentError(String(e));
+    } finally {
+      setAssessing(false);
+    }
+  }
+
   return (
     <div className="card" style={{ marginBottom: 12, padding: "14px 18px" }}>
       {/* Top row: tag + publisher + open link */}
@@ -64,6 +82,11 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
             <span className={`tag ${tagClass[source.reliability]}`}>{tagLabel[source.reliability]}</span>
             <FetchedByTag fetchedBy={source.fetched_by} userProvided={source.user_provided} />
             <RelevanceBadge flag={source.relevance_flag} />
+            {source.redirected_to && (
+              <span title={`This URL now loads a different page: ${source.redirected_to}`} style={{ fontSize: 11, fontWeight: 700, background: "#fef3c7", color: "#92400e", borderRadius: 4, padding: "1px 7px", border: "1px solid #f59e0b55" }}>
+                ⇢ Redirect trap
+              </span>
+            )}
             {source.human_verified && (
               <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 700 }}>✓ Verified</span>
             )}
@@ -134,7 +157,7 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
             Suggested claims ({sourceClaims.length})
           </p>
           {sourceClaims.map((c, idx) => (
-            <div key={idx} style={{ fontSize: 12, color: "var(--text)", marginBottom: 4, display: "flex", gap: 6, alignItems: "baseline" }}>
+            <div key={idx} style={{ fontSize: 12, color: "var(--text)", marginBottom: 4, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ fontWeight: 700, textTransform: "uppercase", fontSize: 10, color: "var(--muted)", marginRight: 2, flexShrink: 0 }}>{c.field}</span>
               <span>{c.text}</span>
               <span style={{ fontSize: 10, fontWeight: 700, color: c.verification === "confirmed" || c.verification === "edited" ? "var(--success)" : "var(--warning)", flexShrink: 0 }}>
@@ -148,9 +171,37 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
         </div>
       )}
 
+      <details style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+        <summary style={{ fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Editorial assessment & research notes</summary>
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          <label style={{ fontSize: 11, color: "var(--muted)" }}>Coverage depth
+            <select value={coverageDepth} onChange={e => setCoverageDepth(e.target.value as Source["coverage_depth"])} style={{ display: "block", marginTop: 4 }}>
+              <option value="unassessed">Not assessed</option>
+              <option value="passing_mention">Passing mention / event report</option>
+              <option value="significant">Significant person-focused coverage</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 11, color: "var(--muted)" }}>Editorial origin
+            <span style={{ display: "block", margin: "2px 0 4px" }}>Use the same label for syndicated copies, for example “PTI · Sach-Gaurav 2018”.</span>
+            <input value={editorialOrigin} onChange={e => setEditorialOrigin(e.target.value)} placeholder="Optional wire story or editorial origin" />
+          </label>
+          <label style={{ fontSize: 11, color: "var(--muted)" }}>Research notes
+            <span style={{ display: "block", margin: "2px 0 4px" }}>Preserve caveats, useful facts, conflicts, or follow-up leads. Notes never enter the draft.</span>
+            <textarea value={researchNotes} onChange={e => setResearchNotes(e.target.value)} rows={3} placeholder="Why this source matters; what not to claim; follow-up needed…" />
+          </label>
+          <div>
+            <button className="btn-ghost" onClick={handleAssess} disabled={assessing || (coverageDepth === "significant" && !source.human_verified)}>
+              {assessing ? "Saving…" : "Save assessment"}
+            </button>
+            {coverageDepth === "significant" && !source.human_verified && <p style={{ fontSize: 11, color: "var(--warning)", marginTop: 4 }}>Verify the source before treating it as significant coverage.</p>}
+            {assessmentError && <p style={{ fontSize: 11, color: "var(--danger)", marginTop: 4 }}>{assessmentError}</p>}
+          </div>
+        </div>
+      </details>
+
       {/* Action row — only the next step is actionable, once */}
       {!showReject && (
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <div className="source-actions" style={{ display: "flex", gap: 8, marginTop: 12 }}>
           {!source.human_verified && (
             <button
               onClick={handleVerify}
@@ -238,6 +289,7 @@ export function FetchedByTag({ fetchedBy, userProvided }: { fetchedBy: Source["f
     user: "Manual",
     openalex: "OpenAlex",
     orcid: "ORCID",
+    browser: "Browser",
   };
   if (!fetchedBy || !labels[fetchedBy]) return null;
   return <span style={{ fontSize: 11, background: "#f1f5f9", color: "#64748b", borderRadius: 4, padding: "1px 7px" }}>{labels[fetchedBy]}</span>;

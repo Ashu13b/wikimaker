@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import secrets
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +25,12 @@ SESSIONS_DIR.mkdir(exist_ok=True)
 _sessions: dict[str, PersonProfile] = {}
 _wiki_statuses: dict[str, dict] = {}
 
+# FastAPI sync endpoints run in a threadpool, so session reads/mutations/saves
+# can interleave. RLock serializes the store-level operations; route handlers
+# mutate the shared in-memory profile object (GIL-atomic), then _save_session
+# snapshots it under the lock.
+_lock = threading.RLock()
+
 _llm = None
 
 
@@ -32,9 +41,35 @@ def llm():
     return _llm
 
 
-def _session_path(name: str) -> Path:
-    safe = name.replace(" ", "_").replace("/", "_")
-    return SESSIONS_DIR / f"{safe}.json"
+def _new_session_id(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:40] or "session"
+    return f"py-{slug}-{secrets.token_hex(4)}"
+
+
+def _ensure_session_id(profile: PersonProfile) -> str:
+    if not profile.session_id:
+        profile.session_id = _new_session_id(profile.name)
+    return profile.session_id
+
+
+def _session_path(session_id: str) -> Path:
+    return SESSIONS_DIR / f"{session_id}.json"
+
+
+def _resolve_profile(name_or_id: str) -> PersonProfile | None:
+    """Resolve a session by its stable id first, then by display name."""
+    with _lock:
+        if name_or_id in _sessions:
+            return _sessions[name_or_id]
+        matches = [p for p in _sessions.values() if p.name == name_or_id]
+        if not matches:
+            return None
+        if len(matches) > 1:
+            raise HTTPException(
+                409,
+                f"Multiple sessions are named '{name_or_id}'. Same-named people cannot "
+                f"be told apart by name — resume by session id instead.")
+        return matches[0]
 
 
 def _apply_provenance(profile: PersonProfile) -> None:
@@ -47,20 +82,24 @@ def _apply_provenance(profile: PersonProfile) -> None:
         src = source_map.get(c.source_url) if c.source_url else None
         profile.claims[i] = evaluate_claim_trust(c, src, profile)
 
-    profile.notability = score_notability(profile.name, profile.sources)
+    profile.notability = score_notability(profile.name, profile.sources, profile.claims)
 
 
-def _save_session(name: str) -> None:
-    profile = _sessions.get(name)
-    if not profile:
-        return
-    _apply_provenance(profile)
-    data = {
-        "profile": json.loads(profile.model_dump_json()),
-        "wiki_status": _wiki_statuses.get(name, {"status": "clear", "url": None, "note": None}),
-        "saved_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _session_path(name).write_text(json.dumps(data, indent=2, ensure_ascii=False))
+def _save_session(name_or_id: str) -> None:
+    with _lock:
+        profile = _resolve_profile(name_or_id)
+        if not profile:
+            return
+        _apply_provenance(profile)
+        sid = _ensure_session_id(profile)
+        _sessions[sid] = profile
+        _wiki_statuses.setdefault(sid, {"status": "clear", "url": None, "note": None})
+        data = {
+            "profile": json.loads(profile.model_dump_json()),
+            "wiki_status": _wiki_statuses.get(sid, {"status": "clear", "url": None, "note": None}),
+            "saved_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _session_path(sid).write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
 
 def _load_session_file(path: Path) -> dict | None:
@@ -68,9 +107,6 @@ def _load_session_file(path: Path) -> dict | None:
         return json.loads(path.read_text())
     except Exception:
         return None
-
-
-BROWSER_SERVER = "http://localhost:7070"
 
 
 def _push_to_browser(url: str) -> bool:
@@ -85,10 +121,49 @@ def _push_to_browser(url: str) -> bool:
         return False
 
 
-def _get_profile(name: str) -> PersonProfile:
-    if name not in _sessions:
-        raise HTTPException(404, f"No active research session for '{name}'")
-    return _sessions[name]
+def _get_profile(name_or_id: str) -> PersonProfile:
+    profile = _resolve_profile(name_or_id)
+    if profile is None:
+        raise HTTPException(404, f"No active research session for '{name_or_id}'")
+    return profile
+
+
+def _identity_matches(profile_dict: dict, name: str, wikidata_id: str | None) -> bool:
+    """Same display name AND a matching identity hint (wikidata equal, or neither)."""
+    if profile_dict.get("name") != name:
+        return False
+    existing_wd = profile_dict.get("wikidata_id")
+    if wikidata_id and existing_wd:
+        return wikidata_id == existing_wd
+    return not wikidata_id and not existing_wd
+
+
+def _activate_session(profile: PersonProfile, wiki_status: dict) -> PersonProfile:
+    """Key an in-memory profile by its stable id and reconcile resume-time state."""
+    from engine.relevance import flag_sources
+    from engine.extractor import find_missing_slots
+    from engine.researcher_ids import extract_ids_from_sources
+
+    with _lock:
+        flag_sources(profile.sources, profile.name, profile.field or "", profile.affiliation or "")
+        profile.missing_slots = find_missing_slots(profile, profile.claims)
+        for id_type, id_val in extract_ids_from_sources(profile.sources).items():
+            profile.researcher_ids.setdefault(id_type, id_val)
+        sid = _ensure_session_id(profile)
+        _sessions[sid] = profile
+        _wiki_statuses[sid] = wiki_status
+        return profile
+
+
+def _find_session_on_disk(pred) -> tuple[dict, Path] | None:
+    """Return the first session file whose profile satisfies pred, if any."""
+    for path in sorted(SESSIONS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        data = _load_session_file(path)
+        if not data:
+            continue
+        if pred(data.get("profile", {})):
+            return data, path
+    return None
 
 
 def _check_doi_sources(sources: list, person_name: str, affiliation: str) -> None:

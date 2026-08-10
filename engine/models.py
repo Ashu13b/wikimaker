@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from enum import Enum
 
 
@@ -28,6 +28,14 @@ class Source(BaseModel):
     user_provided: bool = False   # True = user pasted this URL manually
     human_verified: bool = False  # True = user explicitly checked this source
 
+    # Human editorial assessment. A reliable independent source may still be
+    # only a passing mention, so it must not automatically become notability
+    # evidence. Notes and origin grouping remain in the durable research record
+    # even when no claim from the source is selected for a draft.
+    coverage_depth: Literal["unassessed", "passing_mention", "significant"] = "unassessed"
+    editorial_origin: Optional[str] = None
+    research_notes: str = ""
+
     # Provenance and Trust scoring
     is_independent: bool = True
     domain_trust: str = "medium"             # high|medium|low|untrusted
@@ -48,6 +56,11 @@ class Source(BaseModel):
 
     # Relevance flag (populated for web/news sources)
     relevance_flag: str = "unscored"
+
+    # Where the page actually loaded after redirects ("" = not captured). A
+    # meaningful redirect to a different article is surfaced here so the flag
+    # and the human reviewer can see the silent trap instead of trusting the URL.
+    redirected_to: Optional[str] = None
 
     # Profile-shaped outbound links found on this page — feed into suggestion queue
     profile_links: list[str] = Field(default_factory=list)
@@ -72,9 +85,10 @@ class Claim(BaseModel):
 
 class NotabilityResult(BaseModel):
     score: float          # 0.0–1.0
-    label: str            # "Strong" / "Moderate" / "Weak" / "Insufficient"
-    rs_count: int         # reliable secondary source count
+    label: str            # "Strong coverage" / "Moderate coverage" / etc.
+    rs_count: int         # human-assessed significant independent origins
     reason: str
+    candidate_count: int = 0  # independent outlets awaiting/including assessment
     wp_prof_signals: list[str] = Field(default_factory=list)  # academic-specific signals
 
 
@@ -90,9 +104,29 @@ class PersonCandidate(BaseModel):
     wikidata_id: Optional[str] = None
 
 
+class UrlSuggestion(BaseModel):
+    """A ranked candidate URL from the suggestion queue (suggester → frontend).
+
+    Contract for `suggest_next_urls` output; validating at the API boundary means
+    a renamed/removed key fails loudly instead of rendering as undefined in the UI.
+    """
+    url: str
+    title: str = ""
+    snippet: str = ""
+    reason: str = ""
+    query: Optional[str] = None
+    expected_slots: list[str] = Field(default_factory=list)
+    priority: int = 0
+    source_type: Optional[Literal["profile", "publication", "news"]] = None
+    fetchable: Literal["open", "needs_browser", "paywalled"] = "open"
+    relevance: Literal["high", "medium", "low"] = "medium"
+    completion_value: int = 0
+
+
 class PersonProfile(BaseModel):
     """Central data model. wikimaker fills this; future research hub extends it."""
     name: str
+    session_id: Optional[str] = None  # stable identity; name is just a mutable label
     wikidata_id: Optional[str] = None
     wikipedia_url: Optional[str] = None
     photo_url: Optional[str] = None

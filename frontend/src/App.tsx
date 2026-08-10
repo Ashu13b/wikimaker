@@ -64,6 +64,7 @@ function MainApp() {
   const [confirmed, setConfirmed] = useState<PersonCandidate | null>(null);
   const [hubProfile, setHubProfile] = useState<PersonProfile | null>(null);
   const [wikiStatus, setWikiStatus] = useState<WikiStatus | null>(null);
+  const [resumedSession, setResumedSession] = useState(false);
   const [draftProfile, setDraftProfile] = useState<PersonProfile | null>(null);
   const [relayPending, setRelayPending] = useState<{ url: string; text: string } | null>(null);
 
@@ -95,9 +96,10 @@ function MainApp() {
     setStage("loading");
   }
 
-  function handleResearchDone(profile: PersonProfile, status: WikiStatus) {
+  function handleResearchDone(profile: PersonProfile, status: WikiStatus, resumed?: boolean) {
     setHubProfile(profile);
     setWikiStatus(status);
+    setResumedSession(Boolean(resumed));
     setStage("hub");
   }
 
@@ -111,6 +113,7 @@ function MainApp() {
     setConfirmed(null);
     setHubProfile(null);
     setWikiStatus(null);
+    setResumedSession(false);
     setDraftProfile(null);
   }
 
@@ -137,6 +140,7 @@ function MainApp() {
         <HubPage
           initialProfile={hubProfile}
           wikiStatus={wikiStatus}
+          resumedSession={resumedSession}
           onDraft={handleDraft}
           onReset={handleReset}
           relayPending={relayPending}

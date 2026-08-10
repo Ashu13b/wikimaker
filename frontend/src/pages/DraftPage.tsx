@@ -1,8 +1,12 @@
 import { useState } from "react";
 import type { PersonProfile, WikiStatus, Source } from "../types";
 import { getDraftDestination } from "../workflow";
+import { profileRef } from "../api";
 import { getHostname } from "../url";
 import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "../components/slotMeta";
+import DraftPreview from "../components/DraftPreview";
+import DraftLinks from "../components/DraftLinks";
+import DraftQa from "../components/DraftQa";
 
 interface Props {
   profile: PersonProfile;
@@ -11,8 +15,10 @@ interface Props {
   onReset: () => void;
 }
 
+type Tab = "preview" | "links" | "qa" | "en" | "hi";
+
 export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }: Props) {
-  const [tab, setTab] = useState<"en" | "preview" | "hi">("preview");
+  const [tab, setTab] = useState<Tab>("preview");
   const [copied, setCopied] = useState(false);
 
   const wikitextEn = profile.wikitext_en ?? "";
@@ -40,7 +46,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
   return (
     <div style={{ maxWidth: 960, margin: "40px auto", padding: "0 20px 60px" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div className="draft-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {profile.photo_url && (
             <img src={profile.photo_url} alt={profile.name}
@@ -68,7 +74,7 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
           border: "1px solid #bfdbfe",
           borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13,
         }}>
-          <strong>Automated source-count estimate: {notability.label}</strong> — {rsCount} classified secondary source{rsCount !== 1 ? "s" : ""} · This is not a Wikipedia notability decision. {notability.reason}
+          <strong>Editorial coverage signal: {notability.label}</strong> — {rsCount} source origin{rsCount !== 1 ? "s" : ""} assessed as significant · This is not a Wikipedia notability decision. {notability.reason}
         </div>
       )}
 
@@ -84,43 +90,22 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
       <div className="hub-grid" style={{ gridTemplateColumns: "1fr 272px" }}>
         {/* Draft Container */}
         <div className="card" style={{ padding: 0 }}>
-          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle, #f9fafb)" }}>
-            <TabBtn active={tab === "preview"} onClick={() => setTab("preview")}>Draft Preview & Links</TabBtn>
+          <div style={{ display: "flex", borderBottom: "1px solid var(--border)", background: "var(--bg-subtle, #f9fafb)", overflowX: "auto" }}>
+            <TabBtn active={tab === "preview"} onClick={() => setTab("preview")}>Wikipedia Preview</TabBtn>
+            <TabBtn active={tab === "links"} onClick={() => setTab("links")}>Verify · links live</TabBtn>
+            <TabBtn active={tab === "qa"} onClick={() => setTab("qa")}>Check · AfC lint</TabBtn>
             <TabBtn active={tab === "en"} onClick={() => setTab("en")}>Raw Wikitext (EN)</TabBtn>
             {wikitextHi && <TabBtn active={tab === "hi"} onClick={() => setTab("hi")}>Raw Wikitext (HI)</TabBtn>}
           </div>
 
           <div style={{ padding: 20 }}>
-            {tab === "preview" ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: 8 }}>
-                  <div>
-                    <strong style={{ fontSize: 14, color: "#1e40af" }}>Reviewable Wikipedia Draft Loaded</strong>
-                    <p style={{ fontSize: 12, color: "#1e3a8a", margin: "2px 0 0" }}>Draft generated from approved evidence. Review Wikipedia notability, neutrality, and every citation before submission.</p>
-                  </div>
-                  <a href={draftDestination.href} target="_blank" rel="noopener noreferrer">
-                    <button className="btn-primary" style={{ fontSize: 13 }}>
-                      Open Wikipedia Submission in New Tab ↗
-                    </button>
-                  </a>
-                </div>
+            {tab === "preview" && <DraftPreview profileName={profileRef(profile)} wikitext={wikitextEn} draftDestination={draftDestination} />}
 
-                <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 8, padding: 18 }}>
-                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 12, lineHeight: 1.6, color: "var(--text)" }}>
-                    {wikitextEn}
-                  </pre>
-                </div>
+            {tab === "links" && <DraftLinks profileName={profileRef(profile)} />}
 
-                <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                  <button className="btn-primary" onClick={handleCopy}>
-                    {copied ? "Copied Wikitext!" : "Copy Wikitext to Clipboard"}
-                  </button>
-                  <a href={draftDestination.href} target="_blank" rel="noopener noreferrer">
-                    <button className="btn-ghost">{draftDestination.label} ↗</button>
-                  </a>
-                </div>
-              </div>
-            ) : (
+            {tab === "qa" && <DraftQa profileName={profileRef(profile)} />}
+
+            {tab !== "preview" && tab !== "links" && tab !== "qa" && (
               <div>
                 <textarea
                   readOnly

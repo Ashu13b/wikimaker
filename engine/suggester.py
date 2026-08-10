@@ -42,6 +42,11 @@ def _fetchability(url: str) -> str:
 
 def is_profile_url(url: str) -> bool:
     url_lower = url.lower()
+    if any(fragment in url_lower for fragment in (
+        "linkedin.com/company/", "linkedin.com/sharing/", "linkedin.com/pub/dir/",
+        "/author/administrator", "/author/stadmin",
+    )):
+        return False
     # Check known profile domains
     profile_domains = [
         "orcid.org", "scholar.google.", "researchgate.net/profile",
@@ -241,7 +246,18 @@ def _profile_link_suggestions(profile: PersonProfile, missing: list[str], seen_n
         for link_url in src.profile_links:
             if _normalize_url(link_url) in seen_normalized:
                 continue
+            if not is_profile_url(link_url):
+                continue
             expected = ["affiliation", "education", "field", "known_for"]
+            relevance = _relevance(
+                link_url,
+                src.title or "",
+                profile.affiliation or "",
+                profile.field or "",
+                profile.claims,
+            )
+            if relevance == "low":
+                continue
             suggestions.append({
                 "url": link_url,
                 "title": link_url,
@@ -251,7 +267,7 @@ def _profile_link_suggestions(profile: PersonProfile, missing: list[str], seen_n
                 "priority": 0,
                 "source_type": "profile",
                 "fetchable": _fetchability(link_url),
-                "relevance": "high",  # trusted — came from a verified page
+                "relevance": relevance,
                 "completion_value": _completion_value(expected, missing),
             })
             seen_normalized.add(_normalize_url(link_url))

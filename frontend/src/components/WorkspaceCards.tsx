@@ -1,5 +1,4 @@
 import type { PersonProfile, WikiStatus, NotabilityResult, DraftAudit } from "../types";
-import { getWorkspaceRoute } from "../workflow";
 
 export function Expander({ label, open, onToggle, children }: {
   label: string; open: boolean; onToggle: () => void; children: React.ReactNode;
@@ -16,7 +15,7 @@ export function Expander({ label, open, onToggle, children }: {
 
 export function NotabilityBadge({ n }: { n: NotabilityResult }) {
   const color = n.score >= 0.7 ? "var(--success)" : n.score >= 0.4 ? "var(--warning)" : "var(--danger)";
-  return <span style={{ fontSize: 12, color, fontWeight: 600, marginTop: 2, display: "inline-block" }}>{n.label} · {n.rs_count} RS source{n.rs_count !== 1 ? "s" : ""}</span>;
+  return <span style={{ fontSize: 12, color, fontWeight: 600, marginTop: 2, display: "inline-block" }}>{n.label} · {n.rs_count} significant source{n.rs_count !== 1 ? "s" : ""}</span>;
 }
 
 export function NotabilityCard({ n }: { n: NotabilityResult }) {
@@ -25,7 +24,7 @@ export function NotabilityCard({ n }: { n: NotabilityResult }) {
   return (
     <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 8, padding: "12px 16px" }}>
       <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Notability: {n.label}</p>
-      <p style={{ fontSize: 12 }}>{n.rs_count} reliable secondary source{n.rs_count !== 1 ? "s" : ""}</p>
+      <p style={{ fontSize: 12 }}>{n.rs_count} significant editorial origin{n.rs_count !== 1 ? "s" : ""} · {n.candidate_count ?? 0} independent candidate{n.candidate_count !== 1 ? "s" : ""}</p>
       <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{n.reason}</p>
     </div>
   );
@@ -53,7 +52,7 @@ export function ChecklistCard({ profile, wikiStatus }: { profile: PersonProfile;
   const verifiedCount = profile.claims.filter(c => c.verification === "confirmed" || c.verification === "edited").length;
   const humanVerifiedSources = profile.sources.filter(s => s.human_verified).length;
   const evidenceItems = [
-    { done: rsCount >= 2, label: `2+ RS sources (${rsCount} found)` },
+    { done: rsCount >= 2, label: `2+ significant coverage origins (${rsCount} assessed)` },
     { done: humanVerifiedSources > 0, label: `Sources checked (${humanVerifiedSources}/${profile.sources.length})` },
     { done: verifiedCount > 0, label: `Claims verified (${verifiedCount}/${profile.claims.length})` },
   ];
@@ -84,7 +83,7 @@ export function ChecklistCard({ profile, wikiStatus }: { profile: PersonProfile;
 
 export function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} className={active ? "tab-btn tab-btn-active" : "tab-btn"} style={{
       padding: "12px 16px", border: "none", borderRadius: 0, background: "transparent",
       fontWeight: active ? 700 : 400,
       borderBottom: active ? "2px solid var(--primary)" : "2px solid transparent",

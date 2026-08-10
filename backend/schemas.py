@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 
 
 class IdentifyRequest(BaseModel):
@@ -26,6 +26,14 @@ class AddSourceRequest(BaseModel):
     profile_name: str
     url: str
 
+
+class AssessSourceRequest(BaseModel):
+    """Human editorial assessment retained with a research source."""
+    profile_name: str
+    url: str
+    coverage_depth: Literal["unassessed", "passing_mention", "significant"]
+    editorial_origin: Optional[str] = None
+    research_notes: str = ""
 
 class AddDocumentFact(BaseModel):
     """A fact the user typed from a document — has no web source, timeline only."""

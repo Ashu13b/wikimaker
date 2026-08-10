@@ -1,6 +1,20 @@
 module.exports = [
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/__pycache__/**", "**/*.py", "**/*.json"],
+    files: ["eslint.config.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        module: "readonly", require: "readonly", process: "readonly",
+        __dirname: "readonly", __filename: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "error",
+    },
+  },
+  {
+    files: ["**/*.{js,jsx}"],
+    ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/__pycache__/**", "**/*.py", "**/*.json", "eslint.config.js"],
     languageOptions: {
       sourceType: "module",
       globals: {
@@ -14,8 +28,8 @@ module.exports = [
       },
     },
     rules: {
-      "no-undef": "off",
-      "no-unused-vars": "off",
+      "no-undef": "error",
+      "no-unused-vars": "error",
     },
   },
 ];

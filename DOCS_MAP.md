@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-06 19:43 UTC · sha 343c8bf · host vnic-trading -->
+<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-10 00:54 UTC · sha 8cb8567 · host vnic-trading -->
 
 # DOCS_MAP
 
@@ -15,16 +15,12 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - State
     - Decisions & rejected approaches
     - Half-done / known-broken
+    - Aug 2026 frontend hardening & redesign
 - `ROADMAP.md`
   - ROADMAP
     - Shipped
     - Next
     - Out of scope
-- `wikitext_draft_prem_singh_yadav.md`
-  - Complete Wikipedia AfC Draft & Verified Source Links Directory
-    - Subject: Prem Singh Yadav
-      - 1. Verified Sources Directory (Clickable Links)
-      - 2. Complete Wikitext Draft for Wikipedia Submission
 
 ## research/
 - `research/Prem_Singh_Yadav_cv_verification.md`
@@ -33,3 +29,8 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Public links
     - Deeper annual-report and earlier-draft findings
     - Still unverified or unsuitable for the draft
+    - Editorial coverage review (9 August 2026)
+    - AfC rationale for the cloning milestone
+    - Nature Portfolio publication review
+    - Telomere, telomerase and book records
+    - Patent search (10 August 2026)

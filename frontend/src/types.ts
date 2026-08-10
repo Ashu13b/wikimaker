@@ -12,10 +12,13 @@ export interface PersonCandidate {
 
 export type SourceReliability = "reliable_secondary" | "primary" | "self_published" | "unreliable";
 export type VerificationState = "unverified" | "confirmed" | "edited" | "skipped";
-export type SourceFetchedBy = "semantic_scholar" | "google_search" | "duckduckgo" | "crawl" | "user" | "openalex" | "orcid" | null;
+export type SourceFetchedBy = "semantic_scholar" | "google_search" | "duckduckgo" | "crawl" | "user" | "openalex" | "orcid" | "browser" | null;
 
 export interface Source {
   url: string;
+  coverage_depth: "unassessed" | "passing_mention" | "significant";
+  editorial_origin: string | null;
+  research_notes: string;
   title: string;
   publisher: string;
   reliability: SourceReliability;
@@ -32,6 +35,9 @@ export interface Source {
   author_match_affiliation: string | null;
   all_paper_authors: string[];
   relevance_flag: "relevant" | "uncertain" | "likely_wrong" | "unscored";
+  redirected_to: string | null;
+  liveness?: "alive" | "blocked" | "dead" | "unknown";
+  archive_url?: string | null;
   profile_links: string[];
 }
 
@@ -54,6 +60,7 @@ export interface NotabilityResult {
   score: number;
   label: string;
   rs_count: number;
+  candidate_count: number;
   reason: string;
   passed: boolean;
 }
@@ -94,6 +101,7 @@ export interface ResearchStartResponse {
   wiki_status: WikiStatus;
   notability: NotabilityResult;
   profile: PersonProfile;
+  resumed?: boolean;
 }
 
 export interface SdPipelineResult {
@@ -150,6 +158,31 @@ export interface DraftAudit {
 export interface DraftResponse {
   profile: PersonProfile;
   audit: DraftAudit;
+}
+
+export type DraftLinkStatus = "ok" | "blocked" | "dead" | "unknown";
+
+export interface DraftLink {
+  url: string;
+  label: string;
+  archived: boolean;
+  status: DraftLinkStatus;
+  status_code: number | null;
+  final_url: string | null;
+}
+
+export type DraftQaSeverity = "error" | "warning" | "info";
+
+export interface DraftQaFinding {
+  id: string;
+  severity: DraftQaSeverity;
+  message: string;
+}
+
+export interface DraftQaReport {
+  findings: DraftQaFinding[];
+  passed: boolean;
+  counts: Record<DraftQaSeverity, number>;
 }
 
 export interface UrlSuggestion {

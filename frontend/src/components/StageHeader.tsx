@@ -4,14 +4,10 @@ interface StageHeaderProps {
   profile: PersonProfile;
   audit: DraftAudit | null;
   auditError: string | null;
-  drafting: boolean;
-  draftLabel: string | null;
-  draftAvailable: boolean;
   onNavigate: (tab: "sources" | "profile" | "claims") => void;
-  onGenerateDraft: () => void;
 }
 
-export function StageHeader({ profile, audit, auditError, drafting, draftLabel, draftAvailable, onNavigate, onGenerateDraft }: StageHeaderProps) {
+export function StageHeader({ profile, audit, auditError, onNavigate }: StageHeaderProps) {
   const totalSources = profile.sources.length;
   const verifiedCount = profile.sources.filter(s => s.human_verified).length;
   const pendingClaims = profile.claims.filter(c => c.verification === "unverified").length;
@@ -38,24 +34,18 @@ export function StageHeader({ profile, audit, auditError, drafting, draftLabel, 
       );
     }
     if (activeId === "review") {
+      if (awaitingReview === 0) return null; // extraction hasn't produced claims yet
       return (
         <button className="btn-primary" onClick={() => onNavigate("claims")} style={{ fontSize: 12, padding: "6px 14px" }}>
           Review {awaitingReview} claim{awaitingReview === 1 ? "" : "s"}
         </button>
       );
     }
-    if (activeId === "draft" && draftLabel) {
-      return (
-        <button className="btn-primary" onClick={onGenerateDraft} disabled={drafting || !draftAvailable} style={{ fontSize: 12, padding: "6px 14px" }}>
-          {drafting ? "Generating…" : draftLabel}
-        </button>
-      );
-    }
-    return null;
+    return null; // the draft step is a status, not an action — the header holds the Generate button
   }
 
   return (
-    <div className="card" style={{ marginBottom: 16, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+    <div className="card stage-header" style={{ marginBottom: 16, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap" }}>
         {steps.map((step, i) => (
           <div key={step.id} style={{ display: "flex", alignItems: "center" }}>
@@ -79,7 +69,7 @@ export function StageHeader({ profile, audit, auditError, drafting, draftLabel, 
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="stage-header-action" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {activeId === "draft" && !auditReady && auditError && (
           <span style={{ fontSize: 11, color: "var(--danger)" }}>{auditError}</span>
         )}

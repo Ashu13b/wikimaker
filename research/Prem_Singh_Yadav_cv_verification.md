@@ -160,3 +160,98 @@ a guarantee of AfC acceptance. NADS remains unverified and excluded.
 - WP:ACADEMIC: https://en.wikipedia.org/wiki/Wikipedia:Notability_(academics)
 - WP:BLP: https://en.wikipedia.org/wiki/Wikipedia:Biographies_of_living_persons
 - WP:RS: https://en.wikipedia.org/wiki/Wikipedia:Reliable_sources
+
+## Editorial coverage review (9 August 2026)
+
+The session now distinguishes a source's reliability from its depth of coverage.
+Two independent editorial origins are assessed as substantial enough to support
+the notability discussion: The Tribune's bylined 2018 report, which identifies
+Yadav as project head and discusses results, funding and technical limitations;
+and Amar Ujala's detailed 2020 bureau report, which identifies him as chief
+scientist, explains the cloning programme and names the full team. This is useful
+support, but neither is a full biographical profile.
+
+Moneycontrol's 2020 article is an aggregation of Times of India and Zee material.
+The NDTV and Deccan Herald Sach-Gaurav reports share a PTI/Bhasha origin, and the
+2022 Hisar-Gaurav birthday reports are also wire/event coverage. They remain in
+the research dossier but do not multiply the notability count. Business Standard
+provides independent impact commentary, but it incorrectly calls Yadav the CIRB
+director; the draft uses only the accurately attributable impact statement and
+relies on other sources for his role.
+
+The revised draft removes the commercially sourced M.Sc./Ph.D. and promotion
+timeline, replaces them with CIRB's official 12 April 1993 joining record, and
+replaces a Times of India M-29 citation that did not name Yadav with the detailed
+Amar Ujala report. The generated draft uses 19 claims from 18 sources; AfC lint
+passes with no error or warning. No independent source located in this pass
+established that the Nanaji Deshmukh ICAR award is highly prestigious, so the
+WP:ACADEMIC criterion 2 argument remains reviewer-dependent.
+
+## AfC rationale for the cloning milestone
+
+Do not describe Yadav as the creator of the world's second cloned buffalo.
+Garima, the second live cloned buffalo reported in India in 2009, was produced
+at NDRI, and the located sources do not credit Yadav. The supported distinction
+is that a team led by Yadav produced Hisar Gaurav in 2015, making CIRB India's
+second and, according to ICAR, the world's third institute to clone a buffalo.
+
+This is the draft's strongest notability argument. ICAR identifies Yadav and the
+team directly; Times of India and The Tribune independently connect him to the
+project, and later reporting documents its breeding results. At AfC, frame this
+as evidence of research impact under WP:ACADEMIC criteria 1 and 7, not as an
+automatic entitlement to an article. The remaining vulnerability is that much
+of the coverage concerns the team or achievement rather than providing an
+extended biography of Yadav.
+
+## Nature Portfolio publication review
+
+Yadav is an author of “Successful cloning of a superior buffalo bull”, published
+in *Scientific Reports* in 2019 (DOI 10.1038/s41598-019-47909-8). Scientific
+Reports is a Nature Portfolio journal; it is not the journal *Nature*. The
+publisher identifies Yadav as a corresponding author and states that he
+co-designed the research, co-wrote the manuscript, and contributed resources and
+laboratory space. The paper reports a fertile cloned Murrah bull and 12 live
+progeny, giving direct scholarly support to the Hisar Gaurav work.
+
+As displayed by Nature Portfolio on 9 August 2026, the article had approximately
+11,000 accesses and 34 citations. Later reviews cite it in discussions of animal
+cloning and livestock conservation. These facts strengthen a WP:ACADEMIC
+criterion 1 argument, but neither publication by a Nature Portfolio journal nor
+34 citations automatically establishes notability. A field-normalized citation
+comparison or independent review explicitly identifying Yadav's contribution as
+influential would be stronger evidence.
+
+## Telomere, telomerase and book records
+
+Two distinct publications should not be conflated. Yadav was first author of a
+2024 *Theriogenology* experimental study that evaluated telomere length alongside
+growth, blood, health and semen characteristics in cloned and re-cloned buffalo
+bulls. Separately, Yadav and Abubakar Muhammad Wakil wrote a peer-reviewed review
+chapter on telomerase structure, regulation and measurement. IntechOpen records
+its DOI as 10.5772/intechopen.89506 and publication date as 24 December 2019.
+The latter summarizes prior research; it is not an original telomerase experiment.
+
+The independently hosted ICAR-NDRI e-book list and an ICAR-IVRI curriculum both
+record Yadav, Birbal Singh, Inderjeet Singh and R. K. Sethi as authors of
+*Reproductive Biotechnology in Buffalo* (ISBN 8189304801). This is the one
+confirmed standalone book. Yadav also co-authored chapters including “Somatic
+Cell Nuclear Transfer and its Applications in Buffalo” in a 2022 Springer volume
+and “Animal Cloning: Application and Status” in a 2022 ICAR-CIRB/MANAGE e-book;
+those should be described as chapters, not as additional authored books.
+
+The concise draft now includes the 2024 telomere-length study, the 2019 telomerase
+review chapter and the standalone buffalo-reproduction book. These establish the
+breadth of his scholarship but remain supporting context rather than independent
+proof of notability.
+
+## Patent search (10 August 2026)
+
+No patent or application naming Prem Singh Yadav (or P. S. Yadav) of ICAR-CIRB
+as an inventor was located in patent-index searches or CIRB's published
+intellectual-property records. CIRB's 2021 annual report supplies inventor lists
+for its granted and filed patents, and none names Yadav. Its 2024 patent portfolio
+likewise identifies no cloning or telomerase patent attributable to him. The ICAR
+completion record for NASF project 7004, which Yadav led, reports publications
+and project achievements but no patent output.
+
+This is a negative search result, not proof that no filing exists. Do not add a

@@ -1,7 +1,8 @@
 """FastAPI backend for wikimaker — app wiring.
 
-Routes live in backend/routes.py, request models in backend/schemas.py, and the
-session store in backend/store.py. This module wires the app, mounts the static
+Route handlers live in backend/routes_research.py, backend/routes_draft.py, and
+backend/routes_sessions.py; request models in backend/schemas.py; the session
+store in backend/store.py. This module wires the app, mounts the static
 frontend, and re-exports the public API names the frontend and tests use.
 """
 from __future__ import annotations
@@ -19,17 +20,23 @@ from .store import SESSIONS_DIR, _sessions, _wiki_statuses  # noqa: F401  (publi
 from .schemas import (  # noqa: F401  (public request models)
     IdentifyRequest, ResearchRequest, AddSourceRequest, AddDocumentFact,
     AddSourcedClaimRequest, VerifyClaimRequest, AddSourcePaste, CrawlRequest,
-    TargetedSearchRequest, DraftRequest, FindIdsRequest, RefreshPapersRequest,
+    TargetedSearchRequest, DraftRequest, FindIdsRequest, RefreshPapersRequest, AssessSourceRequest,
 )
-from .routes import (  # noqa: F401  (public route handlers)
+from .routes_research import (  # noqa: F401  (public route handlers)
     identify, research_start, add_source, add_document_fact, add_sourced_claim,
     verify_claim, add_source_paste, deep_crawl, targeted_search_endpoint,
-    auto_enrich_endpoint, draft_audit, generate_draft, get_session,
-    verify_source, reject_source, list_sessions, delete_session,
-    find_researcher_ids_endpoint, refresh_papers_endpoint, resume_session,
-    fetch_from_browser, suggest_urls, skip_suggestion,
+    auto_enrich_endpoint, article_proposal, get_session, verify_source,
+    assess_source, reject_source, skip_suggestion, find_researcher_ids_endpoint,
+    refresh_papers_endpoint, fetch_from_browser, fetch_blocked, suggest_urls,
+    research_router,
 )
-from .routes import router
+from .routes_draft import (  # noqa: F401
+    draft_audit, generate_draft, draft_links, draft_preview, draft_qa, draft_verify,
+    draft_router,
+)
+from .routes_sessions import (  # noqa: F401
+    resume_session, list_sessions, delete_session, sessions_router,
+)
 
 api_app = FastAPI(title="wikimaker")
 api_app.add_middleware(
@@ -38,7 +45,9 @@ api_app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-api_app.include_router(router)
+api_app.include_router(research_router)
+api_app.include_router(draft_router)
+api_app.include_router(sessions_router)
 
 
 # ── Unified App setup ───────────────────────────────────────────────────────

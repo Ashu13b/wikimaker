@@ -60,11 +60,15 @@ research dossier.
 
 ## 3. Commands
 - Run the app: `bash start.sh` (builds frontend, serves unified app on :3890).
-- Frontend dev/build: `cd frontend && npm run dev` / `npm run build`.
+- Frontend dev/build/typecheck: `cd frontend && npm run dev` / `npm run build` /
+  `npm run typecheck` (`tsc --noEmit`).
 - Tests: `pytest` from the repo root (imports resolve `backend/engine/wiki` as
   top-level packages from root). Single file: `pytest tests/test_draft.py`.
-- Quality gate: `sh .context-kit/ck gate` (pyright, ruff, eslint,
-  dependency-guard; `standard` profile → warning, non-blocking).
+  `tests/conftest.py` auto-isolates every test with a tmp `SESSIONS_DIR` — the
+  real `sessions/` is never touched by tests.
+- Quality gate: `sh .context-kit/ck gate` (pyright, ruff, eslint, tsc, pytest,
+  plus dependency/modularity guards; `standard` profile → warning, non-blocking).
+  `--fast` runs typecheck+lint only, skipping the test suite.
 - Rebuild maps: `.context-kit/ck build` — Check staleness: `.context-kit/ck check`.
   The pre-commit hook rebuilds and stages maps automatically.
 

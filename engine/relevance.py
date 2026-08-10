@@ -19,6 +19,50 @@ _ACADEMIC_FETCHED_BY = {"semantic_scholar"}
 _DOI_PATTERNS = ["doi.org", "pubmed", "ncbi.nlm", "springer", "plos",
                  "tandfonline", "wiley", "elsevier", "mdpi", "frontiersin"]
 
+# Domains that exist to redirect elsewhere — a final URL on a different domain
+# is the expected outcome, not a wrong-page trap.
+_SHORTENERS = {"t.co", "bit.ly", "goo.gl", "tinyurl.com", "ow.ly", "bit.do",
+               "rb.gy", "dlvr.it", "trib.al", "lnkd.in", "shorturl.at", "rebrand.ly"}
+
+
+_PRESENTATION_SUBDOMAINS = ("www.", "m.", "mobile.", "amp.")
+
+
+def _redirect_norm(url: str) -> tuple[str, str]:
+    from urllib.parse import urlparse
+    p = urlparse(url)
+    host = p.netloc.lower()
+    for prefix in _PRESENTATION_SUBDOMAINS:
+        if host.startswith(prefix):
+            host = host[len(prefix):]
+            break
+    path = p.path.rstrip("/") or "/"
+    # AMP pages are the same article; normalize the /amp suffix away.
+    if path.endswith("/amp"):
+        path = path[: -len("/amp")] or "/"
+    return host, path
+
+
+def is_meaningful_redirect(url: str, final_url: str) -> bool:
+    """True when a fetch landed on a materially different page than requested.
+
+    Catches silent same-site redirects to an unrelated article (e.g. a jagran
+    URL that now serves a different article). Ignores scheme/host-normalisation,
+    AMP variants, URL shorteners, and DOI resolvers (those legitimately redirect
+    to publishers).
+    """
+    if not final_url or final_url == url:
+        return False
+    ohost, opath = _redirect_norm(url)
+    fhost, fpath = _redirect_norm(final_url)
+    if ohost in _SHORTENERS or fhost in _SHORTENERS:
+        return False
+    if any(d in url.lower() for d in _DOI_PATTERNS):
+        return False
+    if ohost != fhost:
+        return True
+    return opath != fpath
+
 
 def _significant_name_tokens(name: str) -> list[str]:
     skip = {"dr", "dr.", "prof", "prof.", "mr", "mrs", "ms", "shri", "smt"}

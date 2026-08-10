@@ -22,7 +22,18 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
   // Search preview
   const [searching, setSearching] = useState(false);
   const [previewResults, setPreviewResults] = useState<IdentifyResult[]>([]);
+  const [wikiStatus, setWikiStatus] = useState<import("../types").WikiStatus | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  const identityMatches = previewResults.filter(r => r.kind === "identity");
+  const webClues = previewResults.filter(r => r.kind !== "identity");
+
+  const wikiChip = wikiStatus ? {
+    exists: { bg: "#eff6ff", border: "#93c5fd", color: "#1d4ed8", text: "An English Wikipedia article already exists — research will propose improvements, not a new draft.", url: wikiStatus.url },
+    draft: { bg: "#fffbeb", border: "#fcd34d", color: "#92400e", text: "A draft already exists at AfC — research will improve it rather than create a competing one.", url: wikiStatus.url },
+    deleted: { bg: "#fef2f2", border: "#fca5a5", color: "#b91c1c", text: "A previous deletion was found — review its history before considering another draft.", url: wikiStatus.url },
+    clear: { bg: "#f0fdf4", border: "#86efac", color: "#15803d", text: "No article or draft found — research will build evidence for a new AfC draft.", url: null },
+  }[wikiStatus.status] : null;
 
   // Sessions
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -35,10 +46,10 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
     listSessions().then(setSessions).catch(() => {});
   }, []);
 
-  async function handleResume(file: string) {
+  async function handleResume(file: string, id: string | null) {
     setResumeLoading(file);
     try {
-      const result = await resumeSession(file);
+      const result = await resumeSession(id ?? file);
       onResume(result.profile, result.wiki_status);
     } catch (e) {
       setSessionError(String(e));
@@ -47,10 +58,10 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
     }
   }
 
-  async function handleDelete(file: string) {
+  async function handleDelete(file: string, id: string | null) {
     setDeleteLoading(file);
     try {
-      await deleteSession(file);
+      await deleteSession(id ?? file);
       setSessions(prev => prev.filter(s => s.file !== file));
       setDeleteConfirm(null);
     } catch (e) {
@@ -65,8 +76,9 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
     setSearching(true);
     setSearchError(null);
     try {
-      const results = await identifyPerson(name.trim(), field.trim() || null, affiliation.trim() || null);
-      setPreviewResults(results);
+      const data = await identifyPerson(name.trim(), field.trim() || null, affiliation.trim() || null);
+      setPreviewResults(data.results);
+      setWikiStatus(data.wiki_status);
       setView("preview");
     } catch (e) {
       setSearchError(String(e));
@@ -86,6 +98,24 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
       affiliation: affiliation.trim() || null,
       wikipedia_url: null,
       wikidata_id: null,
+    });
+  }
+
+  function handleConfirmIdentity(r: IdentifyResult) {
+    setField(r.field ?? field);
+    setAffiliation(r.affiliation ?? affiliation);
+    setNationality(r.nationality ?? nationality);
+    setPhotoUrl(r.photo_url ?? photoUrl);
+    onConfirmed({
+      name: name.trim(),
+      photo_url: r.photo_url || photoUrl.trim() || null,
+      bio_snippet: r.snippet || [field, affiliation, nationality].filter(Boolean).join(" · "),
+      birth_year: r.birth_year || null,
+      nationality: r.nationality || nationality.trim() || null,
+      field: r.field || field.trim() || null,
+      affiliation: r.affiliation || affiliation.trim() || null,
+      wikipedia_url: r.wikipedia_url || null,
+      wikidata_id: r.wikidata_id || null,
     });
   }
 
@@ -131,7 +161,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                  <button className="btn-primary" onClick={() => handleResume(s.file)} disabled={resumeLoading === s.file}
+                  <button className="btn-primary" onClick={() => handleResume(s.file, s.id)} disabled={resumeLoading === s.file}
                     style={{ fontSize: 13, padding: "8px 16px" }}>
                     {resumeLoading === s.file ? "Loading…" : "Resume →"}
                   </button>
@@ -145,7 +175,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
               {deleteConfirm === s.file && (
                 <div style={{ marginTop: 12, padding: "10px 12px", background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 13, flex: 1, color: "var(--danger)" }}>Delete "{s.name}"? This cannot be undone.</span>
-                  <button onClick={() => handleDelete(s.file)} disabled={deleteLoading === s.file}
+                  <button onClick={() => handleDelete(s.file, s.id)} disabled={deleteLoading === s.file}
                     style={{ padding: "6px 14px", fontSize: 12, fontWeight: 700, borderRadius: 6, border: "none", background: "var(--danger)", color: "#fff", cursor: "pointer" }}>
                     {deleteLoading === s.file ? "Deleting…" : "Delete"}
                   </button>
@@ -237,6 +267,15 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
             </button>
           </div>
 
+          {wikiChip && (
+            <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: wikiChip.bg, border: `1px solid ${wikiChip.border}`, color: wikiChip.color, fontSize: 13, lineHeight: 1.5 }}>
+              {wikiChip.text}
+              {wikiChip.url && (
+                <> <a href={wikiChip.url} target="_blank" rel="noreferrer" style={{ color: wikiChip.color, textDecoration: "underline", fontWeight: 600 }}>Open ↗</a></>
+              )}
+            </div>
+          )}
+
           {previewResults.length === 0 ? (
             <div className="card" style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: "var(--muted)" }}>
@@ -246,25 +285,60 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
             </div>
           ) : (
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                Possible identity clues — confirm independently
-              </p>
-              {previewResults.map((r, i) => (
-                <div key={i} className="card" style={{ marginBottom: 10, padding: "12px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{r.title}</p>
-                      <p style={{ fontSize: 11, color: "var(--muted)", marginBottom: 5 }}>
-                        {r.snippet.slice(0, 180)}{r.snippet.length > 180 ? "…" : ""}
-                      </p>
-                      <a href={r.url} target="_blank" rel="noreferrer"
-                        style={{ fontSize: 11, color: "var(--primary)" }}>
-                        {r.publisher} ↗
-                      </a>
+              {identityMatches.length > 0 && (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Wikipedia/Wikidata identity match — confirm this person
+                  </p>
+                  {identityMatches.map((r, i) => (
+                    <div key={i} className="card" style={{ marginBottom: 10, padding: "12px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                        {r.photo_url && (
+                          <img src={r.photo_url} alt={r.title}
+                            style={{ width: 48, height: 48, borderRadius: 6, objectFit: "cover", border: "1px solid var(--border)", flexShrink: 0 }} />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{r.title}</p>
+                          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 5, lineHeight: 1.45 }}>
+                            {r.snippet.slice(0, 220)}{r.snippet.length > 220 ? "…" : ""}
+                          </p>
+                          <p style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>
+                            {[r.nationality, r.field, r.affiliation, r.birth_year].filter(Boolean).join(" · ") || r.publisher}
+                          </p>
+                          <button className="btn-primary" onClick={() => handleConfirmIdentity(r)}
+                            style={{ fontSize: 13, padding: "7px 16px" }}>
+                            Confirm this person →
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  ))}
+                </>
+              )}
+
+              {webClues.length > 0 && (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginTop: identityMatches.length > 0 ? 18 : 0, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    Possible identity clues — confirm independently
+                  </p>
+                  {webClues.map((r, i) => (
+                    <div key={i} className="card" style={{ marginBottom: 10, padding: "12px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{r.title}</p>
+                          <p style={{ fontSize: 11, color: "var(--muted)", marginBottom: 5 }}>
+                            {r.snippet.slice(0, 180)}{r.snippet.length > 180 ? "…" : ""}
+                          </p>
+                          <a href={r.url} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 11, color: "var(--primary)" }}>
+                            {r.publisher} ↗
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
 

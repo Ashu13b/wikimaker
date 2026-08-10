@@ -1,19 +1,7 @@
 import { useState } from "react";
 import type { Claim, PersonProfile } from "../types";
-import { verifyClaim } from "../api";
-
-const SOURCE_TAG_CLASS: Record<string, string> = {
-  reliable_secondary: "tag-rs",
-  primary: "tag-primary",
-  self_published: "tag-self",
-  unreliable: "tag-unreliable",
-};
-const SOURCE_TAG_LABEL: Record<string, string> = {
-  reliable_secondary: "RS",
-  primary: "Primary",
-  self_published: "Self",
-  unreliable: "Unreliable",
-};
+import { verifyClaim, profileRef } from "../api";
+import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
 type FilterTab = "all" | "draft" | "review" | "unsourced";
 
@@ -52,7 +40,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
   async function doVerify(globalIndex: number, action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft", text?: string) {
     setLoading(globalIndex);
     try {
-      const resp = await verifyClaim(profile.name, globalIndex, action, text);
+      const resp = await verifyClaim(profileRef(profile), globalIndex, action, text);
       const updated = [...allClaims];
       updated[globalIndex] = resp.claim;
       onProfileUpdate({ ...profile, claims: updated });
@@ -100,6 +88,27 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
         const globalIndex = claimIndexMap.get(claim) ?? -1;
         const isEditing = editingIndex === globalIndex;
         const isLoading = loading === globalIndex;
+        const src = claim.source_url ? profile.sources.find(s => s.url === claim.source_url) ?? null : null;
+        // Mirror the draft audit's source rules so "+" is only enabled when the
+        // claim can actually enter the draft.
+        const sourceUsable = !!src && !!claim.source_url &&
+          src.human_verified &&
+          src.reliability !== "unreliable" &&
+          src.relevance_flag !== "likely_wrong" &&
+          !(src.liveness === "dead" && !src.archive_url);
+        const includeBlocker = !claim.source_url
+          ? "This claim has no source — add a source before including it in the draft."
+          : !src
+            ? "Source is not in this session."
+            : !src.human_verified
+              ? "Verify the source first — draft claims require a human-verified source."
+              : src.reliability === "unreliable"
+                ? "Source is marked unreliable."
+                : src.relevance_flag === "likely_wrong"
+                  ? "Source is flagged as a likely wrong person."
+                  : src.liveness === "dead" && !src.archive_url
+                    ? "Source is dead with no archive copy."
+                    : "";
         return (
           <div key={globalIndex} style={{
             padding: "14px 0", borderBottom: "1px solid var(--border)",
@@ -201,9 +210,9 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                   <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--primary)" title="Edit claim">✎</ActionBtn>
                   <ActionBtn
                     onClick={() => doVerify(globalIndex, claim.draft_approved ? "remove_draft" : "approve_draft")}
-                    disabled={isLoading}
+                    disabled={isLoading || (!claim.draft_approved && !sourceUsable)}
                     color={claim.draft_approved ? "var(--danger)" : "var(--success)"}
-                    title={claim.draft_approved ? "Remove from draft" : "Include in draft"}
+                    title={claim.draft_approved ? "Remove from draft" : (sourceUsable ? "Include in draft" : includeBlocker)}
                   >
                     {claim.draft_approved ? "−" : "+"}
                   </ActionBtn>
@@ -229,7 +238,7 @@ function ActionBtn({ onClick, disabled, color, title, children }: {
   onClick: () => void; disabled: boolean; color: string; title: string; children: React.ReactNode;
 }) {
   return (
-    <button onClick={onClick} disabled={disabled} title={title} style={{
+    <button onClick={onClick} disabled={disabled} title={title} className="claim-action" style={{
       width: 28, height: 28, padding: 0, borderRadius: 6, background: "var(--bg)",
       border: "1px solid var(--border)", color, fontSize: 14, fontWeight: 700,
       display: "flex", alignItems: "center", justifyContent: "center",

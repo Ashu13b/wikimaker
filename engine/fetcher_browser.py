@@ -12,15 +12,9 @@ so the user only needs to pass any one-time checks once.
 """
 from __future__ import annotations
 from pathlib import Path
-from .fetcher import FetchResult, _extract_text
+from .fetcher import FetchResult, _extract_text, BOT_WALL_RE
 
 _SESSION_DIR = Path.home() / ".wikimaker" / "browser_session"
-
-_BLOCKED_SIGNALS = [
-    "captcha", "cf-browser-verification", "just a moment",
-    "enable javascript", "unusual activity", "please verify",
-    "access denied", "403 forbidden",
-]
 
 _LAUNCH_ARGS = [
     "--disable-blink-features=AutomationControlled",
@@ -79,7 +73,7 @@ def fetch_with_browser(url: str, timeout_ms: int = 25_000) -> FetchResult:
 
         text = _extract_text(html)
         html_lower = html.lower()
-        if any(sig in html_lower for sig in _BLOCKED_SIGNALS) and len(text) < 300:
+        if BOT_WALL_RE.search(html_lower) and len(text) < 300:
             return FetchResult(url, "", method="browser", blocked=True)
 
         return FetchResult(url, text, method="browser", raw_html=html, blocked=False)

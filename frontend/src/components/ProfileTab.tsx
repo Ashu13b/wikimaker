@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { PersonProfile } from "../types";
-import { addDocumentFact, targetedSearch, addSource } from "../api";
+import { addDocumentFact, targetedSearch, addSource, profileRef } from "../api";
 import { FillMode, SLOT_SECTIONS, SLOT_LABELS, SLOT_HINTS, SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
 export function ProfileTab({ profile, onProfileUpdate }: {
@@ -42,7 +42,7 @@ export function ProfileTab({ profile, onProfileUpdate }: {
     setSlotError(e => ({ ...e, [slot]: "" }));
     try {
       const hint = hintInputs[slot]?.trim() || undefined;
-      const resp = await targetedSearch(profile.name, slot, hint);
+      const resp = await targetedSearch(profileRef(profile), slot, hint);
       onProfileUpdate({
         ...profile,
         sources: [...profile.sources, ...resp.sources],
@@ -64,7 +64,7 @@ export function ProfileTab({ profile, onProfileUpdate }: {
     setBusySlot(slot);
     setSlotError(e => ({ ...e, [slot]: "" }));
     try {
-      const resp = await addSource(profile.name, url);
+      const resp = await addSource(profileRef(profile), url);
       const newSources = resp.source ? [...profile.sources, resp.source] : profile.sources;
       onProfileUpdate({
         ...profile,
@@ -87,7 +87,7 @@ export function ProfileTab({ profile, onProfileUpdate }: {
     setBusySlot(slot);
     setSlotError(e => ({ ...e, [slot]: "" }));
     try {
-      const resp = await addDocumentFact(profile.name, slot, text);
+      const resp = await addDocumentFact(profileRef(profile), slot, text);
       onProfileUpdate({ ...profile, claims: [...profile.claims, resp.claim] });
       setManualInputs(m => ({ ...m, [slot]: "" }));
       setMode(slot, null);
@@ -118,7 +118,7 @@ export function ProfileTab({ profile, onProfileUpdate }: {
               const err = slotError[slot];
 
               return (
-                <div key={slot} style={{
+                <div key={slot} className="slot-row" style={{
                   display: "grid", gridTemplateColumns: "130px 1fr",
                   gap: 14, padding: "12px 0", borderBottom: "1px solid var(--border)",
                 }}>
