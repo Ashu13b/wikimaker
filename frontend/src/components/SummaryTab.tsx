@@ -1,5 +1,7 @@
 import type { PersonProfile, WikiStatus, DraftAudit } from "../types";
-import { NotabilityCard, ChecklistCard, DraftReadinessCard } from "./WorkspaceCards";
+import { NotabilityCard, ChecklistCard, DraftReadinessCard, SaturationCard } from "./WorkspaceCards";
+
+type Tab = "sources" | "profile" | "claims" | "proposal" | "guide";
 
 interface Props {
   profile: PersonProfile;
@@ -9,31 +11,34 @@ interface Props {
   drafting: boolean;
   draftLabel: string | null;
   draftAvailable: boolean;
-  onNavigate: (tab: "sources" | "profile" | "claims" | "proposal") => void;
+  onNavigate: (tab: Tab) => void;
   onGenerateDraft: () => void;
 }
-
-type Tab = "sources" | "profile" | "claims" | "proposal";
 
 export default function SummaryTab({ profile, wikiStatus, audit, auditError, drafting, draftLabel, draftAvailable, onNavigate, onGenerateDraft }: Props) {
   const totalSources = profile.sources.length;
   const verifiedCount = profile.sources.filter(s => s.human_verified).length;
   const unverifiedCount = totalSources - verifiedCount;
   const pendingClaims = profile.claims.filter(c => c.verification === "unverified").length;
-  const confirmedNotApproved = profile.claims.filter(c => (c.verification === "confirmed" || c.verification === "edited") && !c.draft_approved).length;
   const inDraft = profile.claims.filter(c => c.draft_approved).length;
   const auditReady = audit?.ready === true;
   const rsCount = profile.notability?.rs_count ?? 0;
 
   const milestones: { id: "verify" | "review" | "draft"; label: string; done: boolean; detail: string; tab: Tab }[] = [
     {
-      id: "verify", label: "Verify sources", done: verifiedCount > 0,
+      id: "verify", label: "Verify sources", done: verifiedCount > 0 && unverifiedCount === 0,
       detail: `${verifiedCount}/${totalSources} confirmed`,
       tab: "sources",
     },
     {
-      id: "review", label: "Review claims", done: profile.claims.length > 0 && pendingClaims + confirmedNotApproved === 0,
-      detail: pendingClaims + confirmedNotApproved ? `${pendingClaims + confirmedNotApproved} to review` : profile.claims.length ? "all reviewed" : "no claims yet",
+      id: "review", label: "Review claims", done: profile.claims.length > 0 && pendingClaims === 0 && inDraft > 0,
+      detail: pendingClaims
+        ? `${pendingClaims} to review`
+        : inDraft
+          ? `${inDraft} in draft`
+          : profile.claims.length
+            ? "dossier only"
+            : "no claims yet",
       tab: "claims",
     },
     {
@@ -52,24 +57,28 @@ export default function SummaryTab({ profile, wikiStatus, audit, auditError, dra
       tab: "sources",
       generate: false,
     };
-    if (pendingClaims + confirmedNotApproved > 0) return {
-      title: `Review ${pendingClaims + confirmedNotApproved} claim${pendingClaims + confirmedNotApproved === 1 ? "" : "s"}`,
-      detail: pendingClaims > 0
-        ? "Confirm, edit, or skip the AI-suggested claims, then approve the good ones for the draft."
-        : "Approve your confirmed claims so they can enter the draft.",
+    if (pendingClaims > 0) return {
+      title: `Review ${pendingClaims} claim${pendingClaims === 1 ? "" : "s"}`,
+      detail: "Review AI-suggested claims — include verified facts in the draft or keep them in the research dossier.",
+      tab: "claims",
+      generate: false,
+    };
+    if (inDraft === 0 && profile.claims.length > 0) return {
+      title: "Select claims for draft",
+      detail: "You have confirmed claims in your research dossier, but none selected for drafting. Include key claims to build the draft.",
       tab: "claims",
       generate: false,
     };
     if (draftLabel && auditReady) return {
       title: draftLabel.replace("→", "").trim(),
-      detail: "Evidence is sufficient — generate the wikitext.",
+      detail: `Evidence is sufficient (${inDraft} claim${inDraft === 1 ? "" : "s"} across ${audit?.eligible_source_count ?? 0} sources) — generate the wikitext draft.`,
       tab: null,
       generate: true,
     };
     return {
       title: "Keep researching",
       detail: auditError ?? (audit
-        ? "The draft audit needs a few more independent sources before it can proceed."
+        ? (audit.blockers[0]?.message ?? "The draft audit needs a few more independent sources before it can proceed.")
         : "Auditing draft evidence…"),
       tab: "sources",
       generate: false,
@@ -136,7 +145,23 @@ export default function SummaryTab({ profile, wikiStatus, audit, auditError, dra
         </div>
       </div>
 
+      {/* Quick Guide Callout Banner */}
+      <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, background: "rgba(37, 99, 235, 0.04)", border: "1px solid rgba(37, 99, 235, 0.18)", padding: "14px 18px", flexWrap: "wrap" }}>
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)", display: "block" }}>
+            📖 How Wikimaker Works & Button Guide
+          </span>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 0" }}>
+            Confused about what "+ Draft", "✓ Dossier", or "Verify Source" do? Read the interactive visual guide.
+          </p>
+        </div>
+        <button className="btn-ghost" onClick={() => onNavigate("guide")} style={{ fontSize: 12, padding: "6px 14px", fontWeight: 700 }}>
+          Open Guide →
+        </button>
+      </div>
+
       {/* Status cards */}
+      {profile.saturation && <SaturationCard s={profile.saturation} />}
       {verifiedCount > 0 && profile.notability && <NotabilityCard n={profile.notability} />}
       {verifiedCount > 0 && <ChecklistCard profile={profile} wikiStatus={wikiStatus} />}
       {verifiedCount > 0 && <DraftReadinessCard audit={audit} error={auditError} />}

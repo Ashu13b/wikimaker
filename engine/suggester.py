@@ -363,8 +363,19 @@ def _search_queries(profile: PersonProfile, field: str, affil: str, missing: lis
         queries.append({
             "query": f'"{profile.name}" {affil or field} site:{outlet}'.strip(),
             "seeking": site_target,
-            "reason": f"National outlet {outlet} coverage",
+            "reason": f"National/regional outlet {outlet} coverage",
         })
+    # Vernacular bilingual queries for missing biographical & achievement slots
+    queries.append({
+        "query": f'"{profile.name}" {affil or field} समाचार रिपोर्ट'.strip(),
+        "seeking": "known_for",
+        "reason": "Vernacular press reports and regional coverage",
+    })
+    queries.append({
+        "query": f'"{profile.name}" {affil or field} जीवनी पुरस्कार'.strip(),
+        "seeking": "award",
+        "reason": "Regional biography and honor records",
+    })
     return queries
 
 

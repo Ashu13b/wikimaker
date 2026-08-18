@@ -1,12 +1,15 @@
 """Multi-strategy URL fetcher with fallbacks for blocked sources."""
 from __future__ import annotations
+import ipaddress
 import re
+import socket
 import requests
 from urllib.parse import quote_plus, urlparse
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 BOT_HEADERS = {"User-Agent": "wikimaker/0.1 (ay.yadav53@gmail.com)"}  # for APIs that want bot UA
 TIMEOUT = 10
+MAX_FETCH_BYTES = 5 * 1024 * 1024  # 5 MB maximum response body
 
 # Bot-wall / challenge signatures, shared by the headless fetcher and the remote
 # browser's wall detection so the two vocabularies can't drift apart.
@@ -16,6 +19,40 @@ BOT_WALL_RE = re.compile(
     r"403 forbidden", re.I)
 
 
+def is_safe_public_url(url: str) -> bool:
+    """Verify url uses http/https and does not resolve to private/loopback/cloud-metadata IP."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        hostname_lower = hostname.lower()
+        if hostname_lower in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+            return False
+        try:
+            ip = ipaddress.ip_address(hostname_lower)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                return False
+            return True
+        except ValueError:
+            pass
+
+        try:
+            addr_info = socket.getaddrinfo(hostname, None)
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip = ipaddress.ip_address(ip_str)
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                    return False
+        except socket.gaierror:
+            pass
+        return True
+    except Exception:
+        return False
+
+
 def check_liveness(url: str) -> tuple[str, str | None]:
     """Return (liveness, archive_url) for a URL.
 
@@ -23,6 +60,8 @@ def check_liveness(url: str) -> tuple[str, str | None]:
     - dead (404/410) also looks up a Wayback snapshot to use as the citation.
     - blocked (403/401/429) is bot-protection: still citable by a human.
     """
+    if not is_safe_public_url(url):
+        return "unknown", None
     try:
         resp = requests.get(url, headers=HEADERS, timeout=12, allow_redirects=True, stream=True)
         code = resp.status_code
@@ -125,17 +164,33 @@ def fetch_url(url: str) -> FetchResult:
 
 
 def _direct_fetch(url: str) -> tuple[str, str, str] | None:
-    """Returns (text, raw_html, final_url) or None if blocked."""
+    """Returns (text, raw_html, final_url) or None if blocked or unsafe."""
+    if not is_safe_public_url(url):
+        return None
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True)
+        resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT, allow_redirects=True, stream=True)
         if resp.status_code in (401, 403, 407, 429):
             return None
         resp.raise_for_status()
+
+        if resp.url != url and not is_safe_public_url(resp.url):
+            return None
+
+        content_parts = []
+        downloaded = 0
+        for chunk in resp.iter_content(chunk_size=65536):
+            content_parts.append(chunk)
+            downloaded += len(chunk)
+            if downloaded > MAX_FETCH_BYTES:
+                break
+        raw_bytes = b"".join(content_parts)
+
         ct = resp.headers.get("content-type", "")
         if "application/pdf" in ct or url.lower().split("?")[0].endswith(".pdf"):
-            text = _pdf_extract(resp.content)
+            text = _pdf_extract(raw_bytes)
             return text, "", resp.url  # no raw HTML for PDFs
-        raw = resp.text
+        encoding = resp.encoding or "utf-8"
+        raw = raw_bytes.decode(encoding, errors="replace")
         return _extract_text(raw), raw, resp.url
     except Exception:
         return None

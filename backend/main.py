@@ -19,12 +19,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .store import SESSIONS_DIR, _sessions, _wiki_statuses  # noqa: F401  (public state)
 from .schemas import (  # noqa: F401  (public request models)
     IdentifyRequest, ResearchRequest, AddSourceRequest, AddDocumentFact,
-    AddSourcedClaimRequest, VerifyClaimRequest, AddSourcePaste, CrawlRequest,
+    AddSourcedClaimRequest, VerifyClaimRequest, BatchVerifyClaimsRequest, AddSourcePaste, CrawlRequest,
     TargetedSearchRequest, DraftRequest, FindIdsRequest, RefreshPapersRequest, AssessSourceRequest,
 )
 from .routes_research import (  # noqa: F401  (public route handlers)
     identify, research_start, add_source, add_document_fact, add_sourced_claim,
-    verify_claim, add_source_paste, deep_crawl, targeted_search_endpoint,
+    verify_claim, batch_verify_claims, add_source_paste, deep_crawl, targeted_search_endpoint,
     auto_enrich_endpoint, article_proposal, get_session, verify_source,
     assess_source, reject_source, skip_suggestion, find_researcher_ids_endpoint,
     refresh_papers_endpoint, fetch_from_browser, fetch_blocked, suggest_urls,

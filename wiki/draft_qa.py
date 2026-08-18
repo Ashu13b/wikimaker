@@ -62,7 +62,41 @@ def qa_draft(profile: PersonProfile) -> QaReport:
     _check_structure(wikitext, report)
     _check_citations(wikitext, report)
     _check_sources(wikitext, profile, report)
+    _check_duplicate_claims(profile, report)
+    _check_institutional_achievements(profile, report)
     return report
+
+
+def _check_duplicate_claims(profile: PersonProfile, report: QaReport) -> None:
+    approved = [c for c in profile.claims if c.draft_approved]
+    seen_texts: dict[str, str] = {}
+    for c in approved:
+        text = (c.draft_text or c.text).strip().lower()
+        if len(text) < 20:
+            continue
+        # Compare simplified token set
+        tokens = " ".join(re.findall(r"\b\w{4,}\b", text))
+        if tokens in seen_texts:
+            report.findings.append(Finding(
+                id="duplicate_approved_claim",
+                severity="warning",
+                message=f"Duplicate approved claim detected: '{text[:70]}...' — consolidate into a single statement."
+            ))
+        else:
+            seen_texts[tokens] = text
+
+
+def _check_institutional_achievements(profile: PersonProfile, report: QaReport) -> None:
+    source_map = {s.url: s for s in profile.sources if s.url}
+    for c in profile.claims:
+        if c.draft_approved and c.field in ("award", "achievement") and c.source_url:
+            src = source_map.get(c.source_url)
+            if src and (not src.is_independent or src.provenance_category == "institutional_bio"):
+                report.findings.append(Finding(
+                    id="institutional_achievement_source",
+                    severity="warning",
+                    message=f"Award/achievement claim '{c.text[:60]}...' cites institutional source ({src.publisher}) — prefer independent secondary coverage."
+                ))
 
 
 def _check_structure(wikitext: str, report: QaReport) -> None:

@@ -625,3 +625,16 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   reports are wire/event coverage. Removed unconfirmed commercial-source degree
   and promotion claims; the TOI 2020 M-29 story did not name Yadav, so Amar Ujala
   now supports that attribution. AfC lint is 0 errors / 0 warnings / 1 info.
+- User workflow simplification & draft readiness UX (Aug 2026):
+  - Replaced multi-click claim friction: `verify_claim` `action="approve_draft"`
+    now auto-confirms unverified claims with verified sources in 1 click (no
+    longer requires confirm first then separate approve).
+  - Added batch claim actions (`POST /research/batch-verify-claims`): "Approve all
+    usable for draft", "Confirm all (dossier only)", and "Skip unreviewed".
+  - Fixed claims mental model in UI: added explicit "Dossier only" filter tab and
+    badges alongside "In draft", making the distinction between research dossier
+    facts and AfC draft content obvious.
+  - Fixed Summary and StageHeader progress loops: having confirmed claims kept
+    strictly in the dossier no longer gets stuck prompting the user to "Review claims".
+  - DraftReadinessCard now includes diagnostic accordion breakdown of excluded
+    claims so users immediately understand why any fact was omitted.

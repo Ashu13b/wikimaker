@@ -9,6 +9,7 @@ import { SourcesPanel } from "../components/SourcesPanel";
 import { ProfileTab } from "../components/ProfileTab";
 import { StageHeader } from "../components/StageHeader";
 import SummaryTab from "../components/SummaryTab";
+import GuideTab from "../components/GuideTab";
 import { TabBtn, NotabilityBadge, NotabilityCard, ChecklistCard, DraftReadinessCard } from "../components/WorkspaceCards";
 import { getWorkspaceRoute } from "../workflow";
 
@@ -23,7 +24,7 @@ interface Props {
   onRelayConsumed?: () => void;
 }
 
-type Tab = "summary" | "sources" | "profile" | "claims" | "proposal";
+type Tab = "summary" | "sources" | "profile" | "claims" | "proposal" | "guide";
 
 export default function HubPage({ initialProfile, wikiStatus, resumedSession, onDraft, onReset, relayPending, onRelayConsumed }: Props) {
   const [profile, setProfile] = useState(initialProfile);
@@ -176,8 +177,8 @@ export default function HubPage({ initialProfile, wikiStatus, resumedSession, on
       />
 
       <div className="hub-grid" style={{ gridTemplateColumns: showBrowser
-        ? (tab === "summary" ? "1fr 420px" : "1fr 272px 420px")
-        : (tab === "summary" ? "1fr" : "1fr 272px") }}>
+        ? (tab === "summary" || tab === "guide" ? "1fr 420px" : "1fr 272px 420px")
+        : (tab === "summary" || tab === "guide" ? "1fr" : "1fr 272px") }}>
         {/* Main panel */}
         <div>
           {/* Tabs */}
@@ -213,6 +214,9 @@ export default function HubPage({ initialProfile, wikiStatus, resumedSession, on
                 Article proposal
               </TabBtn>
             )}
+            <TabBtn active={tab === "guide"} onClick={() => setTab("guide")}>
+              📖 How It Works & Buttons
+            </TabBtn>
           </div>
           <nav className="mobile-tabbar">
             <TabBtn active={tab === "summary"} onClick={() => setTab("summary")}>
@@ -246,6 +250,9 @@ export default function HubPage({ initialProfile, wikiStatus, resumedSession, on
                 Proposal
               </TabBtn>
             )}
+            <TabBtn active={tab === "guide"} onClick={() => setTab("guide")}>
+              Guide
+            </TabBtn>
           </nav>
 
           {tab === "summary" && (
@@ -285,10 +292,13 @@ export default function HubPage({ initialProfile, wikiStatus, resumedSession, on
           {tab === "proposal" && wikiStatus.status === "exists" && (
             <ArticleProposalView profileName={profileRef(profile)} />
           )}
+          {tab === "guide" && (
+            <GuideTab />
+          )}
         </div>
 
         {/* Sidebar */}
-        {tab !== "summary" && (
+        {tab !== "summary" && tab !== "guide" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <ResearchOperationsCard ops={activeOperations} drafting={drafting} />
           {hasVerifiedSources ? (

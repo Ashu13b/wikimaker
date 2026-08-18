@@ -1,0 +1,5 @@
+Drafting must remain deterministic and server-owned in wiki/draft.py; no fabricated or LLM-generated prose.
+Only human-confirmed and explicitly draft-approved claims backed by verified sources can enter wikitext.
+Test suites must remain isolated via temporary SESSIONS_DIR fixtures and never touch live user sessions.
+Keep strict type safety across backend (pyright) and frontend (tsc --noEmit).
+Mutations to in-memory session profiles must be serialized under store._lock before disk snapshot.

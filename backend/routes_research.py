@@ -8,11 +8,11 @@ from . import store
 from . import pipelines
 from .schemas import (
     IdentifyRequest, ResearchRequest, AddSourceRequest, AddDocumentFact,
-    AddSourcedClaimRequest, VerifyClaimRequest, AddSourcePaste, CrawlRequest,
+    AddSourcedClaimRequest, VerifyClaimRequest, BatchVerifyClaimsRequest, AddSourcePaste, CrawlRequest,
     TargetedSearchRequest, FindIdsRequest, RefreshPapersRequest, AssessSourceRequest,
 )
 
-from engine.models import PersonProfile, Claim, VerificationState
+from engine.models import PersonProfile, Claim, VerificationState, SourceReliability
 from engine.researcher import (
     fetch_auto_sources, fetch_url_source, fetch_url_source_with_paste,
     fetch_institution_sources, targeted_slot_search,
@@ -87,16 +87,8 @@ def identify(req: IdentifyRequest) -> dict:
     return {"results": results, "wiki_status": wiki_status}
 
 
-@research_router.post("/research/start")
-def research_start(req: ResearchRequest) -> dict:
-    """Initialize session, run wiki check, fetch + classify sources, score notability.
-
-    Same-identity collision policy: if a session with the same display name AND a
-    matching identity hint already exists (wikidata_id equal, or neither has one),
-    it is resumed instead of creating a duplicate. Same name with a different
-    identity hint creates a distinct session — same-named people never collide.
-    """
-    # ── Identity-collision check (in-memory first, then disk) ────────────────
+def _find_resumable_session(req: ResearchRequest) -> PersonProfile | None:
+    """Check in-memory store and disk for an existing session with matching identity."""
     existing = next(
         (p for p in store._sessions.values()
          if store._identity_matches({"name": p.name, "wikidata_id": p.wikidata_id},
@@ -115,25 +107,63 @@ def research_start(req: ResearchRequest) -> dict:
             id_path = store._session_path(sid)
             if path != id_path and id_path.exists():
                 path.unlink()  # drop the legacy name-based file now migrated
-    resumed = existing is not None
+    return existing
 
+
+def _enrich_and_flag_sources(sources: list, name: str, field: str = "", affiliation: str = "") -> list:
+    """Enrich sources with classification, DOI verification, and relevance flags."""
+    if not sources:
+        return sources
+    classified = classify_sources(sources, store.llm())
+    store._check_doi_sources(classified, name, affiliation or "")
+    flag_sources(classified, name, field or "", affiliation or "")
+    return classified
+
+
+def _populate_initial_sources(profile: PersonProfile, req: ResearchRequest) -> None:
+    """Fetch, classify, and filter initial sources for a newly created session."""
+    sources, s2_author_id = fetch_auto_sources(req.name, req.field, req.affiliation)
+    if s2_author_id:
+        profile.researcher_ids["semantic_scholar"] = s2_author_id
+
+    found_ids = extract_ids_from_sources(sources)
+    for id_type, id_val in found_ids.items():
+        profile.researcher_ids.setdefault(id_type, id_val)
+
+    if req.affiliation:
+        institution_sources = fetch_institution_sources(req.name, req.affiliation)
+        existing_urls = {s.url for s in sources}
+        sources.extend(s for s in institution_sources if s.url not in existing_urls)
+
+    sources = _enrich_and_flag_sources(sources, req.name, req.field or "", req.affiliation or "")
+    profile.sources = [s for s in sources if s.relevance_flag != "likely_wrong"]
+    profile.claims = []
+    profile.notability = score_notability(req.name, [])
+    profile.missing_slots = find_missing_slots(profile, [])
+
+
+@research_router.post("/research/start")
+def research_start(req: ResearchRequest) -> dict:
+    """Initialize session, run wiki check, fetch + classify sources, score notability.
+
+    Same-identity collision policy: if a session with the same display name AND a
+    matching identity hint already exists (wikidata_id equal, or neither has one),
+    it is resumed instead of creating a duplicate. Same name with a different
+    identity hint creates a distinct session — same-named people never collide.
+    """
+    existing = _find_resumable_session(req)
     if existing is not None:
         sid = store._ensure_session_id(existing)
         return {
             "wiki_status": store._wiki_statuses.get(sid),
             "notability": existing.notability.model_dump() if existing.notability else None,
             "profile": existing.model_dump(),
-            "resumed": resumed,
+            "resumed": True,
         }
 
-    # A confirmed wikipedia_url routes precisely: the article's real title may
-    # differ from the typed name (e.g. a parenthetical disambiguator), so check
-    # that title directly instead of only the raw name.
     from wiki.wiki_check import check_title_for
     wiki_status = check_existing_page(check_title_for(req.name, req.wikipedia_url))
 
-    # Never choose a Wikidata image from a name alone: same-name people are
-    # common. Enrich from Wikidata only when the user confirmed a specific QID.
     photo_url = req.photo_url
     if not photo_url and req.wikidata_id:
         from engine.identifier import fetch_wikidata_photo_by_id
@@ -150,32 +180,7 @@ def research_start(req: ResearchRequest) -> dict:
         nationality=req.nationality,
         birth_date=req.birth_year,
     )
-
-    sources, s2_author_id = fetch_auto_sources(req.name, req.field, req.affiliation)
-    if s2_author_id:
-        profile.researcher_ids["semantic_scholar"] = s2_author_id
-
-    # Extract researcher IDs from existing source URLs
-    found_ids = extract_ids_from_sources(sources)
-    for id_type, id_val in found_ids.items():
-        profile.researcher_ids.setdefault(id_type, id_val)
-
-    # If affiliation is known, crawl the institution website for biographical sources
-    if req.affiliation:
-        institution_sources = fetch_institution_sources(req.name, req.affiliation)
-        existing_urls = {s.url for s in sources}
-        sources.extend(s for s in institution_sources if s.url not in existing_urls)
-
-    sources = classify_sources(sources, store.llm())
-    store._check_doi_sources(sources, req.name, req.affiliation or "")
-    flag_sources(sources, req.name, req.field or "", req.affiliation or "")
-    # Drop wrong-person sources before saving — keep uncertain ones (may be right, user can judge)
-    sources = [s for s in sources if s.relevance_flag != "likely_wrong"]
-    profile.sources = sources
-    # Do not extract claims or score notability until the user verifies sources!
-    profile.claims = []
-    profile.notability = score_notability(req.name, [])
-    profile.missing_slots = find_missing_slots(profile, [])
+    _populate_initial_sources(profile, req)
 
     sid = store._ensure_session_id(profile)
     with store._lock:
@@ -185,7 +190,7 @@ def research_start(req: ResearchRequest) -> dict:
 
     return {
         "wiki_status": wiki_status.model_dump(),
-        "notability": profile.notability.model_dump(),
+        "notability": profile.notability.model_dump() if profile.notability else None,
         "profile": profile.model_dump(),
         "resumed": False,
     }
@@ -214,9 +219,7 @@ def add_source(req: AddSourceRequest) -> dict:
 
     # ── Normal URL fetch ──────────────────────────────────────────────────────
     source, blocked = fetch_url_source(url, profile.name)
-    [source] = classify_sources([source], store.llm())
-    flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
-    store._check_doi_sources([source], profile.name, profile.affiliation or "")
+    [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
     source.liveness = "blocked" if blocked else "alive"
 
     # Extract researcher IDs from the new URL (e.g. user pastes an ORCID link)
@@ -318,13 +321,21 @@ def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
         claim.draft_approved = False
         claim.draft_text = None
     elif req.action == "approve_draft":
-        if claim.verification not in {VerificationState.confirmed, VerificationState.edited}:
-            raise HTTPException(400, "Confirm the claim before approving it for the draft")
         source = next((source for source in profile.sources if source.url == claim.source_url), None)
         if source is None or not source.human_verified:
             raise HTTPException(400, "Draft claims require a human-verified source")
+        if claim.verification in {VerificationState.unverified, VerificationState.skipped}:
+            claim.verification = VerificationState.confirmed
         claim.draft_approved = True
         claim.draft_text = req.edited_text or claim.text
+    elif req.action == "edit_draft_text" and req.edited_text:
+        source = next((source for source in profile.sources if source.url == claim.source_url), None)
+        if source is None or not source.human_verified:
+            raise HTTPException(400, "Draft claims require a human-verified source")
+        if claim.verification in {VerificationState.unverified, VerificationState.skipped}:
+            claim.verification = VerificationState.confirmed
+        claim.draft_text = req.edited_text
+        claim.draft_approved = True
     elif req.action == "remove_draft":
         claim.draft_approved = False
         claim.draft_text = None
@@ -335,13 +346,53 @@ def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     return {"claim": claim.model_dump()}
 
 
+@research_router.post("/research/batch-verify-claims")
+def batch_verify_claims(name: str, req: BatchVerifyClaimsRequest) -> dict:
+    """Batch approve, confirm, or skip unreviewed claims."""
+    profile = store._get_profile(name)
+    sources_by_url = {normalize_url(s.url): s for s in profile.sources}
+    count = 0
+
+    if req.action == "approve_all_usable":
+        for claim in profile.claims:
+            if claim.verification == VerificationState.unverified:
+                source = sources_by_url.get(normalize_url(claim.source_url)) if claim.source_url else None
+                if (
+                    source
+                    and source.human_verified
+                    and source.reliability != SourceReliability.unreliable
+                    and source.relevance_flag != "likely_wrong"
+                    and not (source.liveness == "dead" and not source.archive_url)
+                ):
+                    claim.verification = VerificationState.confirmed
+                    claim.draft_approved = True
+                    claim.draft_text = claim.text
+                    count += 1
+    elif req.action == "confirm_all":
+        for claim in profile.claims:
+            if claim.verification == VerificationState.unverified:
+                claim.verification = VerificationState.confirmed
+                count += 1
+    elif req.action == "skip_unverified":
+        for claim in profile.claims:
+            if claim.verification == VerificationState.unverified:
+                claim.verification = VerificationState.skipped
+                claim.draft_approved = False
+                claim.draft_text = None
+                count += 1
+    else:
+        raise HTTPException(400, f"Unsupported batch action: {req.action}")
+
+    store._save_session(name)
+    return {"profile": profile.model_dump(), "updated_count": count}
+
+
 @research_router.post("/research/add-source-paste")
 def add_source_paste(req: AddSourcePaste) -> dict:
     """User pasted text from a blocked page (or typed from a screenshot/PDF)."""
     profile = store._get_profile(req.profile_name)
     source = fetch_url_source_with_paste(req.url, req.pasted_text)
-    [source] = classify_sources([source], store.llm())
-    flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
+    [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
     source.human_verified = True
     new_claims = extract_claims(profile, [source], store.llm())
     profile.sources.append(source)
@@ -416,8 +467,7 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     excluded = existing_urls | rejected_urls | skipped_urls
 
     new_sources = [s for s in sources if normalize_url(s.url) not in excluded]
-    new_sources = classify_sources(new_sources, store.llm())
-    flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
+    new_sources = _enrich_and_flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
     # Auto-added search results must be citable: never flood the session with
     # self-published or unreliable noise (LinkedIn dir pages, personal trainers, etc.)
     new_sources = [
@@ -468,8 +518,7 @@ def auto_enrich_endpoint(body: dict) -> dict:
         )
         new_sources = [s for s in candidate_sources if normalize_url(s.url) not in excluded][: max_sources - len(added_sources)]
         if new_sources:
-            new_sources = classify_sources(new_sources, store.llm())
-            flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
+            new_sources = _enrich_and_flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
             new_sources = [
                 s for s in new_sources
                 if s.reliability.value not in ("self_published", "unreliable")
@@ -542,21 +591,41 @@ def verify_source(body: dict) -> dict:
         from engine.fetcher import check_liveness
         source.liveness, source.archive_url = check_liveness(url)
 
-    if verified and source.relevance_flag != "likely_wrong":
+    if verified and source.relevance_flag == "likely_wrong":
+        source.extraction_status = "likely_wrong"
+        source.extraction_note = "Source flagged as likely a different person. No claims extracted."
+    elif verified:
         existing_for_url = [c for c in profile.claims if c.source_url and normalize_url(c.source_url) == norm_target]
         if not existing_for_url:
-            extracted = extract_claims(profile, [source], store.llm())
+            from engine.llm import StubProvider, NullProvider, LocalProvider
+            llm_inst = store.llm()
+            extracted = extract_claims(profile, [source], llm_inst)
             if extracted:
                 profile.claims.extend(extracted)
                 profile.missing_slots = find_missing_slots(profile, profile.claims)
                 new_claims = extracted
+                source.extraction_status = "extracted"
+                source.extraction_note = f"{len(extracted)} claims extracted from this source."
+            else:
+                if isinstance(llm_inst, (StubProvider, NullProvider, LocalProvider)):
+                    source.extraction_status = "stub_mode"
+                    source.extraction_note = "LLM in rule/stub mode — to prevent fabrication, claims are not auto-extracted. Use '+ Add Sourced Claim' to add facts from this source."
+                elif not source.snippet and (not source.title or source.title == source.url):
+                    source.extraction_status = "thin_content"
+                    source.extraction_note = "Page content was too short or lacked verifiable biographical statements."
+                else:
+                    source.extraction_status = "redundant"
+                    source.extraction_note = "No novel claims found. The facts in this source are already backed by other verified sources in your session."
         else:
             new_claims = existing_for_url
+            source.extraction_status = "extracted"
+            source.extraction_note = f"Source verified ({len(existing_for_url)} claims in session)."
 
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
     store._save_session(profile.name)
     return {
         "ok": True,
+        "source": source.model_dump(),
         "new_claims": [c.model_dump() for c in new_claims],
         "missing_slots": profile.missing_slots,
         "notability": profile.notability.model_dump() if profile.notability else None,
@@ -640,8 +709,7 @@ def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     new_sources = [s for s in new_sources if s.url not in existing_urls]
     for s in new_sources:
         s.human_verified = True
-    new_sources = classify_sources(new_sources, store.llm())
-    store._check_doi_sources(new_sources, profile.name, profile.affiliation or "")
+    new_sources = _enrich_and_flag_sources(new_sources, profile.name, profile.field or "", profile.affiliation or "")
     new_claims = extract_claims(profile, new_sources, store.llm())
     profile.sources.extend(new_sources)
     profile.claims.extend(new_claims)
@@ -682,9 +750,7 @@ def fetch_from_browser(body: dict) -> dict:
         raise HTTPException(400, "This source is already in your list.")
 
     source = fetch_url_source_with_paste(url, text)
-    [source] = classify_sources([source], store.llm())
-    flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
-    store._check_doi_sources([source], profile.name, profile.affiliation or "")
+    [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
 
     profile.sources.append(source)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
@@ -730,9 +796,7 @@ def fetch_blocked(body: dict) -> dict:
         source.snippet = text[:400]
         source.liveness = "alive"
         source.fetched_by = "browser"
-        [source] = classify_sources([source], store.llm())
-        flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
-        store._check_doi_sources([source], profile.name, profile.affiliation or "")
+        [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
         fetched.append(source.url)
 
     store._save_session(profile.name)

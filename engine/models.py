@@ -65,6 +65,10 @@ class Source(BaseModel):
     # Profile-shaped outbound links found on this page — feed into suggestion queue
     profile_links: list[str] = Field(default_factory=list)
 
+    # Extraction diagnostics (explains why 0 claims were extracted or status of fact parsing)
+    extraction_status: Optional[str] = None  # extracted | redundant | thin_content | passing_mention | stub_mode | likely_wrong
+    extraction_note: Optional[str] = None
+
 
 class Claim(BaseModel):
     text: str
@@ -123,6 +127,25 @@ class UrlSuggestion(BaseModel):
     completion_value: int = 0
 
 
+class ClaimCluster(BaseModel):
+    canonical_text: str
+    field: str
+    corroborating_sources: list[str] = Field(default_factory=list)
+    claim_indices: list[int] = Field(default_factory=list)
+    repetition_count: int = 1
+
+
+class ResearchSaturation(BaseModel):
+    score: float          # 0.0–1.0 saturation score
+    level: str            # "saturated" | "mature" | "exploring"
+    repetition_rate: float # 0.0–1.0 percentage of claims that repeat existing facts
+    syndication_rate: float # 0.0–1.0 percentage of sources sharing editorial origins/wires
+    unique_fact_count: int
+    total_claims_analyzed: int
+    summary: str
+    corroborated_clusters: list[ClaimCluster] = Field(default_factory=list)
+
+
 class PersonProfile(BaseModel):
     """Central data model. wikimaker fills this; future research hub extends it."""
     name: str
@@ -149,6 +172,9 @@ class PersonProfile(BaseModel):
 
     # Notability (informational — never a hard gate)
     notability: Optional[NotabilityResult] = None
+
+    # Research Saturation & Diminishing Returns Analytics
+    saturation: Optional[ResearchSaturation] = None
 
     # Slot analysis — which Wikipedia fields are still missing sources
     missing_slots: list[str] = Field(default_factory=list)

@@ -413,6 +413,101 @@ def test_claim_draft_approval_is_a_separate_persisted_action(tmp_path, monkeypat
     assert saved["profile"]["claims"][0]["draft_approved"] is False
 
 
+def test_unverified_claim_direct_draft_approval(tmp_path, monkeypatch):
+    profile = _ready_profile()
+    profile.session_id = "py-example-person-unverified-test"
+    profile.claims[0].verification = VerificationState.unverified
+    profile.claims[0].draft_approved = False
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.session_id: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.session_id: {"status": "clear"}})
+
+    approved = backend_main.verify_claim(
+        profile.name,
+        backend_main.VerifyClaimRequest(claim_index=0, action="approve_draft"),
+    )
+
+    assert approved["claim"]["verification"] == "confirmed"
+    assert approved["claim"]["draft_approved"] is True
+
+
+def test_batch_verify_claims(tmp_path, monkeypatch):
+    profile = _ready_profile()
+    profile.session_id = "py-example-person-batch-test"
+    for c in profile.claims:
+        c.verification = VerificationState.unverified
+        c.draft_approved = False
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.session_id: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.session_id: {"status": "clear"}})
+
+    # Batch approve usable
+    res = backend_main.batch_verify_claims(
+        profile.name,
+        backend_main.BatchVerifyClaimsRequest(action="approve_all_usable"),
+    )
+    assert res["updated_count"] == len(profile.claims)
+    assert all(c["draft_approved"] is True for c in res["profile"]["claims"])
+
+    # Batch confirm all
+    profile.claims[0].verification = VerificationState.unverified
+    profile.claims[0].draft_approved = False
+    res = backend_main.batch_verify_claims(
+        profile.name,
+        backend_main.BatchVerifyClaimsRequest(action="confirm_all"),
+    )
+    assert res["profile"]["claims"][0]["verification"] == "confirmed"
+    assert res["profile"]["claims"][0]["draft_approved"] is False
+
+    # Batch skip unverified
+    profile.claims[0].verification = VerificationState.unverified
+    res = backend_main.batch_verify_claims(
+        profile.name,
+        backend_main.BatchVerifyClaimsRequest(action="skip_unverified"),
+    )
+    assert res["profile"]["claims"][0]["verification"] == "skipped"
+    assert res["profile"]["claims"][0]["draft_approved"] is False
+
+
+def test_edit_draft_text_action(tmp_path, monkeypatch):
+    profile = _ready_profile()
+    profile.session_id = "py-example-person-edit-draft-text"
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {profile.session_id: profile})
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.session_id: {"status": "clear"}})
+
+    res = backend_main.verify_claim(
+        profile.name,
+        backend_main.VerifyClaimRequest(
+            claim_index=0,
+            action="edit_draft_text",
+            edited_text="Custom encyclopedic draft wording for lead.",
+        ),
+    )
+
+    assert res["claim"]["draft_text"] == "Custom encyclopedic draft wording for lead."
+    assert res["claim"]["draft_approved"] is True
+
+
+def test_publishers_registry_and_subdomains():
+    from engine.publishers import (
+        is_independent_secondary_news,
+        is_primary_or_institutional,
+        extract_domain,
+    )
+
+    # Subdomains & domains
+    assert extract_domain("https://www.hindustantimes.com/world/story.html") == "hindustantimes.com"
+    assert extract_domain("http://timesofindia.indiatimes.com/city/delhi") == "timesofindia.indiatimes.com"
+    assert is_independent_secondary_news("https://www.thehindu.com/news/national/") is True
+    assert is_independent_secondary_news("https://edition.cnn.com/article") is False  # not in set
+    assert is_independent_secondary_news("https://m.amarujala.com/haryana/") is True
+    assert is_primary_or_institutional("https://cirb.res.in/about-us") is True
+    assert is_primary_or_institutional("https://icar.gov.in/node/123") is True
+    # Institutional is never independent secondary news
+    assert is_independent_secondary_news("https://cirb.res.in/news") is False
+
+
 def test_draft_endpoint_uses_server_session_and_persists_output(tmp_path, monkeypatch):
     profile = _ready_profile()
     profile.session_id = "py-example-person-test2"
@@ -1039,3 +1134,58 @@ def test_draft_qa_endpoint_requires_draft(tmp_path, monkeypatch):
     with pytest.raises(HTTPException) as exc:
         backend_main.draft_qa({"profile_name": profile.name})
     assert exc.value.status_code == 400
+
+
+def test_qa_flags_duplicate_approved_claims():
+    from engine.models import Claim
+    from wiki.draft_qa import qa_draft
+
+    profile = _qa_profile()
+    profile.claims = [
+        Claim(
+            field="known_for",
+            text="In 2020 a research team led by Yadav produced seven clones of the elite bull M-29",
+            draft_approved=True,
+            source_url="https://news.example.test/r1",
+        ),
+        Claim(
+            field="known_for",
+            text="In 2020 a research team led by Yadav produced seven clones of the elite bull M-29",
+            draft_approved=True,
+            source_url="https://news.example.test/r2",
+        ),
+    ]
+    report = qa_draft(profile)
+    finding = next((f for f in report.findings if f.id == "duplicate_approved_claim"), None)
+    assert finding is not None
+    assert finding.severity == "warning"
+
+
+def test_qa_flags_institutional_achievement_sources():
+    from engine.models import Claim, Source, SourceReliability
+    from wiki.draft_qa import qa_draft
+
+    profile = _qa_profile()
+    profile.sources = [
+        Source(
+            url="https://inst.example.test/award-bulletin.pdf",
+            title="Institute Bulletin",
+            publisher="Institute Internal",
+            reliability=SourceReliability.reliable_secondary,
+            is_independent=False,
+            provenance_category="institutional_bio",
+        )
+    ]
+    profile.claims = [
+        Claim(
+            field="award",
+            text="Received the National Outstanding Team Award",
+            draft_approved=True,
+            source_url="https://inst.example.test/award-bulletin.pdf",
+        )
+    ]
+    report = qa_draft(profile)
+    finding = next((f for f in report.findings if f.id == "institutional_achievement_source"), None)
+    assert finding is not None
+    assert finding.severity == "warning"
+    assert "Institute Internal" in finding.message

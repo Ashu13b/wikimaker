@@ -18,3 +18,16 @@ export function getHostname(url: string): string {
     return url;
   }
 }
+
+export function safeHref(url: string | null | undefined): string {
+  if (!url) return "#";
+  const trimmed = url.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith("javascript:") || lower.startsWith("vbscript:") || lower.startsWith("data:")) {
+    return "#";
+  }
+  if (!lower.startsWith("http://") && !lower.startsWith("https://") && !lower.startsWith("mailto:") && !lower.startsWith("#") && !lower.startsWith("/")) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+}

@@ -39,6 +39,8 @@ export interface Source {
   liveness?: "alive" | "blocked" | "dead" | "unknown";
   archive_url?: string | null;
   profile_links: string[];
+  extraction_status?: "extracted" | "redundant" | "thin_content" | "passing_mention" | "stub_mode" | "likely_wrong" | null;
+  extraction_note?: string | null;
 }
 
 export interface Claim {
@@ -71,6 +73,25 @@ export interface WikiStatus {
   note: string | null;
 }
 
+export interface ClaimCluster {
+  canonical_text: string;
+  field: string;
+  corroborating_sources: string[];
+  claim_indices: number[];
+  repetition_count: number;
+}
+
+export interface ResearchSaturation {
+  score: number;
+  level: "saturated" | "mature" | "exploring";
+  repetition_rate: number;
+  syndication_rate: number;
+  unique_fact_count: number;
+  total_claims_analyzed: number;
+  summary: string;
+  corroborated_clusters: ClaimCluster[];
+}
+
 export interface PersonProfile {
   name: string;
   wikidata_id: string | null;
@@ -92,6 +113,7 @@ export interface PersonProfile {
   researcher_ids: Record<string, string>;
   confirmed_ids: Record<string, boolean>;
   notability: NotabilityResult | null;
+  saturation: ResearchSaturation | null;
   wikitext_en: string | null;
   wikitext_hi: string | null;
 }

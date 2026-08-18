@@ -2,6 +2,23 @@
 from __future__ import annotations
 from urllib.parse import urlparse
 from .models import Source, Claim, SourceReliability, PersonProfile, VerificationState
+from .publishers import (
+    INDEPENDENT_NEWS_DOMAINS,
+    ACADEMIC_PUBLISHER_DOMAINS,
+    SELF_PUBLISHED_DOMAINS,
+    UNRELIABLE_DOMAINS as UNRELIABLE_PUBLISHER_DOMAINS,
+    RECORD_REGISTRY_DOMAINS,
+)
+
+HIGH_TRUST_DOMAINS = INDEPENDENT_NEWS_DOMAINS | ACADEMIC_PUBLISHER_DOMAINS | {"ncbi.nlm.nih.gov"}
+
+MEDIUM_TRUST_DOMAINS = {
+    "wikipedia.org", "wikidata.org", "britannica.com", "researchgate.net",
+    "academia.edu", "semanticscholar.org", "orcid.org", "sgttimes.com",
+}
+
+UNTRUSTED_DOMAINS = SELF_PUBLISHED_DOMAINS | UNRELIABLE_PUBLISHER_DOMAINS
+
 
 def normalize_url(url: str | None) -> str:
     if not url:
@@ -21,38 +38,12 @@ def normalize_url(url: str | None) -> str:
         u = u[:-1]
     return u
 
-HIGH_TRUST_DOMAINS = {
-    "nature.com", "science.org", "sciencedirect.com", "bbc.com", "bbc.co.uk",
-    "nytimes.com", "theguardian.com", "washingtonpost.com", "reuters.com",
-    "apnews.com", "thehindu.com", "indianexpress.com", "timesofindia.indiatimes.com",
-    "biomedcentral.com", "plos.org", "ieee.org", "acm.org", "springer.com",
-    "wiley.com", "tandfonline.com", "oup.com", "cambridge.org", "ncbi.nlm.nih.gov",
-    # Indian press
-    "news18.com", "bhaskar.com", "tv9hindi.com", "punjabkesari.in",
-    "devdiscourse.com", "livevns.news", "jagran.com", "amarujala.com",
-    "tribuneindia.com", "hindustantimes.com", "ndtv.com", "theprint.in",
-    "moneycontrol.com", "business-standard.com", "indiatoday.in",
-    "outlookindia.com", "deccanherald.com", "financialexpress.com",
-    "newindianexpress.com", "thestatesman.com", "indiatvnews.com",
-    "abplive.com", "aajtak.in", "zeenews.india.com", "dainikjagran.com",
-    "patrika.com", "navbharattimes.indiatimes.com", "divyabhaskar.co.in",
-    "etvbharat.com", "kisantak.in",
-}
-
 MEDIUM_TRUST_DOMAINS = {
     "wikipedia.org", "wikidata.org", "britannica.com", "researchgate.net",
-    "academia.edu", "semanticscholar.org", "orcid.org",
-    "sgttimes.com",
+    "academia.edu", "semanticscholar.org", "orcid.org", "sgttimes.com",
 }
 
-UNTRUSTED_DOMAINS = {
-    "medium.com", "wordpress.com", "blogspot.com", "github.io", "linkedin.com",
-    "facebook.com", "twitter.com", "x.com", "reddit.com", "quora.com"
-}
-
-RECORD_REGISTRY_DOMAINS = {
-    "indiabookofrecords.in", "limcabookofrecords.in",
-}
+UNTRUSTED_DOMAINS = SELF_PUBLISHED_DOMAINS | UNRELIABLE_PUBLISHER_DOMAINS
 
 
 def get_domain_trust(url: str) -> str:

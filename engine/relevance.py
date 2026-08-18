@@ -64,6 +64,19 @@ def is_meaningful_redirect(url: str, final_url: str) -> bool:
     return opath != fpath
 
 
+_INDIC_NAME_MAP = {
+    "prem": "प्रेम", "singh": "सिंह", "yadav": "यादव", "kumar": "कुमार",
+    "sharma": "शर्मा", "verma": "वर्मा", "gupta": "गुप्ता", "lal": "लाल",
+    "rao": "राव", "reddy": "रेड्डी", "patel": "पटेल", "mishra": "मिश्रा",
+    "joshi": "जोशी", "nair": "नायर", "das": "दास", "sen": "सेन",
+}
+
+_INDIC_CONTEXT_TERMS = [
+    "वैज्ञानिक", "अनुसंधान", "शोध", "संस्थान", "क्लोन", "क्लोनिंग", "हिसार", "सीआईआरबी",
+    "कृषि", "बायोटेक्नोलॉजी", "बायो", "प्रोफेसर", "डॉक्टर", "डॉ.", "गौरव", "मुर्रा",
+]
+
+
 def _significant_name_tokens(name: str) -> list[str]:
     skip = {"dr", "dr.", "prof", "prof.", "mr", "mrs", "ms", "shri", "smt"}
     return [t.lower() for t in name.split() if len(t) > 2 and t.lower() not in skip]
@@ -91,7 +104,11 @@ def flag_source(source: Source, person_name: str, field: str, affiliation: str) 
     affil_tokens = [t.lower() for t in (affiliation or "").split() if len(t) > 3]
     context_tokens = field_tokens + affil_tokens
 
-    name_found = all(t in full_text for t in name_tokens)
+    # Check English name tokens or vernacular Devanagari transliterated tokens
+    indic_tokens = [_INDIC_NAME_MAP[t] for t in name_tokens if t in _INDIC_NAME_MAP]
+    name_found = all(t in full_text for t in name_tokens) or (
+        bool(indic_tokens) and all(t in full_text for t in indic_tokens)
+    )
 
     # Check for wrong-person signals in URL or snippet text
     for signal in _WRONG_PERSON_SIGNALS:
@@ -99,7 +116,8 @@ def flag_source(source: Source, person_name: str, field: str, affiliation: str) 
             if not any(t in full_text for t in context_tokens):
                 return "likely_wrong"
 
-    if name_found and context_tokens and any(t in full_text for t in context_tokens):
+    all_context = context_tokens + _INDIC_CONTEXT_TERMS
+    if name_found and all_context and any(t in full_text for t in all_context):
         return "relevant"
     if name_found:
         return "uncertain"  # name present but no field/affiliation context

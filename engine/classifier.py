@@ -4,61 +4,21 @@ import json
 from .models import Source, SourceReliability
 from .llm import LLMProvider
 
+from .publishers import (
+    INDEPENDENT_NEWS_DOMAINS,
+    ACADEMIC_PUBLISHER_DOMAINS,
+    PRIMARY_OR_INSTITUTIONAL_DOMAINS,
+    SELF_PUBLISHED_DOMAINS,
+    UNRELIABLE_DOMAINS,
+)
+
 # Known reliable secondary source domains — skip LLM for these
-_RS_DOMAINS = {
-    # Academic
-    "nature.com", "science.org", "plos.org", "pubmed.ncbi.nlm.nih.gov",
-    "ncbi.nlm.nih.gov", "sciencedirect.com", "springer.com", "wiley.com",
-    "tandfonline.com", "jstor.org", "cell.com", "bmj.com", "thelancet.com",
-    "nejm.org", "asm.org", "frontiersin.org", "mdpi.com", "hindawi.com",
-    "semanticscholar.org", "doi.org",
-    # Encyclopedias (independent, editorially reviewed)
-    "en.wikipedia.org", "wikipedia.org", "britannica.com",
-    # News & wire
-    "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "theguardian.com",
-    "nytimes.com", "washingtonpost.com", "thehindu.com", "hindustantimes.com",
-    "ndtv.com", "pib.gov.in", "indianexpress.com", "timesofindia.com",
-    "scroll.in", "thewire.in", "livemint.com", "economictimes.indiatimes.com",
-    "telegraphindia.com", "deccanherald.com", "tribuneindia.com",
-    # Indian press (regional + digital)
-    "news18.com", "bhaskar.com", "tv9hindi.com", "punjabkesari.in",
-    "devdiscourse.com", "livevns.news", "jagran.com", "amarujala.com",
-    "theprint.in", "moneycontrol.com", "indiatoday.in", "outlookindia.com",
-    "financialexpress.com", "newindianexpress.com", "thestatesman.com",
-    "indiatvnews.com", "abplive.com", "aajtak.in", "zeenews.india.com",
-    "dainikjagran.com", "patrika.com", "etvbharat.com", "kisantak.in",
-    "navbharattimes.indiatimes.com", "divyabhaskar.co.in", "business-standard.com",
-    "sgttimes.com",
-    # Indian government / institutional press
-    "icar.org.in", "dst.gov.in", "dbt.gov.in", "csir.res.in",
-    # Entertainment trade press (independent coverage)
-    "variety.com", "hollywoodreporter.com", "billboard.com", "rollingstone.com",
-    "pitchfork.com", "allmusic.com", "musicbrainz.org",
-    # Indian entertainment press
-    "filmfare.com", "bollywoodhungama.com", "pinkvilla.com", "koimoi.com",
-    "mid-day.com", "freepressjournal.in",
+_RS_DOMAINS = INDEPENDENT_NEWS_DOMAINS | ACADEMIC_PUBLISHER_DOMAINS | {
+    "en.wikipedia.org", "wikipedia.org", "britannica.com", "sgttimes.com",
 }
-
-_PRIMARY_DOMAINS = {
-    "cirb.res.in", "orcid.org",
-}
-
-_SELF_DOMAINS = {
-    "researchgate.net", "academia.edu", "linkedin.com",
-    "twitter.com", "x.com", "facebook.com", "instagram.com",
-    "youtube.com", "music.youtube.com", "youtu.be",
-    "open.spotify.com", "music.apple.com", "soundcloud.com",
-    "tiktok.com",
-}
-
-_UNRELIABLE_DOMAINS = {
-    "imdb.com", "m.imdb.com", "fandom.com", "wikia.com",
-    "grokipedia.com", "celebsagewiki.com", "famousbirthdays.com",
-    # Event booking / ticketing aggregators
-    "bookmyshow.com", "district.in", "ticketmaster.com", "insider.in",
-    # Wiki clones / mirrors
-    "dbpedia.org", "wikidata.org",
-}
+_PRIMARY_DOMAINS = PRIMARY_OR_INSTITUTIONAL_DOMAINS
+_SELF_DOMAINS = SELF_PUBLISHED_DOMAINS
+_UNRELIABLE_DOMAINS = UNRELIABLE_DOMAINS
 
 
 def _domain_classify(url: str) -> SourceReliability | None:

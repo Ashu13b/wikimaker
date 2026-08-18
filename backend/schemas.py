@@ -53,8 +53,12 @@ class AddSourcedClaimRequest(BaseModel):
 
 class VerifyClaimRequest(BaseModel):
     claim_index: int
-    action: str   # confirm | edit | skip
+    action: str   # confirm | edit | skip | approve_draft | remove_draft
     edited_text: Optional[str] = None  # only for action=edit
+
+
+class BatchVerifyClaimsRequest(BaseModel):
+    action: str  # approve_all_usable | confirm_all | skip_unverified
 
 
 class AddSourcePaste(BaseModel):

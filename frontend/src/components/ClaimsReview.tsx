@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { Claim, PersonProfile } from "../types";
-import { verifyClaim, profileRef } from "../api";
+import { verifyClaim, batchVerifyClaims, profileRef } from "../api";
+import { safeHref } from "../url";
 import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
-type FilterTab = "all" | "draft" | "review" | "unsourced";
+type FilterTab = "all" | "review" | "draft" | "dossier" | "unsourced" | "corroborated";
 
 export default function ClaimsReview({ claims, allClaims, profile, onProfileUpdate, emptyMessage }: {
   claims: Claim[];
@@ -15,21 +16,31 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState<number | null>(null);
-  const [tab, setTab] = useState<FilterTab>(() => claims.some(c => !c.draft_approved && c.verification !== "skipped") ? "review" : "all");
+  const [batchLoading, setBatchLoading] = useState<string | null>(null);
+  const [tab, setTab] = useState<FilterTab>(() => claims.some(c => c.verification === "unverified") ? "review" : "all");
 
   const draftCount = claims.filter(c => c.draft_approved).length;
+  const dossierCount = claims.filter(c => (c.verification === "confirmed" || c.verification === "edited") && !c.draft_approved).length;
   const unsourcedCount = claims.filter(c => !c.source_url).length;
-  const needsReviewCount = claims.filter(c => !c.draft_approved && c.verification !== "skipped").length;
+  const needsReviewCount = claims.filter(c => c.verification === "unverified").length;
+  const corroboratedIndices = new Set(
+    profile.saturation?.corroborated_clusters?.flatMap(c => c.claim_indices) ?? []
+  );
+  const corroboratedCount = claims.filter(c => corroboratedIndices.has(allClaims.indexOf(c))).length;
 
   const visible = tab === "all" ? claims
     : tab === "draft" ? claims.filter(c => c.draft_approved)
+    : tab === "dossier" ? claims.filter(c => (c.verification === "confirmed" || c.verification === "edited") && !c.draft_approved)
     : tab === "unsourced" ? claims.filter(c => !c.source_url)
-    : claims.filter(c => !c.draft_approved && c.verification !== "skipped");
+    : tab === "corroborated" ? claims.filter(c => corroboratedIndices.has(allClaims.indexOf(c)))
+    : claims.filter(c => c.verification === "unverified");
 
   const tabs: { id: FilterTab; label: string; count: number }[] = [
     { id: "all", label: "All", count: claims.length },
-    { id: "draft", label: "In draft", count: draftCount },
     { id: "review", label: "Needs review", count: needsReviewCount },
+    { id: "draft", label: "In draft", count: draftCount },
+    { id: "dossier", label: "Dossier only", count: dossierCount },
+    ...(corroboratedCount > 0 ? [{ id: "corroborated" as FilterTab, label: "🌿 Corroborated", count: corroboratedCount }] : []),
     { id: "unsourced", label: "Unsourced", count: unsourcedCount },
   ];
 
@@ -37,7 +48,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
     return <p style={{ fontSize: 13, color: "var(--muted)", padding: "20px 0" }}>{emptyMessage}</p>;
   }
 
-  async function doVerify(globalIndex: number, action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft", text?: string) {
+  async function doVerify(globalIndex: number, action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft" | "edit_draft_text", text?: string) {
     setLoading(globalIndex);
     try {
       const resp = await verifyClaim(profileRef(profile), globalIndex, action, text);
@@ -46,6 +57,20 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
       onProfileUpdate({ ...profile, claims: updated });
     } catch { /* silently ignore */ }
     finally { setLoading(null); setEditingIndex(null); }
+  }
+
+  async function handleBatchAction(action: "approve_all_usable" | "confirm_all" | "skip_unverified") {
+    setBatchLoading(action);
+    try {
+      const resp = await batchVerifyClaims(profileRef(profile), action);
+      if (resp.profile) {
+        onProfileUpdate(resp.profile);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBatchLoading(null);
+    }
   }
 
   const claimIndexMap = new Map(allClaims.map((c, i) => [c, i]));
@@ -72,20 +97,64 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
           </button>
         ))}
         <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: "auto" }}>
-          {draftCount} of {claims.length} claims included in draft · only claims with a verified source can be added
+          {draftCount} in draft · {dossierCount} in dossier · {needsReviewCount} pending
         </span>
       </div>
 
+      {/* Batch actions bar when there are unreviewed claims */}
+      {needsReviewCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)", border: "1px solid var(--border)",
+          borderRadius: 8, padding: "8px 12px", marginBottom: 12, flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+            ⚡ Quick actions for {needsReviewCount} unreviewed claim{needsReviewCount === 1 ? "" : "s"}:
+          </span>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button
+              onClick={() => handleBatchAction("approve_all_usable")}
+              disabled={Boolean(batchLoading)}
+              className="btn-primary"
+              style={{ fontSize: 11, padding: "4px 10px", minHeight: 0 }}
+              title="Approve all claims from verified reliable sources directly into the draft"
+            >
+              {batchLoading === "approve_all_usable" ? "Approving…" : "+ Approve all usable for draft"}
+            </button>
+            <button
+              onClick={() => handleBatchAction("confirm_all")}
+              disabled={Boolean(batchLoading)}
+              className="btn-ghost"
+              style={{ fontSize: 11, padding: "4px 10px", minHeight: 0 }}
+              title="Confirm all unreviewed claims into research dossier without including in draft"
+            >
+              {batchLoading === "confirm_all" ? "Confirming…" : "✓ Confirm all (dossier only)"}
+            </button>
+            <button
+              onClick={() => handleBatchAction("skip_unverified")}
+              disabled={Boolean(batchLoading)}
+              className="btn-ghost"
+              style={{ fontSize: 11, padding: "4px 10px", minHeight: 0, color: "var(--muted)" }}
+              title="Skip remaining unreviewed claims"
+            >
+              {batchLoading === "skip_unverified" ? "Skipping…" : "✗ Skip unreviewed"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {visible.length === 0 ? (
         <p style={{ fontSize: 13, color: "var(--muted)", padding: "16px 0" }}>
-          {tab === "draft" ? "No claims included in the draft yet. Confirm a claim, then press + to include it." :
+          {tab === "draft" ? "No claims included in the draft yet. Review claims and click '+' to include them." :
+           tab === "dossier" ? "No claims in dossier-only mode. Confirmed claims not in the draft appear here." :
            tab === "unsourced" ? "No unsourced claims." :
-           tab === "review" ? "Nothing waiting for review." : emptyMessage}
+           tab === "review" ? "All claims have been reviewed! Check 'In draft' or 'Dossier only'." : emptyMessage}
         </p>
       ) : (
         <div>
         {visible.map(claim => {
         const globalIndex = claimIndexMap.get(claim) ?? -1;
+        const cluster = profile.saturation?.corroborated_clusters?.find(c => c.claim_indices.includes(globalIndex));
         const isEditing = editingIndex === globalIndex;
         const isLoading = loading === globalIndex;
         const src = claim.source_url ? profile.sources.find(s => s.url === claim.source_url) ?? null : null;
@@ -140,15 +209,24 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                       · {claim.verification}
                     </span>
                   )}
-                  {claim.draft_approved && (
+                  {claim.draft_approved ? (
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(37, 99, 235, 0.12)", color: "var(--primary)" }}>
                       Included in draft
+                    </span>
+                  ) : (claim.verification === "confirmed" || claim.verification === "edited") ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(100, 116, 139, 0.12)", color: "#475569" }}>
+                      Dossier only
+                    </span>
+                  ) : null}
+                  {cluster && cluster.corroborating_sources.length > 1 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(16, 185, 129, 0.12)", color: "var(--success)" }} title={`Corroborated across ${cluster.corroborating_sources.length} sources (${cluster.repetition_count} repeats)`}>
+                      🌿 Corroborated ({cluster.corroborating_sources.length} sources)
                     </span>
                   )}
                   {claim.user_provided && (
                     <span style={{ fontSize: 11, color: "var(--muted)" }}>· manual entry</span>
                   )}
-                  {!claim.user_provided && (
+                  {!claim.user_provided && claim.verification === "unverified" && (
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4, background: "rgba(139, 92, 246, 0.12)", color: "#7c3aed" }}>
                       AI-suggested · review
                     </span>
@@ -156,19 +234,36 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                 </div>
 
                 {isEditing ? (
-                  <textarea
-                    value={editText}
-                    onChange={e => setEditText(e.target.value)}
-                    style={{ height: 72, resize: "vertical", fontFamily: "inherit", fontSize: 13 }}
-                    autoFocus
-                  />
-                ) : (
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>{claim.text}</p>
-                    {claim.date_context && (
-                      <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", whiteSpace: "nowrap" }}>
-                        {claim.date_context}
+                  <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>
+                        {claim.draft_approved ? "Draft paraphrase (wikitext wording)" : "Claim fact text"}
                       </span>
+                      <textarea
+                        value={editText}
+                        onChange={e => setEditText(e.target.value)}
+                        style={{ width: "100%", height: 72, resize: "vertical", fontFamily: "inherit", fontSize: 13, marginTop: 3 }}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>{claim.text}</p>
+                      {claim.date_context && (
+                        <span style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", whiteSpace: "nowrap" }}>
+                          {claim.date_context}
+                        </span>
+                      )}
+                    </div>
+                    {claim.draft_text && claim.draft_text !== claim.text && (
+                      <div style={{ marginTop: 5, padding: "5px 9px", background: "rgba(37, 99, 235, 0.07)", borderLeft: "3px solid var(--primary)", borderRadius: 4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--primary)", display: "block" }}>
+                          Custom draft wording:
+                        </span>
+                        <p style={{ fontSize: 12, margin: "2px 0 0", color: "var(--text)", lineHeight: 1.5 }}>{claim.draft_text}</p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -180,7 +275,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                     const title = src?.title ?? claim.source_url ?? "";
                     const shortTitle = title.length > 70 ? title.slice(0, 70) + "…" : title;
                     return (
-                      <a href={claim.source_url} target="_blank" rel="noreferrer"
+                      <a href={safeHref(claim.source_url)} target="_blank" rel="noreferrer"
                         style={{ fontSize: 11, color: "var(--primary)", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                         {srcIdx >= 0 && <strong style={{ fontWeight: 700 }}>[{srcIdx + 1}]</strong>}
                         <span>{shortTitle}</span>
@@ -196,31 +291,56 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                 </div>
               </div>
 
-              {/* Action buttons — only for unverified/skipped */}
+              {/* Action buttons — for unverified/skipped */}
               {(claim.verification === "unverified" || claim.verification === "skipped") && !isEditing && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "confirm")} disabled={isLoading} color="var(--success)" title="Confirm">✓</ActionBtn>
-                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--primary)" title="Edit">✎</ActionBtn>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "skip")} disabled={isLoading} color="var(--muted)" title="Skip">✗</ActionBtn>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                  <ActionBtn
+                    onClick={() => doVerify(globalIndex, "approve_draft")}
+                    disabled={isLoading || !sourceUsable}
+                    color="var(--success)"
+                    title={sourceUsable ? "Approve & include in draft" : includeBlocker}
+                  >
+                    + Draft
+                  </ActionBtn>
+                  <ActionBtn onClick={() => doVerify(globalIndex, "confirm")} disabled={isLoading} color="var(--primary)" title="Confirm for research dossier only">✓ Dossier</ActionBtn>
+                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--muted)" title="Edit">✎</ActionBtn>
+                  <ActionBtn onClick={() => doVerify(globalIndex, "skip")} disabled={isLoading} color="var(--danger)" title="Skip">✗</ActionBtn>
                 </div>
               )}
-              {/* For confirmed/edited, just allow editing */}
+              {/* For confirmed/edited, allow toggling draft inclusion or editing */}
               {(claim.verification === "confirmed" || claim.verification === "edited") && !isEditing && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--primary)" title="Edit claim">✎</ActionBtn>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                  <ActionBtn
+                    onClick={() => {
+                      setEditingIndex(globalIndex);
+                      setEditText(claim.draft_text || claim.text);
+                    }}
+                    disabled={isLoading}
+                    color="var(--primary)"
+                    title={claim.draft_approved ? "Edit draft paraphrase wording" : "Edit claim text"}
+                  >
+                    ✎
+                  </ActionBtn>
                   <ActionBtn
                     onClick={() => doVerify(globalIndex, claim.draft_approved ? "remove_draft" : "approve_draft")}
                     disabled={isLoading || (!claim.draft_approved && !sourceUsable)}
                     color={claim.draft_approved ? "var(--danger)" : "var(--success)"}
-                    title={claim.draft_approved ? "Remove from draft" : (sourceUsable ? "Include in draft" : includeBlocker)}
+                    title={claim.draft_approved ? "Remove from draft (keep in dossier)" : (sourceUsable ? "Include in draft" : includeBlocker)}
                   >
-                    {claim.draft_approved ? "−" : "+"}
+                    {claim.draft_approved ? "− Draft" : "+ Draft"}
                   </ActionBtn>
                 </div>
               )}
               {isEditing && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "edit", editText)} disabled={isLoading} color="var(--primary)" title="Save">✓</ActionBtn>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "center" }}>
+                  <ActionBtn
+                    onClick={() => doVerify(globalIndex, claim.draft_approved ? "edit_draft_text" : "edit", editText)}
+                    disabled={isLoading}
+                    color="var(--primary)"
+                    title="Save edits"
+                  >
+                    ✓ Save
+                  </ActionBtn>
                   <ActionBtn onClick={() => setEditingIndex(null)} disabled={isLoading} color="var(--muted)" title="Cancel">✗</ActionBtn>
                 </div>
               )}
@@ -239,11 +359,14 @@ function ActionBtn({ onClick, disabled, color, title, children }: {
 }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title} className="claim-action" style={{
-      width: 28, height: 28, padding: 0, borderRadius: 6, background: "var(--bg)",
-      border: "1px solid var(--border)", color, fontSize: 14, fontWeight: 700,
-      display: "flex", alignItems: "center", justifyContent: "center",
+      height: 28, padding: "0 8px", borderRadius: 6, background: "var(--bg)",
+      border: "1px solid var(--border)", color, fontSize: 12, fontWeight: 700,
+      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3,
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.45 : 1,
     }}>
       {children}
     </button>
   );
 }
+

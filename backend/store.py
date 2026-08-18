@@ -18,6 +18,7 @@ from engine.models import PersonProfile
 from engine.llm import get_provider
 from engine.provenance import classify_source_provenance, evaluate_claim_trust
 from engine.notability import score_notability
+from engine.saturation import analyze_research_saturation
 
 SESSIONS_DIR = Path(__file__).parent.parent / "sessions"
 SESSIONS_DIR.mkdir(exist_ok=True)
@@ -83,9 +84,11 @@ def _apply_provenance(profile: PersonProfile) -> None:
         profile.claims[i] = evaluate_claim_trust(c, src, profile)
 
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
+    profile.saturation = analyze_research_saturation(profile)
 
 
 def _save_session(name_or_id: str) -> None:
+    import tempfile
     with _lock:
         profile = _resolve_profile(name_or_id)
         if not profile:
@@ -99,7 +102,19 @@ def _save_session(name_or_id: str) -> None:
             "wiki_status": _wiki_statuses.get(sid, {"status": "clear", "url": None, "note": None}),
             "saved_at": datetime.now(timezone.utc).isoformat(),
         }
-        _session_path(sid).write_text(json.dumps(data, indent=2, ensure_ascii=False))
+        target_path = _session_path(sid)
+        content = json.dumps(data, indent=2, ensure_ascii=False)
+        temp_fd, temp_path = tempfile.mkstemp(dir=SESSIONS_DIR, prefix=f".{sid}-", suffix=".tmp")
+        try:
+            with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, target_path)
+        except Exception:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            raise
 
 
 def _load_session_file(path: Path) -> dict | None:
@@ -149,6 +164,7 @@ def _activate_session(profile: PersonProfile, wiki_status: dict) -> PersonProfil
         profile.missing_slots = find_missing_slots(profile, profile.claims)
         for id_type, id_val in extract_ids_from_sources(profile.sources).items():
             profile.researcher_ids.setdefault(id_type, id_val)
+        _apply_provenance(profile)
         sid = _ensure_session_id(profile)
         _sessions[sid] = profile
         _wiki_statuses[sid] = wiki_status

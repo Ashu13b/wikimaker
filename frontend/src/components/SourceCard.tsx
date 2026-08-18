@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Source, Claim, NotabilityResult } from "../types";
 import { verifySource, rejectSource, assessSource } from "../api";
-import { getHostname } from "../url";
+import { getHostname, safeHref } from "../url";
 import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "./slotMeta";
 
 export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLinkOpen, onVerified, onRejected, onAssessed, onVerifyingChange, allClaims }: {
@@ -102,7 +102,7 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
             {source.title.slice(0, 90)}{source.title.length > 90 ? "…" : ""}
           </p>
           <a
-            href={source.url}
+            href={safeHref(source.url)}
             target="_blank"
             rel="noreferrer"
             onClick={onLinkOpen}
@@ -167,6 +167,26 @@ export function SourceCard({ source, sourceNumber, profileName, linkOpened, onLi
           ))}
           <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
             These were extracted by the AI — verifying the source does <strong>not</strong> put them in the draft. Confirm or edit them in the Claims tab, then press + to include.
+          </p>
+        </div>
+      )}
+
+      {/* 0 Claims Diagnostic Callout */}
+      {source.human_verified && sourceClaims.length === 0 && (
+        <div style={{ marginTop: 10, padding: "8px 12px", background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.25)", borderRadius: 6, fontSize: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, color: "#b45309" }}>
+              ℹ️ No new claims extracted
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", padding: "1px 6px", borderRadius: 4, background: "#fff", color: "#b45309", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
+              {source.extraction_status === "redundant" ? "Already Backed / Redundant" : source.extraction_status === "stub_mode" ? "Manual Entry Required" : source.extraction_status === "thin_content" ? "Thin Content" : "No Novel Facts"}
+            </span>
+          </div>
+          <p style={{ margin: "2px 0 6px", color: "var(--text)", lineHeight: 1.4 }}>
+            {source.extraction_note || "The facts in this source are already backed by other verified sources in your session, or this article only contains a passing mention without novel biographical claims."}
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: "var(--muted)" }}>
+            Tip: If you found a specific fact on this page that was missed, use <strong>+ Add Sourced Claim</strong> in the Claims tab or add it to the research dossier.
           </p>
         </div>
       )}

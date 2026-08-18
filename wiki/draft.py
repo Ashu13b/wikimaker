@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-from urllib.parse import urlsplit
 from collections import Counter, defaultdict
 from typing import Iterable
 
@@ -16,6 +15,11 @@ from pydantic import BaseModel, Field
 
 from engine.models import Claim, PersonProfile, Source, SourceReliability, VerificationState
 from engine.provenance import normalize_url
+from engine.publishers import (
+    is_independent_secondary_news,
+    is_primary_or_institutional,
+    extract_domain,
+)
 
 
 class DraftIssue(BaseModel):
@@ -60,7 +64,6 @@ _CAREER_ACTIVITY_WORDS = ("research stay", "research support", "associateship")
 _INSTITUTION_WORDS = ("institute", "university", "college", "centre", "center", "division", "department", "icar", "cirb")
 _PUBLICATION_WORDS = ("authored", "co-authored", "coauthored", "co-editor", "coeditor", "published", "publication", "first author", "paper", "study")
 _BIRTH_SUBJECT_NOISE = ("calf", "buffalo", "bull", "cow", "animal", "clone", "kg", "delivery")
-_PRIMARY_OR_PROFILE_DOMAINS = ("icar.org.in", "icar.gov.in", "cirb.res.in", "orcid.org", "doi.org", "ncbi.nlm.nih.gov", "pubmed.ncbi.nlm.nih.gov", "satishserial.com", "acspublisher.com", "intechopen.com")
 
 # Action verbs that signal a substantive research/achievement statement rather
 # than an extraction fragment. Substring match, so "co-discover" covers both
@@ -72,28 +75,16 @@ _RESEARCH_ACTIONS = (
     "found", "described", "demonstrated", "showed", "noted", "studied",
     "assessed", "evaluated", "examined", "weighed", "identified", "compared",
 )
-_INDEPENDENT_NEWS_DOMAINS = (
-    "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk", "nytimes.com",
-    "theguardian.com", "washingtonpost.com", "timesofindia.indiatimes.com",
-    "thehindu.com", "thehindubusinessline.com", "indianexpress.com",
-    "hindustantimes.com", "business-standard.com", "moneycontrol.com",
-    "livemint.com", "ndtv.com", "theprint.in", "scroll.in", "thewire.in",
-    "news18.com", "firstpost.com", "thequint.com", "theweek.in",
-    "financialexpress.com", "outlookindia.com", "tribuneindia.com",
-    "deccanherald.com", "amarujala.com", "jagran.com", "dainikbhaskar.com",
-    "punjabkesari.com", "india.com", "zeenews.india.com",
-)
 
 
 def _host(url: str) -> str:
-    return (urlsplit(url).hostname or "").lower().removeprefix("www.")
+    return extract_domain(url)
 
 
 def _is_independent_secondary(source: Source) -> bool:
-    host = _host(source.url)
-    if any(host == domain or host.endswith("." + domain) for domain in _PRIMARY_OR_PROFILE_DOMAINS):
+    if is_primary_or_institutional(source.url):
         return False
-    if any(host == domain or host.endswith("." + domain) for domain in _INDEPENDENT_NEWS_DOMAINS):
+    if is_independent_secondary_news(source.url):
         return True
     return (
         source.is_independent
@@ -337,7 +328,8 @@ def _short_description(profile: PersonProfile) -> str:
 
 
 def _cite_value(value: str) -> str:
-    return _clean(value).replace("|", "{{!}}")
+    cleaned = _clean(value).replace("}}", "&#125;&#125;").replace("{{", "&#123;&#123;")
+    return cleaned.replace("|", "{{!}}")
 
 
 def _ref_name(url: str) -> str:

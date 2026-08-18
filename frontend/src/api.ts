@@ -142,7 +142,7 @@ export async function deepCrawl(
 export async function verifyClaim(
   profileName: string,
   claimIndex: number,
-  action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft",
+  action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft" | "edit_draft_text",
   editedText?: string,
 ): Promise<{ claim: import("./types").Claim }> {
   return apiPost(
@@ -152,11 +152,22 @@ export async function verifyClaim(
   );
 }
 
+export async function batchVerifyClaims(
+  profileName: string,
+  action: "approve_all_usable" | "confirm_all" | "skip_unverified",
+): Promise<{ profile: PersonProfile; updated_count: number }> {
+  return apiPost(
+    "/research/batch-verify-claims",
+    { action },
+    { name: profileName },
+  );
+}
+
 export async function verifySource(
   profileName: string,
   url: string,
   verified: boolean,
-): Promise<{ new_claims: import("./types").Claim[]; missing_slots: string[]; notability: import("./types").NotabilityResult | null }> {
+): Promise<{ ok: boolean; source?: import("./types").Source; new_claims: import("./types").Claim[]; missing_slots: string[]; notability: import("./types").NotabilityResult | null }> {
   return apiPost("/research/source/verify", { profile_name: profileName, url, verified });
 }
 

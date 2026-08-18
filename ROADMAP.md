@@ -82,13 +82,24 @@
   they support a confirmed claim; raw source/publication counts and unvalidated
   name-only citation metrics no longer produce an AfC acceptance prediction.
 
+- Unified publisher registry (`engine/publishers.py`): Consolidated independent
+  news, academic journals, institutional/primary, self-published, and unreliable
+  domains into a single authoritative source of truth, removing ad-hoc domain
+  lists across classifier, provenance, and draft engines.
+- Structured editorial draft paraphrase controls (`Claim.draft_text`): UI allows
+  customizing exact Wikipedia draft phrasing without mutating the underlying
+  historical verbatim claim extracted from the source (`edit_draft_text`).
+- Direct 1-click AfC submission helper: `Copy for AfC (with {{subst:submit}})` in
+  `DraftPage.tsx` prepends submission template for direct Wikipedia submission.
+- Complete documentation & quality conventions: `README.md` authoring, house style
+  conventions in `.context-kit/conventions`, and test suite purposing.
+
 ## Next
 - Expand automated coverage for identity conflicts, source verification, and
   session migration.
-- Replace the conservative hard-coded independent-news domain policy with a
-  maintainable publisher/source-review registry.
-- Add structured editorial controls for rewriting approved draft paraphrases in
-  the UI; current approval uses the reviewed claim text.
+- Add multi-language draft translation assistance (e.g. Hi-Wiki support) with
+  matching Hindi citation templates.
+
 ## Out of scope
 - Requiring a pre-existing Wikipedia article or Wikidata item before research.
 - Automatically generating a competing draft when an article already exists.

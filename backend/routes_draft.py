@@ -9,6 +9,7 @@ from .schemas import DraftRequest
 
 from wiki.wiki_check import draft_generation_allowed
 from wiki.draft import audit_profile, render_draft
+from wiki.draft_hi import render_hindi_draft
 
 draft_router = APIRouter()
 
@@ -40,7 +41,10 @@ def generate_draft(req: DraftRequest) -> dict:
         })
 
     profile.wikitext_en = render_draft(profile, audit)
-    profile.wikitext_hi = None
+    try:
+        profile.wikitext_hi = render_hindi_draft(profile, audit)
+    except Exception:
+        profile.wikitext_hi = None
     store._save_session(profile.name)
     return {
         "profile": profile.model_dump(),

@@ -13,6 +13,7 @@ _NEWS_OUTLETS = (
     "amarujala.com", "thehindu.com", "indianexpress.com",
     "hindustantimes.com", "business-standard.com", "theprint.in",
     "news18.com", "jagran.com", "punjabkesari.com",
+    "bhaskar.com", "patrika.com", "etvbharat.com", "kisantak.in",
 )
 
 _DISAMBIG_STOPWORDS = {
@@ -36,12 +37,30 @@ def _sweep_news(
     person_name: str,
     affiliation: str | None = None,
     field: str | None = None,
+    nationality: str | None = None,
     limit: int = 20,
 ) -> list[Source]:
-    """Site-restricted searches across major national outlets plus a Hindi query."""
+    """Site-restricted searches across major national & regional outlets plus multilingual queries."""
+    from .multilingual_search import build_bilingual_queries, get_regional_news_outlets
     disambig = _disambiguator(affiliation, field)
-    queries = [f'"{person_name}" {disambig} site:{outlet}'.strip() for outlet in _NEWS_OUTLETS]
-    queries.append(f'"डॉ. {person_name}" {disambig} वैज्ञानिक प्रोफ़ाइल'.strip())
+    all_outlets: list[str] = list(_NEWS_OUTLETS)
+    for regional in get_regional_news_outlets(nationality, person_name):
+        if regional not in all_outlets:
+            all_outlets.append(regional)
+
+    queries = [f'"{person_name}" {disambig} site:{outlet}'.strip() for outlet in all_outlets]
+    # Add bilingual / vernacular queries for native language press discovery
+    bilingual_queries = build_bilingual_queries(
+        name=person_name,
+        nationality=nationality,
+        affiliation=affiliation,
+        field=field,
+        limit=6,
+    )
+    for bq in bilingual_queries:
+        if bq not in queries:
+            queries.append(bq)
+
     sources: list[Source] = []
     seen: set[str] = set()
     for query in queries:
@@ -345,33 +364,19 @@ def targeted_slot_search(
     field: str | None = None,
     affiliation: str | None = None,
     hint: str | None = None,
+    nationality: str | None = None,
 ) -> list[Source]:
     """Search web using multiple iterative queries for a specific slot, including bilingual native script expansion."""
-    template = _SLOT_QUERIES.get(slot, '"{name}"')
-    q1 = template.format(name=person_name)
-    context = _disambiguator(affiliation, field)
-    if hint:
-        q1 += f" {hint}"
-    if context:
-        q1 += f" {context}"
-
-    # Each slot gets its own query family. The previous implementation used
-    # education queries for every slot, which made an award search collect
-    # unrelated alumni, politicians, books and namesakes.
-    slot_terms: dict[str, tuple[str, str, str]] = {
-        "birth_date": ("biography born date of birth", "profile born", "जन्म जीवनी"),
-        "birth_place": ("biography birthplace born", "profile native village", "जन्म स्थान जीवनी"),
-        "education": ("education university degree BSc MSc PhD", "alumni graduation doctorate", "शिक्षा विश्वविद्यालय डिग्री"),
-        "position": ("scientist position career appointment", "principal scientist head director", "वैज्ञानिक पद करियर"),
-        "award": ("award prize honour citation", "award team leader selection", "पुरस्कार सम्मान"),
-        "known_for": ("research contribution impact", "scientific achievement project leader", "अनुसंधान योगदान उपलब्धि"),
-        "nationality": ("biography nationality", "profile scientist", "वैज्ञानिक जीवनी"),
-        "full_name": ("biography profile", "scientist full name", "वैज्ञानिक परिचय"),
-        "affiliation": ("institute department staff", "scientist affiliation profile", "संस्थान वैज्ञानिक"),
-    }
-    terms = slot_terms.get(slot, (slot, f"biography {slot}", f"वैज्ञानिक {slot}"))
-    suffix = f" {context}" if context else ""
-    queries = [q1, *(f'"{person_name}" {term}{suffix}' for term in terms)]
+    from .multilingual_search import build_bilingual_queries
+    queries = build_bilingual_queries(
+        name=person_name,
+        nationality=nationality,
+        affiliation=affiliation,
+        field=field,
+        slot=slot,
+        hint=hint,
+        limit=8,
+    )
 
     sources: list[Source] = []
     seen: set[str] = set()

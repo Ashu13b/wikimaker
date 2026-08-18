@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { PersonProfile, WikiStatus, Source } from "../types";
 import { getDraftDestination } from "../workflow";
 import { profileRef } from "../api";
-import { getHostname } from "../url";
+import { getHostname, safeHref } from "../url";
 import { SOURCE_TAG_CLASS, SOURCE_TAG_LABEL } from "../components/slotMeta";
 import DraftPreview from "../components/DraftPreview";
 import DraftLinks from "../components/DraftLinks";
@@ -20,6 +20,7 @@ type Tab = "preview" | "links" | "qa" | "en" | "hi";
 export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }: Props) {
   const [tab, setTab] = useState<Tab>("preview");
   const [copied, setCopied] = useState(false);
+  const [copiedAfc, setCopiedAfc] = useState(false);
 
   const wikitextEn = profile.wikitext_en ?? "";
   const wikitextHi = profile.wikitext_hi ?? "";
@@ -30,6 +31,16 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
       navigator.clipboard.writeText(current).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  }
+
+  function handleCopyAfc() {
+    if (navigator.clipboard) {
+      const textToCopy = current.startsWith("{{subst:submit}}") ? current : `{{subst:submit}}\n${current}`;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        setCopiedAfc(true);
+        setTimeout(() => setCopiedAfc(false), 2000);
       });
     }
   }
@@ -115,9 +126,12 @@ export default function DraftPage({ profile, wikiStatus, onBackToHub, onReset }:
                     border: "none", resize: "vertical", outline: "none", lineHeight: 1.6,
                   }}
                 />
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button className="btn-primary" onClick={handleCopy}>
-                    {copied ? "Copied!" : "Copy wikitext"}
+                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                  <button className="btn-primary" onClick={handleCopyAfc} title="Prepend {{subst:submit}} and copy for direct AfC draft submission">
+                    {copiedAfc ? "✓ Copied with {{subst:submit}}!" : "Copy for AfC (with {{subst:submit}})"}
+                  </button>
+                  <button className="btn-ghost" onClick={handleCopy}>
+                    {copied ? "Copied!" : "Copy raw wikitext"}
                   </button>
                   <a
                     href={draftDestination.href}
@@ -194,7 +208,7 @@ function SourceRow({ source, inDraft }: { source: Source; inDraft: boolean }) {
             in draft
           </span>
         )}
-        <a href={source.url} target="_blank" rel="noreferrer"
+        <a href={safeHref(source.url)} target="_blank" rel="noreferrer"
           style={{ fontSize: 12, color: "var(--primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {source.publisher || getHostname(source.url)}
         </a>
