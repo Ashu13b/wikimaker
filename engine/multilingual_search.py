@@ -246,7 +246,9 @@ def build_bilingual_queries(
         base_en += f" {hint}"
     queries.append(base_en.strip())
 
-    # 2. Localized / vernacular queries
+    # 2. Localized / vernacular queries. Carry the hint (often a year, venue,
+    # or event name) into native-script queries too; otherwise a date-centric
+    # targeted search silently falls back to name-only Hindi terms.
     target_langs = detect_languages(nationality, name)
     for lang in target_langs:
         trans_name = transliterate_name(name, lang)
@@ -259,6 +261,8 @@ def build_bilingual_queries(
                 q_native = f'"{trans_name}" {term}'
                 if disambig:
                     q_native += f" {disambig}"
+                if hint:
+                    q_native += f" {hint}"
                 if q_native not in queries:
                     queries.append(q_native)
 
@@ -266,6 +270,8 @@ def build_bilingual_queries(
             q_bilingual = f'"{name}" {term}'
             if disambig:
                 q_bilingual += f" {disambig}"
+            if hint:
+                q_bilingual += f" {hint}"
             if q_bilingual not in queries:
                 queries.append(q_bilingual)
 

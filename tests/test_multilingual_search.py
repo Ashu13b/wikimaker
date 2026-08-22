@@ -45,6 +45,18 @@ def test_build_bilingual_queries_hindi():
     assert any("शोध" in q or "अनुसंधान" in q or "योगदान" in q for q in queries)
 
 
+def test_build_bilingual_queries_carries_date_and_event_hint_into_hindi():
+    queries = build_bilingual_queries(
+        name="Prem Singh Yadav",
+        nationality="Indian",
+        affiliation="ICAR-CIRB",
+        slot="award",
+        hint="2026 Varanasi Guraya Memorial Oration",
+    )
+    assert any("2026" in q and "Varanasi" in q for q in queries)
+    assert any("2026" in q and "प्रेम सिंह यादव" in q for q in queries)
+
+
 def test_build_bilingual_queries_french():
     queries = build_bilingual_queries(
         name="Alain Aspect",

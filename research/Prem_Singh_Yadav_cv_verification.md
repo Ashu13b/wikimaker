@@ -3,6 +3,22 @@
 Checked 29 July 2026. The CV was used only to generate search leads. It is not
 a citation, and private contact, address, family and birth details are omitted.
 
+## How to read this dossier
+
+This is an evidence ledger, not a second article. Repeated reports about the
+same event are grouped as one evidence cluster; the strongest record is
+identified, while mirrors and wire-service versions are retained only as
+corroboration. A source may remain here for auditability without increasing the
+independent-source count. The article draft uses only verified claims that
+survive this review.
+
+Evidence is separated into four levels: independent editorial coverage;
+official institutional or event records; primary scholarly records; and
+unverified or rejected leads. Institutional and scholarly records establish
+roles, dates and publications, but do not by themselves establish Wikipedia
+notability. Duplicate links should be added to an existing event cluster rather
+than recorded as new achievements.
+
 ## Verified and useful
 
 | CV lead | Public verification | Source type | Draft use |
@@ -30,6 +46,90 @@ a citation, and private contact, address, family and birth details are omitted.
 | Direct report of the Limca recognition | Amar Ujala reported in March 2023 that CIRB was registered in the Limca Book of Records for the maximum clones produced from one bull, describing the application and record. The report concerns the institute/team, not an individual Yadav award. | Independent regional news | Include as a carefully attributed recognition of the CIRB team. |
 | Principal-scientist role in 2024 | The ICAR-CIRB 2024 annual report lists Yadav as a principal scientist. | Institutional | Useful current-position corroboration, not notability evidence. |
 | Retirement in 2025 | Amar Ujala independently reported his retirement as an ICAR-CIRB principal scientist. The CIRB 2025 annual report supplies the exact 30 April date. | Independent news plus institutional detail | Include the independently supported year; retain the exact date only in this dossier. |
+
+## Additional verified lead
+
+The ICAR-CIRB 2016–17 annual report records that Yadav and four colleagues
+received a Best Research Paper Presentation Award at the XXXII Annual
+Convention of the Indian Society for the Study of Animal Reproduction in
+December 2016. The report identifies the paper as work on osteopontin and
+antioxidants in seminal plasma. This is a team award from an institutional
+annual report: it is useful corroboration of research recognition, but not a
+stand-alone notability claim for Yadav.
+
+- ICAR-CIRB annual report 2016–17 (award record): https://cirb.res.in/wp-content/uploads/2018/01/AnnualReport2016-17.pdf
+
+The official ICAR completed-project record names Yadav principal investigator
+of project 7004, “Large scale production of multiple copies of elite buffalo
+bulls using animal cloning technology” (April 2018–March 2022), and lists the
+project’s objectives and publications. This is stronger evidence of funded
+research leadership than a CV assertion, but remains a primary institutional
+record and should not be counted as independent coverage.
+
+- ICAR completed-project record: https://www.icar.org.in/sites/default/files/Circulars/Completed%20projects%20call%20VII.pdf
+
+The final programme of the 11th Asian Buffalo Congress (2024) lists Yadav as
+the presenter of a talk on melatonin supplementation, inferior oocytes and
+somatic-cloned buffalo embryos. It verifies a public scientific presentation,
+not the quality or impact of the research.
+
+- Asian Buffalo Congress 2024 final programme: https://abc2024.org/wp-content/uploads/2024/09/Final-Program_ABC-2024-.pdf
+
+Yadav was also a co-author of a 2019 *Indian Journal of Biotechnology*
+perspective, “10 years after the birth of India’s first cloned farm animal,
+where is buffalo cloning heading.” It is a useful publication and shows his
+subject-matter role, but it is authored by his research group and therefore is
+not independent notability evidence.
+
+- ResearchGate full-text record: https://www.researchgate.net/publication/339044186_10_years_after_the_birth_of_India%27s_first_cloned_farm_animal_where_is_buffalo_cloning_heading
+
+The structured Hindi/date search also located two useful publication records.
+The official CIRB Buffalopedia portal credits Yadav as a contributor to an
+article on buffalo embryonic stem-cell work, confirming an institute-level
+science-communication contribution. Springer Nature’s *Biotechnological
+Applications in Buffalo Research* lists Yadav as a co-author of the chapter
+“Somatic Cell Nuclear Transfer and its Applications in Buffalo.” These records
+are appropriate for the bibliography and research chronology, but neither is
+independent biographical coverage.
+
+- CIRB Buffalopedia contributor page: https://buffalopedianew.cirb.res.in/articles/
+- Springer Nature book/chapter listing: https://link.springer.com/book/10.1007/978-981-16-7531-7?page=2
+
+A 2024 *Indian Journal of Animal Reproduction* paper, “Identification of
+Clusterin in Buffalo Semen and its Relation to Semen Quality,” lists Yadav as a
+co-author. It is a current primary research record and may be useful in a
+selected-publications appendix, but adding it to the article body would make
+the draft unnecessarily curriculum-vitae-like.
+
+- 2024 paper: https://acspublisher.com/journals/index.php/ijar/article/download/13801/17865/35044
+
+The search also surfaced a LinkedIn post claiming 30,000 citations and an
+h-index of 86. That claim conflicts with identity-audited scholarly records
+and appears to be contaminated by another scientist’s profile activity; it is
+excluded completely.
+
+The ICAR report published on 25 December 2022 names P. S. Yadav among the CIRB
+team that produced Veer Gaurav, a calf cloned from Hisar Gaurav's semen using
+ovum pick-up and in-vitro embryo production (OPU-IVEP). This is useful for the
+research chronology and supports team attribution, but it is an institutional
+primary source and should not be counted as independent notability coverage.
+
+- ICAR on Veer Gaurav (25 December 2022): https://icar.org.in/en/node/17212
+
+## 2026 Varanasi oration verification
+
+The earlier programme-only citation has been replaced by stronger event
+evidence. The official BHU GSIRB–ISSRF 2026 abstract book records the event in
+Varanasi on 20–22 February 2026, lists Dr. P. S. Yadav as the speaker for the
+Prof. S. S. Guraya Memorial Oration, and gives his talk as “Technological
+advances in buffalo cloning: from embryo optimization to field-level
+validation.” The ISSRF past-conferences page independently confirms that the
+meeting was held at BHU in those dates. These sources verify delivery and the
+talk title, although they are event records rather than independent biographical
+coverage.
+
+- BHU GSIRB–ISSRF 2026 abstract book: https://www.bhu.ac.in/Images/files/Abstract%20book%20GSIRB-ISSRF%202026%20BHU%281%29.pdf
+- ISSRF past conferences: https://www.issrf.org/conferences/past-conferences
 
 ## Public links
 
