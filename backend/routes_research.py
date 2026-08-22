@@ -22,7 +22,12 @@ from engine.notability import score_notability
 from engine.extractor import extract_claims, find_missing_slots
 from engine.relevance import flag_sources
 from engine.crawler import crawl
-from engine.researcher_ids import extract_ids_from_sources, is_sd_article_url, is_sd_author_url
+from engine.researcher_ids import (
+    extract_ids_from_sources,
+    is_sd_article_url,
+    is_sd_author_url,
+    validated_new_ids,
+)
 from engine.provenance import normalize_url
 from wiki.wiki_check import check_existing_page
 
@@ -127,8 +132,9 @@ def _populate_initial_sources(profile: PersonProfile, req: ResearchRequest) -> N
         profile.researcher_ids["semantic_scholar"] = s2_author_id
 
     found_ids = extract_ids_from_sources(sources)
-    for id_type, id_val in found_ids.items():
-        profile.researcher_ids.setdefault(id_type, id_val)
+    new_ids = {t: v for t, v in found_ids.items() if t not in profile.researcher_ids}
+    for id_type, id_val in validated_new_ids(new_ids, req.name, req.affiliation).items():
+        profile.researcher_ids[id_type] = id_val
 
     if req.affiliation:
         institution_sources = fetch_institution_sources(req.name, req.affiliation)
@@ -223,9 +229,12 @@ def add_source(req: AddSourceRequest) -> dict:
     source.liveness = "blocked" if blocked else "alive"
 
     # Extract researcher IDs from the new URL (e.g. user pastes an ORCID link)
-    new_ids = extract_ids_from_sources([source])
-    for id_type, id_val in new_ids.items():
-        profile.researcher_ids.setdefault(id_type, id_val)
+    new_ids = {
+        t: v for t, v in extract_ids_from_sources([source]).items()
+        if t not in profile.researcher_ids
+    }
+    for id_type, id_val in validated_new_ids(new_ids, profile.name, profile.affiliation).items():
+        profile.researcher_ids[id_type] = id_val
 
     if url in profile.rejected_sources:
         profile.rejected_sources.remove(url)

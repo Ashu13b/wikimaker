@@ -1,6 +1,7 @@
 """Gather sources for a person: Semantic Scholar + Google CSE + DuckDuckGo + user-provided URLs."""
 from __future__ import annotations
 import os
+import re
 import requests
 from .models import Source, SourceReliability
 
@@ -20,6 +21,19 @@ _DISAMBIG_STOPWORDS = {
     "university", "institute", "college", "research", "central", "department",
     "division", "center", "centre", "school", "faculty", "for", "and", "the",
 }
+
+
+_JUNK_URL_RE = re.compile(
+    r"/sortd-service/"                       # e-paper image-render endpoints
+    r"|\.(jpg|jpeg|png|webp|gif)([?#]|$)",   # direct image assets
+    re.I,
+)
+
+
+def is_junk_source_url(url: str) -> bool:
+    """Deterministic junk filter: e-paper image renders and bare image assets
+    are layout artifacts, not citable sources."""
+    return bool(_JUNK_URL_RE.search(url or ""))
 
 
 def _disambiguator(affiliation: str | None, field: str | None) -> str:
@@ -97,6 +111,7 @@ def fetch_auto_sources(
     # National-outlet sweep for independent news coverage (finding all reliable links)
     news_sweep = _sweep_news(name, affiliation, field)
     sources.extend(s for s in news_sweep if s.url not in seen)
+    sources = [s for s in sources if not is_junk_source_url(s.url)]
     return sources, s2_author_id
 
 
@@ -196,8 +211,9 @@ def _pick_author_id(candidates: list[dict], name: str, affiliation: str) -> str 
 
     Strategy: validate each candidate by checking one of their DOI papers
     against CrossRef. The first candidate whose paper confirms the person's
-    name is the right one. Falls back to highest paper-count candidate if
-    CrossRef can't resolve any.
+    name is the right one. Returns None if no candidate validates — an
+    unvalidated paper-count guess once stored a namesake's author id and
+    polluted the session with wrong-person publications.
     """
     from .author_check import check_doi_authors
 
@@ -234,8 +250,8 @@ def _pick_author_id(candidates: list[dict], name: str, affiliation: str) -> str 
             if result["status"] in ("wrong_person", "not_found"):
                 break  # this candidate is wrong, try the next one
 
-    # No CrossRef validation succeeded — fall back to highest paper count
-    return ranked[0].get("authorId") if ranked else None
+    # No CrossRef validation succeeded — fail closed rather than guess
+    return None
 
 
 def _google_cse(name: str, field: str | None, affiliation: str | None) -> list[Source]:

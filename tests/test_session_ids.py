@@ -197,3 +197,43 @@ def test_delete_only_evicts_target_not_same_named_namesake(tmp_path, monkeypatch
 
     assert a.session_id not in store._sessions
     assert store._sessions.get(b.session_id or "") is b
+
+
+def test_corrupt_legacy_file_is_skipped_and_fresh_session_created(tmp_path, monkeypatch):
+    (tmp_path / "Corrupt_Person.json").write_text("{not valid json")
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {})
+    monkeypatch.setattr(store, "_wiki_statuses", {})
+    _mock_fresh_research_pipeline(monkeypatch)
+
+    result = research_start(ResearchRequest(name="Corrupt Person"))
+
+    assert result["resumed"] is False
+    assert result["profile"]["session_id"] is not None
+
+
+def test_legacy_filename_with_id_keyed_content_migrates_keeping_session_id(tmp_path, monkeypatch):
+    profile = PersonProfile(name="Legacy Person", session_id="py-legacy-person-abcd1234")
+    payload = {
+        "profile": json.loads(profile.model_dump_json()),
+        "wiki_status": {"status": "clear", "url": None, "note": None},
+    }
+    legacy = tmp_path / "Legacy_Person.json"
+    legacy.write_text(json.dumps(payload))
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(store, "_sessions", {})
+    monkeypatch.setattr(store, "_wiki_statuses", {})
+
+    class _Clear:
+        def model_dump(self):
+            return {"status": "clear", "url": None, "note": None}
+
+    monkeypatch.setattr("wiki.wiki_check.check_existing_page", lambda title: _Clear())
+
+    from backend.routes_sessions import resume_session
+    result = resume_session({"file": "Legacy_Person.json"})
+
+    sid = result["profile"]["session_id"]
+    assert sid == "py-legacy-person-abcd1234"
+    assert (tmp_path / f"{sid}.json").exists()
+    assert not legacy.exists()

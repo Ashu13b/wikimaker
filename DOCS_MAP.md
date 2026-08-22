@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-18 18:20 UTC · sha ff7ced3 · host vnic-trading -->
+<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-22 12:27 UTC · sha 318bba0 · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -16,6 +16,17 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Decisions & rejected approaches
     - Half-done / known-broken
     - Aug 2026 frontend hardening & redesign
+- `PHONE_WORKFLOW.md`
+  - PHONE_WORKFLOW — driving Wikimaker's UI from the Android phone
+    - Topology (what works and why)
+    - Setup cycle
+  - 1. Server up (skip if already running; kills ports 3890/8001/7070 first)
+  - 2. Keep the phone awake
+  - 3. Reverse tunnel: phone loopback 3890 -> VM 3890
+  - 4. Verify from the phone side
+    - Notifying the human
+    - What the phone is good for here
+    - Gotchas
 - `README.md`
   - Wikimaker
     - Key Features
@@ -83,7 +94,10 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
 ## research/
 - `research/Prem_Singh_Yadav_cv_verification.md`
   - Prem Singh Yadav: CV verification dossier
+    - How to read this dossier
     - Verified and useful
+    - Additional verified lead
+    - 2026 Varanasi oration verification
     - Public links
     - Deeper annual-report and earlier-draft findings
     - Still unverified or unsuitable for the draft

@@ -157,13 +157,17 @@ def _activate_session(profile: PersonProfile, wiki_status: dict) -> PersonProfil
     """Key an in-memory profile by its stable id and reconcile resume-time state."""
     from engine.relevance import flag_sources
     from engine.extractor import find_missing_slots
-    from engine.researcher_ids import extract_ids_from_sources
+    from engine.researcher_ids import extract_ids_from_sources, validated_new_ids
 
     with _lock:
         flag_sources(profile.sources, profile.name, profile.field or "", profile.affiliation or "")
         profile.missing_slots = find_missing_slots(profile, profile.claims)
-        for id_type, id_val in extract_ids_from_sources(profile.sources).items():
-            profile.researcher_ids.setdefault(id_type, id_val)
+        new_ids = {
+            t: v for t, v in extract_ids_from_sources(profile.sources).items()
+            if t not in profile.researcher_ids
+        }
+        for id_type, id_val in validated_new_ids(new_ids, profile.name, profile.affiliation).items():
+            profile.researcher_ids[id_type] = id_val
         _apply_provenance(profile)
         sid = _ensure_session_id(profile)
         _sessions[sid] = profile

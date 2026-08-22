@@ -41,6 +41,28 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
 - A source count cannot prove academic notability. Independent project coverage,
   authored publications, institutional profiles, and awards remain distinct; the
   final WP:ACADEMIC/GNG judgment must be made by a human.
+- Katoch dry-run lesson (Aug 2026): field intuition is NOT a wrong-person test.
+  The S2 author id `2147684` looked contaminated (yoga/CVD/API-economics papers
+  for a leprosy microbiologist) but `check_doi_authors` confirmed every paper —
+  they are his late-career ICMR/RUHS collaborations. Always adjudicate
+  namesake suspicion with the CrossRef authorship checker, not by topic match.
+- Auto-research accuracy hardening (same pass): `_pick_author_id` no longer
+  falls back to highest-paper-count when CrossRef validates nothing (that
+  fallback was the recorded contamination vector; it now returns None).
+  Source-URL-extracted semantic_scholar ids are gated by
+  `validate_s2_author` (first+last name token check, fail-closed). A junk URL
+  filter (`is_junk_source_url`) drops e-paper image renders (tribuneindia
+  sortd-service) and bare image assets from auto-sweeps. scispace.com,
+  scilit.net, gpatindia.com added to UNRELIABLE_DOMAINS.
+- Researcher-ID ingestion is gated: `validated_new_ids` (engine/researcher_ids.py)
+  drops source-URL-extracted ORCIDs that fail identity validation before they
+  enter `profile.researcher_ids` (all three ingestion points: initial sources,
+  add-source, resume re-extract). Only NEW ids are gated — stored ids are never
+  re-validated on resume because `validate_orcid` returns False on any network
+  exception, so offline resume would otherwise silently drop valid ORCIDs.
+  Stored-but-wrong ids are pruned by the find-ids endpoint instead. Google
+  Scholar/Scopus/ResearchGate have no deterministic validator and stay
+  human-confirmable via `confirmed_ids`.
 - The Prem Singh Yadav CV audit increased the saved session from 45 to 70 public
   sources and the deterministic draft from 10 to 28 eligible claims tied to 26
   sources. Seven distinct independent outlets support included claims. The

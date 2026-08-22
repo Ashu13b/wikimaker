@@ -124,6 +124,51 @@ def validate_orcid(orcid_id: str, name: str, affiliation: str | None = None) -> 
         return False
 
 
+def validate_s2_author(author_id: str, name: str) -> bool:
+    """Check a Semantic Scholar author profile exists and its name matches.
+
+    Requires the person's first AND last name token to appear in the S2
+    display name; abbreviated forms ("V. M. Katoch") fail — fail-closed, the
+    human can confirm manually.
+    """
+    try:
+        resp = requests.get(
+            f"https://api.semanticscholar.org/graph/v1/author/{author_id}",
+            params={"fields": "name"},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return False
+        s2_name = (resp.json().get("name") or "").lower()
+    except Exception:
+        return False
+    tokens = [t.lower() for t in name.split()]
+    return len(tokens) >= 2 and tokens[0] in s2_name and tokens[-1] in s2_name
+
+
+def validated_new_ids(
+    ids: dict[str, str],
+    name: str,
+    affiliation: str | None = None,
+) -> dict[str, str]:
+    """Drop identity-unsafe ids before they enter profile.researcher_ids.
+
+    ORCID is checked against the public API; a 404 or name/affiliation mismatch
+    means it belongs to someone else and must not be stored. Semantic Scholar
+    ids are checked against the S2 author profile name (first+last token).
+    Other id types have no deterministic validator yet and pass through for
+    human confirmation.
+    """
+    valid: dict[str, str] = {}
+    for id_type, id_val in ids.items():
+        if id_type == "orcid" and not validate_orcid(id_val, name, affiliation):
+            continue
+        if id_type == "semantic_scholar" and not validate_s2_author(id_val, name):
+            continue
+        valid[id_type] = id_val
+    return valid
+
+
 def fetch_orcid_works(orcid_id: str) -> list[Source]:
     """Fetch publication list from ORCID and return as Sources."""
     try:

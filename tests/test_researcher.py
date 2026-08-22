@@ -127,3 +127,36 @@ def test_try_browser_server_returns_none_when_no_browser_running(monkeypatch):
     monkeypatch.setattr(fetcher.requests, "get", fake_get)
 
     assert fetcher._try_browser_server("https://example.test/x") is None
+
+
+def test_junk_source_url_filter():
+    from engine.researcher import is_junk_source_url
+
+    assert is_junk_source_url(
+        "https://www.tribuneindia.com/sortd-service/imaginary/v22-01/jpg/large/high?url=x")
+    assert is_junk_source_url("https://example.com/photo.jpg")
+    assert not is_junk_source_url(
+        "https://www.icmr.gov.in/former-director-generals")
+    assert not is_junk_source_url("https://timesofindia.indiatimes.com/city/nagpur/gmc-host-event")
+
+
+def test_pick_author_id_returns_none_when_nothing_validates(monkeypatch):
+    from engine import researcher
+
+    candidates = [
+        {"authorId": "111", "paperCount": 500, "affiliations": []},
+        {"authorId": "222", "paperCount": 3, "affiliations": []},
+    ]
+
+    class _Papers:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"data": [{"externalIds": {"DOI": "10.1/x"}}]}
+
+    monkeypatch.setattr(researcher.requests, "get", lambda *a, **k: _Papers())
+    monkeypatch.setattr(
+        "engine.author_check.check_doi_authors",
+        lambda doi, name, affil: {"status": "wrong_person"},
+    )
+
+    assert researcher._pick_author_id(candidates, "Some Person", "") is None

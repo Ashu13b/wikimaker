@@ -95,6 +95,9 @@
   conventions in `.context-kit/conventions`, and test suite purposing.
 
 ## Next
+- Second-subject dry run: Dr. Vishwa Mohan Katoch (V. M. Katoch, India) —
+  exercises identify → verify → review → draft on a fresh identity instead of
+  the Yadav fixture.
 - Expand automated coverage for identity conflicts, source verification, and
   session migration.
 - Add multi-language draft translation assistance (e.g. Hi-Wiki support) with

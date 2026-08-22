@@ -79,6 +79,8 @@ UNRELIABLE_DOMAINS: set[str] = {
     "celebsagewiki.com", "famousbirthdays.com", "bookmyshow.com",
     "district.in", "ticketmaster.com", "insider.in", "dbpedia.org",
     "wikidata.org",
+    # citation aggregators and content farms (namesake contamination risk)
+    "scispace.com", "scilit.net", "gpatindia.com",
 }
 
 
