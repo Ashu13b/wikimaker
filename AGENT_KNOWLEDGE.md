@@ -693,7 +693,12 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Alternate-spelling queries then
+  director title must never enter the draft. Hindi-variant sweep (Sep 2026)
+  found Bhaskar Dec 2025 on Hisar Gaurav 2.0 (born 28 Nov 2025, unveiled 18 Dec
+  2025): unlike the earlier Jagran/Amar Ujala reports it DOES credit P.S. Yadav
+  as a contributor — but project lead is Dharmendra Kumar and Yadav retired Apr
+  2025, so it enters as dossier-only with the tenure caveat, keeping the
+  post-tenure rule intact. Alternate-spelling queries then
   surfaced Aaj Tak Dec 2021 (national TV portal naming cloning in-charge Yadav
   with 25-progeny/15k-dose quotes, approved significant) and Dainik Jagran Feb
   2026 (25-progeny feature quoting Selokar, no Yadav naming — dossier-only).
