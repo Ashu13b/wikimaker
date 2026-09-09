@@ -674,4 +674,8 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   lead. citytehelka 10th-birthday URL is 404 with no Wayback snapshot, so its
   claim is excluded as `source_url_dead`. Renderer fix: birth facts rendered
   under `==Education==` — sections split into Early life (birth_*) and
-  Education (education only).
+  Education (education only). Dainik Bhaskar (1 Jun 2021, verified first-hand)
+  independently corroborates the Nanaji Deshmukh Team Award: the cloning team
+  under cloning in-charge Dr P.S. Yadav received it with a Rs 5 lakh prize for
+  the eight clones — this is the independent press leg for the Criterion-2
+  award claim (ICAR citation remains the authoritative team-leader source).
