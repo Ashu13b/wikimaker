@@ -39,6 +39,31 @@ nohup ssh -p 8022 -o BatchMode=yes -o ExitOnForwardFailure=yes \
 Phone browser then opens **http://127.0.0.1:3890** (same origin serves `/api`
 and the companion browser at `/browser/`). No public exposure, no auth needed.
 
+## Live shared desktop (replaces screenshot polling)
+
+The `/browser/` page is screenshot polling (600ms JPEGs) — usable but laggy.
+The live path is **noVNC on phone port 6901**, sharing the exact Xvfb display
+(`:99`) the headed Chromium runs on: one session, human touches it on the
+phone, the agent drives/reads it via `/browser/*` API simultaneously.
+
+```bash
+# x11vnc shares :99 as VNC :1 (port 5901); websockify bridges to 6901 with client
+nohup x11vnc -display :99 -rfbport 5901 -shared -forever -noxdamage -ncache 0 -nopw -quiet -o /tmp/opencode/x11vnc.log &
+nohup ~/.local/bin/websockify --web /tmp/opencode/novnc 6901 localhost:5901 > /tmp/opencode/websockify.log 2>&1 &
+# second reverse forward next to the 3890 one
+nohup ssh -p 8022 -o BatchMode=yes -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
+  -N -R 6901:127.0.0.1:6901 u0_a509@100.72.202.86 \
+  > /tmp/opencode/reverse_tunnel_6901.log 2>&1 &
+```
+
+Phone opens **http://127.0.0.1:6901/vnc.html?host=127.0.0.1&port=6901&path=websockify&autoconnect=true**
+for one-tap connect. Notes: x11vnc/novnc/websockify were installed outside apt
+(`apt` is dependency-broken on this host) — `.deb` direct-fetch for x11vnc,
+`pip --user --break-system-packages` for websockify, noVNC v1.5.0 tarball from
+GitHub into `/tmp/opencode/novnc`. `/tmp` does not survive reboot — reinstall
+per above if the desktop is gone after a restart.
+
 ## Notifying the human
 
 From the `../termux/` directory:
