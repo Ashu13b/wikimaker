@@ -57,8 +57,30 @@ nohup ssh -p 8022 -o BatchMode=yes -o ExitOnForwardFailure=yes \
   > /tmp/opencode/reverse_tunnel_6901.log 2>&1 &
 ```
 
-Phone opens **http://127.0.0.1:6901/vnc.html?host=127.0.0.1&port=6901&path=websockify&autoconnect=true**
-for one-tap connect. Notes: x11vnc/novnc/websockify were installed outside apt
+Phone opens (one-tap, auto-scaled to the phone screen, auto-reconnects):
+
+**http://127.0.0.1:6901/vnc.html?host=127.0.0.1&port=6901&path=websockify&autoconnect=true&resize=scale&quality=5&reconnect=true**
+
+Mobile tuning: Xvfb runs a phone-sized desktop (`480x950`, not 1280x800) so
+the Chromium window fills the phone with no pan/zoom; noVNC `resize=scale`
+fits it to any screen. If the desktop ever resets to full-size, an Xvfb
+restart at that geometry plus browser relaunch restores it (server restart
+kills ports first per `start.sh` convention; session survives on disk —
+resume it after).
+
+## The gated-fetch loop (who does what)
+
+1. **Agent drives** the shared Chromium via `/browser/*` API (navigate, read,
+   click, type) — same tabs the human sees in VNC.
+2. **On a genuine wall** (CAPTCHA/Turnstile the headless render cannot pass),
+   the agent toasts the phone with the site name and stops.
+3. **Human solves** in the VNC desktop (same session, same cookies — solving
+   anywhere else does not transfer) and says "solved".
+4. **Agent resumes**: re-captures content, continues the walk.
+5. One-off JS-gated reads with no wall: human may read directly in the
+   phone's own Chrome and dictate; the agent binds via `add-sourced-claim`.
+
+Notes: x11vnc/novnc/websockify were installed outside apt
 (`apt` is dependency-broken on this host) — `.deb` direct-fetch for x11vnc,
 `pip --user --break-system-packages` for websockify, noVNC v1.5.0 tarball from
 GitHub into `/tmp/opencode/novnc`. `/tmp` does not survive reboot — reinstall
