@@ -693,7 +693,11 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Exhaustive sweep (Sep 2026):
+  director title must never enter the draft. Operating loop (Sep 2026): the AI
+  drives the companion browser itself via /browser/navigate + /content and
+  only calls the human for a genuine CAPTCHA solve — the phone /browser/ view
+  is the solve station, not the driving seat. Proven on NDTV + Zee (both
+  rendered fully first-hand, zero human steps). Exhaustive sweep (Sep 2026):
   IE/Hindu/Scroll/Wire/Quint carry only NDRI-2009 or unrelated stories —
   none ever covered Yadav; PIB/DD News have nothing. AR 2019-20 read from the
   full PDF first-hand (project team + "first report of its kind" + 25
