@@ -693,8 +693,13 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Publication adjudication rule (Sep
-  2026): employer-institute attribution (CIRB's own publication list naming
+  director title must never enter the draft. Unreachable verdicts (Sep 2026):
+  IRINS is doubly dead — vapt6 host DNS-unresolvable (staging, decommissioned)
+  and the live cirb.irins.org Angular app crashes our tab (third such crash;
+  memory is fine, renderer vs heavy-JS suspected). Snippet numbers stay OUT of
+  the dossier. CIRB research-papers page crashes the tab the same way; its
+  content is covered via search-corroborated official listings instead.
+  Publication adjudication rule (Sep 2026): employer-institute attribution (CIRB's own publication list naming
   its PS Yadav) settles identity without CrossRef — applied to two 2024
   Current Science papers (Veer Gaurav OPU-IVF; Nuh dissemination, Yadav first
   author), dossier-only since draft publications already cover representative
