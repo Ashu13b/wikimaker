@@ -87,10 +87,13 @@ def _apply_provenance(profile: PersonProfile) -> None:
     profile.saturation = analyze_research_saturation(profile)
 
 
-def _save_session(name_or_id: str) -> None:
+def _save_session(name_or_id: str | PersonProfile) -> None:
     import tempfile
     with _lock:
-        profile = _resolve_profile(name_or_id)
+        if isinstance(name_or_id, PersonProfile):
+            profile = name_or_id
+        else:
+            profile = _resolve_profile(name_or_id)
         if not profile:
             return
         _apply_provenance(profile)

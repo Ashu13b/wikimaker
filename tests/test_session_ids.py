@@ -237,3 +237,35 @@ def test_legacy_filename_with_id_keyed_content_migrates_keeping_session_id(tmp_p
     assert sid == "py-legacy-person-abcd1234"
     assert (tmp_path / f"{sid}.json").exists()
     assert not legacy.exists()
+
+
+def test_save_session_by_profile_avoids_same_name_409(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+    a = _profile("John Doe", "py-john-doe-1111")
+    b = _profile("John Doe", "py-john-doe-2222")
+    monkeypatch.setattr(store, "_sessions", {a.session_id: a, b.session_id: b})
+    monkeypatch.setattr(store, "_wiki_statuses", {a.session_id: {"status": "clear"}, b.session_id: {"status": "clear"}})
+
+    # Saving directly with profile should never raise 409
+    store._save_session(a)
+    store._save_session(b)
+
+    assert (tmp_path / "py-john-doe-1111.json").exists()
+    assert (tmp_path / "py-john-doe-2222.json").exists()
+
+
+def test_generate_draft_checks_wiki_status_by_session_id(monkeypatch):
+    from backend.routes_draft import generate_draft, DraftRequest
+    from fastapi import HTTPException
+    import pytest
+
+    profile = _profile("Famous Person", "py-famous-person-exists")
+    monkeypatch.setattr(store, "_sessions", {profile.session_id: profile})
+    # Key strictly by sid in _wiki_statuses
+    monkeypatch.setattr(store, "_wiki_statuses", {profile.session_id: {"status": "exists"}})
+
+    assert profile.session_id is not None
+    with pytest.raises(HTTPException) as exc:
+        generate_draft(DraftRequest(profile_name=profile.session_id))
+    assert exc.value.status_code == 409
+    assert "already exists" in str(exc.value.detail)

@@ -244,7 +244,7 @@ def add_source(req: AddSourceRequest) -> dict:
     profile.sources.append(source)
     # Claims are extracted on confirmation, not on add
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     # If blocked, push to human browser_server if it's running
     sent_to_browser = False
@@ -303,7 +303,7 @@ def add_sourced_claim(req: AddSourcedClaimRequest) -> dict:
     profile.claims.append(claim)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "claim": claim.model_dump(),
         "missing_slots": profile.missing_slots,
@@ -351,7 +351,7 @@ def verify_claim(name: str, req: VerifyClaimRequest) -> dict:
     else:
         raise HTTPException(400, f"Unsupported claim action: {req.action}")
 
-    store._save_session(name)
+    store._save_session(profile)
     return {"claim": claim.model_dump()}
 
 
@@ -392,7 +392,7 @@ def batch_verify_claims(name: str, req: BatchVerifyClaimsRequest) -> dict:
     else:
         raise HTTPException(400, f"Unsupported batch action: {req.action}")
 
-    store._save_session(name)
+    store._save_session(profile)
     return {"profile": profile.model_dump(), "updated_count": count}
 
 
@@ -407,7 +407,7 @@ def add_source_paste(req: AddSourcePaste) -> dict:
     profile.sources.append(source)
     profile.claims.extend(new_claims)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "source": source.model_dump(),
         "new_claims": [c.model_dump() for c in new_claims],
@@ -447,7 +447,7 @@ def deep_crawl(req: CrawlRequest) -> dict:
     new_claims = []
     profile.sources.extend(relevant)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     return {
         "nodes_crawled": len(graph.nodes),
@@ -488,7 +488,7 @@ def targeted_search_endpoint(req: TargetedSearchRequest) -> dict:
     profile.sources.extend(new_sources)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     return {
         "sources": [s.model_dump() for s in new_sources],
@@ -542,7 +542,7 @@ def auto_enrich_endpoint(body: dict) -> dict:
 
     profile.missing_slots = find_missing_slots(profile, profile.claims)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     return {
         "ok": True,
@@ -560,7 +560,8 @@ def article_proposal(body: dict) -> dict:
     from wiki.article_compare import build_article_proposal, fetch_article_text, title_from_url
 
     profile = store._get_profile(body["profile_name"])
-    status = store._wiki_statuses.get(profile.name, {})
+    sid = store._ensure_session_id(profile)
+    status = store._wiki_statuses.get(sid) or store._wiki_statuses.get(profile.name, {})
     if status.get("status") != "exists":
         raise HTTPException(400, "Article comparison is only available when an article already exists.")
     url = status.get("url")
@@ -631,7 +632,7 @@ def verify_source(body: dict) -> dict:
             source.extraction_note = f"Source verified ({len(existing_for_url)} claims in session)."
 
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "ok": True,
         "source": source.model_dump(),
@@ -650,7 +651,7 @@ def reject_source(body: dict) -> dict:
     removed = [c for c in profile.claims if c.source_url == url]
     profile.claims = [c for c in profile.claims if c.source_url != url]
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "removed_claim_count": len(removed),
         "notability": profile.notability.model_dump(),
@@ -666,7 +667,7 @@ def skip_suggestion(body: dict) -> dict:
     url = body["url"]
     if url not in profile.skipped_sources:
         profile.skipped_sources.append(url)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {"ok": True}
 
 
@@ -688,7 +689,7 @@ def find_researcher_ids_endpoint(req: FindIdsRequest) -> dict:
         if not valid:
             profile.researcher_ids.pop("orcid", None)
 
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "researcher_ids": profile.researcher_ids,
         "confirmed_ids": profile.confirmed_ids,
@@ -724,7 +725,7 @@ def refresh_papers_endpoint(req: RefreshPapersRequest) -> dict:
     profile.claims.extend(new_claims)
     profile.missing_slots = find_missing_slots(profile, profile.claims)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     return {
         "new_source_count": len(new_sources),
@@ -763,7 +764,7 @@ def fetch_from_browser(body: dict) -> dict:
 
     profile.sources.append(source)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
 
     return {
         "source": source.model_dump(),
@@ -808,8 +809,8 @@ def fetch_blocked(body: dict) -> dict:
         [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
         fetched.append(source.url)
 
-    store._save_session(profile.name)
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
+    store._save_session(profile)
     return {
         "fetched": fetched,
         "walls": walls,
@@ -848,7 +849,7 @@ def assess_source(req: AssessSourceRequest) -> dict:
     source.editorial_origin = (req.editorial_origin or "").strip() or None
     source.research_notes = req.research_notes.strip()
     profile.notability = score_notability(profile.name, profile.sources, profile.claims)
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "source": source.model_dump(),
         "notability": profile.notability.model_dump() if profile.notability else None,

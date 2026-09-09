@@ -14,12 +14,22 @@ sessions_router = APIRouter()
 def resume_session(body: dict) -> dict:
     """Load a saved session from disk into memory and return it."""
     filename = body.get("file") or body.get("session_id")
-    if not filename:
+    if not filename or not isinstance(filename, str):
         raise HTTPException(400, "file or session_id required")
+    filename = filename.strip()
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(400, "Invalid session reference")
+
+    sessions_root = store.SESSIONS_DIR.resolve()
     # Bare session ids are resolved to their file.
-    path = store.SESSIONS_DIR / filename
+    path = (store.SESSIONS_DIR / filename).resolve()
+    if not path.is_relative_to(sessions_root):
+        raise HTTPException(400, "Invalid session reference")
+
     if not path.exists() and not filename.endswith(".json"):
-        path = store._session_path(filename)
+        path = store._session_path(filename).resolve()
+        if not path.is_relative_to(sessions_root):
+            raise HTTPException(400, "Invalid session reference")
     if not path.exists():
         raise HTTPException(404, f"Session file not found: {filename}")
     data = store._load_session_file(path)
@@ -52,8 +62,8 @@ def resume_session(body: dict) -> dict:
     store._save_session(sid)
 
     # Migrate legacy name-based files to the stable id filename.
-    id_path = store._session_path(sid)
-    if path != id_path and id_path.exists():
+    id_path = store._session_path(sid).resolve()
+    if path != id_path and id_path.exists() and path.is_relative_to(sessions_root):
         path.unlink()
 
     return {
@@ -96,14 +106,17 @@ def delete_session(ref: str) -> dict:
 
     Accepts a session id (py-...) or a session file name (legacy or id-based).
     """
-    if "/" in ref or "\\" in ref:
+    if "/" in ref or "\\" in ref or ".." in ref:
         raise HTTPException(400, "Invalid session reference")
+    sessions_root = store.SESSIONS_DIR.resolve()
     sid = ref[:-5] if ref.endswith(".json") else ref
 
     profile = store._resolve_profile(sid)
     if profile is None:
         # Not loaded — resolve the file on disk directly.
-        path = store.SESSIONS_DIR / ref if ref.endswith(".json") else store._session_path(sid)
+        path = (store.SESSIONS_DIR / ref if ref.endswith(".json") else store._session_path(sid)).resolve()
+        if not path.is_relative_to(sessions_root):
+            raise HTTPException(400, "Invalid session reference")
         if not path.exists():
             raise HTTPException(404, f"Session not found: {ref}")
         data = store._load_session_file(path)
@@ -111,11 +124,13 @@ def delete_session(ref: str) -> dict:
             raise HTTPException(500, "Could not read session file")
     else:
         sid = store._ensure_session_id(profile)
-        path = store._session_path(sid)
+        path = store._session_path(sid).resolve()
+        if not path.is_relative_to(sessions_root):
+            raise HTTPException(400, "Invalid session reference")
 
     store._sessions.pop(sid, None)
     store._wiki_statuses.pop(sid, None)
-    if path.exists():
+    if path.exists() and path.is_relative_to(sessions_root):
         path.unlink()
     return {"deleted": ref}
 

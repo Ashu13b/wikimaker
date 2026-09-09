@@ -112,7 +112,7 @@ body { display: flex; flex-direction: column; }
   <button class="nav-btn" id="btn-reload" title="Reload">&#8635;</button>
   <input id="url-bar" type="url" inputmode="url" autocomplete="off"
          autocorrect="off" autocapitalize="none" spellcheck="false"
-         placeholder="https://...">
+         placeholder="https://..." aria-label="Target URL">
   <button id="go-btn">Go</button>
 </div>
 
@@ -125,7 +125,8 @@ body { display: flex; flex-direction: column; }
 <div id="bottom">
   <input id="type-input" type="text" inputmode="text"
          autocomplete="off" autocorrect="off" autocapitalize="none"
-         spellcheck="false" placeholder="Type and tap Send…">
+         spellcheck="false" placeholder="Type and tap Send…"
+         aria-label="Text to send to browser">
   <button class="act-btn" id="btn-send">Send</button>
   <button class="act-btn" id="btn-enter">&#8629;</button>
   <button class="act-btn" id="btn-bs">&#9003;</button>

@@ -1,17 +1,17 @@
-<!-- context-kit CODE_MAP · v0.1.0 · generated 2026-08-22 12:27 UTC · sha 318bba0 · host instance-20260819-0844 -->
+<!-- context-kit CODE_MAP · v0.2.0 · generated 2026-09-06 19:21 UTC · sha d578fd2 · host instance-20260819-0844 -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 57 files · 595 symbols
+- Python — 57 files · 600 symbols
 - TypeScript — 29 files · 189 symbols
+- HTML — 2 files · 31 symbols
 - JavaScript — 1 files · 0 symbols
-- HTML — 2 files (unindexed)
 - CSS — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 91 files · 784 symbols across 6 languages._
+_Total: 91 files · 820 symbols across 6 languages._
 
 
 ## Compartments
@@ -21,7 +21,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 
 ### ./
 - `browser_server.py` — PROFILE_DIR, XVFB_DISPLAY, PORT, _UA, def looks_like_wall, class _Cmd, _q, _headed, _running, _xvfb, def _dispatch, def browser_link_status, def _page_link_status, def _try_start_xvfb, def _browser_thread, def lifespan, app, def screenshot, class NavReq, def navigate, def info, class ViewportReq, def set_viewport, class ClickReq, def click, class TypeReq, def type_text, class KeyReq, def press_key, class ScrollReq, def scroll, def go_back, def go_forward, def reload, def get_content, def status, def index, def _browser_html, def start_browser, def stop_browser
-- `generate_draft.py` — session_file, data, profile, audit, wikitext, out_en
+- `browser_ui.html` — #toolbar, #btn-back, #btn-fwd, #btn-reload, #url-bar, #go-btn, #viewport, #screen, #overlay, #loading-msg, #url-status, #bottom, #type-input, #btn-send, #btn-enter, #btn-bs, #wiki-btn, #toast, syncViewport, startPoll, refreshShot, refreshInfo, navigate, setLoading, navAction, tapToImageCoords, sendType, sendKey, sendToWikimaker, toast
 ### backend/
 - `backend/main.py` — api_app, def lifespan, app, FRONTEND_DIST
 - `backend/pipelines.py` — def _add_sd_article, def _add_sd_author_profile
@@ -52,6 +52,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `engine/saturation.py` — _STOPWORDS, _YEAR_RE, _WORD_RE, def _tokenize, def _ngrams, def calculate_claim_similarity, def cluster_claims, def analyze_research_saturation
 - `engine/suggester.py` — _SLOT_PRIORITY, _PAYWALLED, _NEEDS_BROWSER, def _fetchability, def is_profile_url, def _classify_source_type, def _relevance, def _completion_value, def _extract_first_year, def detect_timeline_gaps, _SYSTEM, def _normalize_url, def _generate_multiyear_report_urls, def _profile_link_suggestions, def _multiyear_report_suggestions, def _build_search_prompt, def _search_queries, def _run_search_queries, def suggest_next_urls
 ### frontend/
+- `frontend/index.html` — #root
 - `frontend/src/App.tsx` — ErrorBoundaryProps, ErrorBoundaryState, ErrorBoundary, constructor, getDerivedStateFromError, componentDidCatch, render, Stage, MainApp, handleMessage, handleConfirmed, handleResearchDone, handleDraft, handleReset, App
 - `frontend/src/api.ts` — apiPost, apiGet, apiDelete, IdentifyResult, identifyPerson, startResearch, getSession, addSource, fetchFromBrowser, fetchBlockedSources, skipSuggestion, addSourcePaste, deepCrawl, verifyClaim, batchVerifyClaims, verifySource, assessSource, rejectSource, getDraftAudit, getDraftLinks, getDraftPreview, getDraftQa, generateDraft, ClaimCoverage, ArticleProposal, getArticleProposal, SessionSummary, profileRef, listSessions, resumeSession, deleteSession, TargetedSearchResponse, addDocumentFact, targetedSearch, ResearcherIdsResponse, findResearcherIds, RefreshPapersResponse, refreshPapers, suggestUrls, AutoEnrichResponse, autoEnrich
 - `frontend/src/components/ArticleProposal.tsx` — ArticleProposalView
@@ -80,6 +81,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `frontend/src/url.ts` — normalizeUrl, getHostname, safeHref
 - `frontend/src/workflow.ts` — WorkspaceMode, WorkspaceTone, WorkspaceRoute, getWorkspaceRoute, canGenerateDraft, getDraftDestination
 ### scripts/
+- `scripts/generate_draft.py` — root_dir, session_file, data, profile, audit, wikitext, out_en
 - `scripts/read_last.py` — def main
 ### tests/
 - `tests/conftest.py` — def _isolated_sessions
@@ -92,12 +94,12 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `tests/test_liveness.py` — def test_check_liveness_live, def test_check_liveness_dead_looks_up_wayback, def test_check_liveness_blocked, def test_get_wayback_url_parses_snapshot, def test_audit_excludes_dead_unarchived_source, def test_renderer_cites_wayback_url_for_dead_archived_source
 - `tests/test_llm.py` — def test_extract_claims_is_noop_under_stub, def test_get_provider_uses_vertex_when_available, def test_get_provider_falls_back_to_agent_when_vertex_unavailable
 - `tests/test_multilingual_search.py` — def test_detect_languages, def test_transliterate_name, def test_get_regional_news_outlets, def test_build_bilingual_queries_hindi, def test_build_bilingual_queries_carries_date_and_event_hint_into_hindi, def test_build_bilingual_queries_french, def test_build_bilingual_queries_german
-- `tests/test_production_hardening.py` — def test_is_safe_public_url_blocks_private_and_loopback, def test_is_safe_public_url_allows_public_https, def test_fetch_url_and_liveness_reject_unsafe_urls, def test_atomic_session_save, def test_cite_value_escapes_wikitext_template_braces, def test_citation_with_curly_braces
+- `tests/test_production_hardening.py` — def test_is_safe_public_url_blocks_private_and_loopback, def test_is_safe_public_url_allows_public_https, def test_fetch_url_and_liveness_reject_unsafe_urls, def test_atomic_session_save, def test_cite_value_escapes_wikitext_template_braces, def test_citation_with_curly_braces, def test_resume_and_delete_session_block_path_traversal, def test_browser_server_navigate_blocks_unsafe_urls
 - `tests/test_provenance.py` — def test_domain_trust_classification, def test_source_provenance_classification, def test_academic_indexes_never_count_as_independent_news, def test_search_discovery_does_not_make_unknown_site_independent, def test_claim_trust_evaluation, def test_strict_notability_independence, def test_notability_requires_confirmed_claims_and_deduplicates_outlets, def test_notability_keeps_unassessed_candidates_out_of_score, def test_notability_deduplicates_syndicated_editorial_origins, def test_icar_and_cirb_reports_are_institutional_primary_sources, def test_record_registries_are_primary_and_non_independent, def test_meaningful_redirect_detection, def test_fetch_url_source_flags_silent_redirect_trap, def test_fetch_url_source_ignores_normal_redirects, def test_source_assessment_requires_verification_and_persists
 - `tests/test_researcher.py` — def _result, def test_disambiguator_drops_institutional_stopwords, def test_news_sweep_issues_site_restricted_and_hindi_queries, def test_news_sweep_deduplicates_across_queries, def test_news_sweep_respects_limit, def test_targeted_award_search_never_falls_back_to_education_queries, def test_try_browser_server_probes_unified_mount_first, def test_try_browser_server_returns_none_when_no_browser_running, def test_junk_source_url_filter, def test_pick_author_id_returns_none_when_nothing_validates
 - `tests/test_researcher_ids.py` — def _profile, def test_find_ids_removes_an_orcid_that_fails_identity_validation, def test_refresh_rejects_an_unvalidated_orcid, def test_validated_new_ids_drops_wrong_person_orcid, def test_validated_new_ids_keeps_verified_orcid, def test_research_start_drops_orcid_from_source_url_when_validation_fails, def test_research_start_keeps_orcid_when_validation_passes, def test_validate_s2_author_accepts_matching_profile, def test_validate_s2_author_rejects_namesake_and_missing, def test_validated_new_ids_drops_wrong_semantic_scholar_id
 - `tests/test_saturation.py` — def test_claim_similarity_matching_and_different_years, def test_cluster_claims_and_corroboration, def test_analyze_research_saturation
-- `tests/test_session_ids.py` — def _profile, def test_new_session_ids_are_unique_per_name_duplicate, def test_resolve_profile_by_id_and_by_name, def test_same_name_with_distinct_ids_is_ambiguous, def test_save_writes_id_file_and_keys_by_id, def test_legacy_session_without_id_migrates_on_save, def test_identity_matches_policy, def test_resume_migrates_legacy_file_to_id_file, def test_resume_refreshes_wiki_status_instead_of_trusting_stored, def test_research_start_resumes_in_memory_same_identity, def test_research_start_resumes_same_name_different_identity_creates_new, def _mock_fresh_research_pipeline, def test_research_start_migrates_legacy_session_from_disk, def test_delete_only_evicts_target_not_same_named_namesake, def test_corrupt_legacy_file_is_skipped_and_fresh_session_created, def test_legacy_filename_with_id_keyed_content_migrates_keeping_session_id
+- `tests/test_session_ids.py` — def _profile, def test_new_session_ids_are_unique_per_name_duplicate, def test_resolve_profile_by_id_and_by_name, def test_same_name_with_distinct_ids_is_ambiguous, def test_save_writes_id_file_and_keys_by_id, def test_legacy_session_without_id_migrates_on_save, def test_identity_matches_policy, def test_resume_migrates_legacy_file_to_id_file, def test_resume_refreshes_wiki_status_instead_of_trusting_stored, def test_research_start_resumes_in_memory_same_identity, def test_research_start_resumes_same_name_different_identity_creates_new, def _mock_fresh_research_pipeline, def test_research_start_migrates_legacy_session_from_disk, def test_delete_only_evicts_target_not_same_named_namesake, def test_corrupt_legacy_file_is_skipped_and_fresh_session_created, def test_legacy_filename_with_id_keyed_content_migrates_keeping_session_id, def test_save_session_by_profile_avoids_same_name_409, def test_generate_draft_checks_wiki_status_by_session_id
 - `tests/test_subject_routing.py` — class IdentifyPreviewTests(test_identify_merges_identity_matches_and_web_clues), class ResearchStartRoutingTests(test_confirmed_wikipedia_url_routes_by_article_title), class WikiStatusRoutingTests(test_existing_article_takes_precedence, test_existing_draft_routes_to_improvement, test_prior_deletion_routes_to_review, test_only_new_and_existing_draft_modes_can_generate_wikitext), class WikidataEnrichmentTests(test_invalid_qid_never_triggers_enrichment, test_confirmed_qid_can_supply_photo)
 - `tests/test_suggester.py` — def test_multiyear_sweep_never_fabricates_dois_or_publisher_urls, def test_multiyear_sweep_still_covers_institutional_report_series, def test_report_guesses_are_bounded_and_real_searches_still_rank, def test_generic_social_and_author_links_are_not_person_profiles, def test_profile_link_suggestions_drop_generic_links
 ### wiki/

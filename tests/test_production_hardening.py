@@ -73,3 +73,33 @@ def test_citation_with_curly_braces():
     rendered = _citation(source, used)
     assert "{{cite web" in rendered
     assert "&#123;&#123;CRISPR&#125;&#125;" in rendered
+
+
+def test_resume_and_delete_session_block_path_traversal(tmp_path, monkeypatch):
+    import pytest
+    from fastapi import HTTPException
+    from backend.routes_sessions import resume_session, delete_session
+
+    monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
+
+    # Test path traversal in resume_session
+    with pytest.raises(HTTPException) as exc:
+        resume_session({"file": "../../etc/passwd"})
+    assert exc.value.status_code == 400
+
+    with pytest.raises(HTTPException) as exc:
+        resume_session({"file": "/etc/passwd"})
+    assert exc.value.status_code == 400
+
+    with pytest.raises(HTTPException) as exc:
+        delete_session("../../etc/passwd")
+    assert exc.value.status_code == 400
+
+
+def test_browser_server_navigate_blocks_unsafe_urls():
+    from browser_server import navigate, NavReq
+    res = navigate(NavReq(url="http://169.254.169.254/latest/meta-data"))
+    assert "Disallowed URL target" in res.get("error", "")
+
+    res_file = navigate(NavReq(url="file:///etc/passwd"))
+    assert "Disallowed URL target" in res_file.get("error", "")

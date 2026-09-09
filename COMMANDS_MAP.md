@@ -1,4 +1,4 @@
-<!-- context-kit COMMANDS_MAP · v0.1.0 · generated 2026-08-06 20:04 UTC · sha eb96e64 · host vnic-trading -->
+<!-- context-kit COMMANDS_MAP · v0.2.0 · generated 2026-09-04 13:52 UTC · sha d578fd2 · host instance-20260819-0844 -->
 
 # COMMANDS_MAP
 

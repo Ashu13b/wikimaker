@@ -9,6 +9,7 @@ verification stay separate concerns.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -67,7 +68,10 @@ def extract_draft_links(wikitext: str) -> list[DraftLink]:
     return links
 
 
-def check_draft_links(urls: list[str]) -> dict[str, dict]:
+def check_draft_links(
+    urls: list[str],
+    browser_adjudicator: Any = None,
+) -> dict[str, dict]:
     """Live-check URLs; returns url -> {status, status_code, final_url}.
 
     status: ok (2xx/3xx) | blocked (401/403/429) | dead (404/410) | unknown.
@@ -81,23 +85,34 @@ def check_draft_links(urls: list[str]) -> dict[str, dict]:
     results = _check_links_via_requests(urls)
     uncertain = [u for u, r in results.items() if r["status"] in ("blocked", "unknown")]
     if uncertain:
-        try:
-            import browser_server as bs
-            if bs._running:
-                verdict = bs._dispatch(
-                    "link_status_page", urls=uncertain, timeout=max(60.0, 20 * len(uncertain)))
-                results.update(verdict)
-        except Exception:
-            pass
+        if browser_adjudicator is not None:
+            try:
+                verdict = browser_adjudicator(uncertain)
+                if verdict:
+                    results.update(verdict)
+            except Exception:
+                pass
+        else:
+            try:
+                import sys
+                bs = sys.modules.get("browser_server")
+                if bs and getattr(bs, "_running", False):
+                    verdict = bs._dispatch(
+                        "link_status_page", urls=uncertain, timeout=max(60.0, 20 * len(uncertain)))
+                    results.update(verdict)
+            except Exception:
+                pass
     return results
 
 
 def _check_links_via_requests(urls: list[str]) -> dict[str, dict]:
     from concurrent.futures import ThreadPoolExecutor
-    from engine.fetcher import HEADERS
+    from engine.fetcher import HEADERS, is_safe_public_url
     import requests
 
     def check_one(url: str) -> dict:
+        if not is_safe_public_url(url):
+            return {"status": "unknown", "status_code": None, "final_url": url}
         try:
             resp = requests.get(url, headers=HEADERS, timeout=10, allow_redirects=True, stream=True)
             code = resp.status_code

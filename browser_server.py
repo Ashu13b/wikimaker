@@ -30,7 +30,7 @@ from pydantic import BaseModel
 
 # Challenge/bot-wall signatures — one shared vocabulary with the headless
 # fetcher (engine.fetcher.BOT_WALL_RE) so the two can't drift.
-from engine.fetcher import BOT_WALL_RE as _WALL_SIGNALS
+from engine.fetcher import BOT_WALL_RE as _WALL_SIGNALS, is_safe_public_url
 
 PROFILE_DIR = Path.home() / ".wikimaker" / "browser_profile"
 PROFILE_DIR.mkdir(parents=True, exist_ok=True)
@@ -100,6 +100,9 @@ def browser_link_status(ctx: Any, urls: list[str]) -> dict[str, dict]:
 def _page_link_status(page: Any, urls: list[str]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for u in urls:
+        if not is_safe_public_url(u):
+            out[u] = {"status": "unknown", "status_code": None, "final_url": u}
+            continue
         try:
             resp = page.goto(u, wait_until="domcontentloaded", timeout=20_000)
             code = resp.status if resp else 200
@@ -179,8 +182,17 @@ def _browser_thread():
                     url = cmd.args["url"]
                     if "://" not in url:
                         url = "https://" + url
+                    if not is_safe_public_url(url):
+                        raise ValueError(f"Disallowed URL target: {url}")
                     page.goto(url, wait_until="domcontentloaded", timeout=25000)
                     cmd.result = {"url": page.url, "title": page.title()}
+                elif a == "stop":
+                    try:
+                        ctx.close()
+                    except Exception:
+                        pass
+                    cmd.result = {"ok": True}
+                    break
                 elif a == "info":
                     cmd.result = {"url": page.url, "title": page.title()}
                 elif a == "click":
@@ -240,8 +252,7 @@ async def lifespan(app: FastAPI):
             break
         time.sleep(0.25)
     yield
-    if _xvfb:
-        _xvfb.terminate()
+    stop_browser()
 
 
 app = FastAPI(title="remote-browser", lifespan=lifespan)
@@ -263,7 +274,12 @@ class NavReq(BaseModel):
 @app.post("/navigate")
 def navigate(req: NavReq):
     try:
-        result = _dispatch("navigate", url=req.url.strip())
+        url = req.url.strip()
+        if "://" not in url:
+            url = "https://" + url
+        if not is_safe_public_url(url):
+            return {"error": f"Disallowed URL target: {url}", "url": ""}
+        result = _dispatch("navigate", url=url)
         return result
     except Exception as e:
         return {"error": str(e), "url": ""}
@@ -380,10 +396,20 @@ def start_browser() -> None:
         time.sleep(0.25)
 
 def stop_browser() -> None:
-    """Stop the browser display server (Xvfb)."""
-    global _xvfb
+    """Stop the browser thread, close Playwright context, and terminate Xvfb."""
+    global _xvfb, _running
+    if _running:
+        try:
+            _dispatch("stop", timeout=5)
+        except Exception:
+            pass
+        _running = False
     if _xvfb:
-        _xvfb.terminate()
+        try:
+            _xvfb.terminate()
+            _xvfb.wait(timeout=3)
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     import uvicorn

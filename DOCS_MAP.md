@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-22 12:27 UTC · sha 318bba0 · host instance-20260819-0844 -->
+<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-28 17:59 UTC · sha d578fd2 · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -57,6 +57,28 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Out of scope
 
 ## .agents/
+- `.agents/skills/adr-architect/SKILL.md`
+  - Architectural Decision Record (ADR) Architect
+    - ⚡ Core Rules & Directives
+    - 📋 ADR Document Template
+  - ADR-000X: [Title of Decision]
+    - Status
+    - Context & Problem Statement
+    - Decision Drivers
+    - Considered Options
+    - Trade-off Comparison Matrix
+    - Chosen Decision & Rationale
+    - Consequences & Mitigations
+- `.agents/skills/adversarial-tester/SKILL.md`
+  - Adversarial & Edge-Case Testing
+    - ⚡ Testing Dimensions & Attack Vectors
+    - 🔬 Test Generation Protocol
+- `.agents/skills/api-contract-guard/SKILL.md`
+  - API Contract & Schema Stability Guard
+    - ⚡ Core Rules & Directives
+    - 🔍 Audit Checklist
+    - 📋 Required Audit Output
+      - 📑 API Contract Stability Report
 - `.agents/skills/context-kit/SKILL.md`
   - Context-Kit: Agent Guidance & Execution Protocol
     - ⚡ Core Directives for Agents
@@ -67,6 +89,27 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
       - Step 4: Focused Task Compartments
   - or declared compartment: sh .context-kit/ck compartment <name>
       - Step 5: Pre-Flight Gate Verification & Map Refresh
+- `.agents/skills/dependency-vetter/SKILL.md`
+  - Dependency & Supply-Chain Vetter
+    - ⚡ Core Rules & Directives
+    - 🔍 Evaluation Protocol
+    - 📋 Required Output Report
+      - 📦 Dependency Vetting Report
+- `.agents/skills/migration-safety/SKILL.md`
+  - Database Migration & Schema Safety Guard
+    - ⚡ Non-Negotiable Safety Rules
+    - 🔍 Migration Risk Checklist
+    - 📋 Required Migration Audit Output
+      - 🗄️ Database Migration Safety Report
+- `.agents/skills/pre-production-audit/SKILL.md`
+  - Pre-Production Code Audit
+    - ⚡ Core Review Directives
+    - 🔍 The 8-Dimension Audit Checklist
+    - 📋 Required Audit Report Output
+      - 🛡️ Pre-Production Audit Report
+        - Executive Verdict: [PASS | CONDITIONAL PASS | BLOCK]
+        - Findings
+        - Verification Protocol
 - `.agents/skills/root-cause-debug/SKILL.md`
   - Evidence-Based Root Cause Debugging
     - ⚡ Core Rules & Directives

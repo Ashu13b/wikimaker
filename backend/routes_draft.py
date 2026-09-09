@@ -24,7 +24,8 @@ def draft_audit(name: str) -> dict:
 def generate_draft(req: DraftRequest) -> dict:
     """Generate and persist a deterministic draft from the server-owned session."""
     profile = store._get_profile(req.profile_name)
-    wiki_status = store._wiki_statuses.get(profile.name, {"status": "clear"})
+    sid = store._ensure_session_id(profile)
+    wiki_status = store._wiki_statuses.get(sid) or store._wiki_statuses.get(profile.name, {"status": "clear"})
     status = wiki_status.get("status", "clear")
     if not draft_generation_allowed(status):
         if status == "exists":
@@ -45,7 +46,7 @@ def generate_draft(req: DraftRequest) -> dict:
         profile.wikitext_hi = render_hindi_draft(profile, audit)
     except Exception:
         profile.wikitext_hi = None
-    store._save_session(profile.name)
+    store._save_session(profile)
     return {
         "profile": profile.model_dump(),
         "audit": audit.model_dump(exclude={"evidence"}),

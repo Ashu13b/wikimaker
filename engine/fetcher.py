@@ -104,6 +104,8 @@ _BROWSER_BASES = ("http://localhost:3890/browser", "http://localhost:7070")
 
 def _try_browser_server(url: str) -> FetchResult | None:
     """Fetch via the human browser_server if it's running. Returns None if unavailable."""
+    if not is_safe_public_url(url):
+        return None
     base = None
     for candidate in _BROWSER_BASES:
         try:
@@ -130,6 +132,8 @@ def _try_browser_server(url: str) -> FetchResult | None:
 
 def fetch_url(url: str) -> FetchResult:
     """Try all strategies in order, return best result."""
+    if not is_safe_public_url(url):
+        return FetchResult(url, "", method="blocked", blocked=True)
 
     # 1. Human browser_server — primary path when running (handles any site, real sessions)
     result = _try_browser_server(url)
