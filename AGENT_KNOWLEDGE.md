@@ -724,3 +724,8 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   to a different scientist (NDRI biochemist, not Yadav); ISBD award pages
   confirm the society award is real but add no Yadav evidence; AR 2021's
   NASF-PI listing duplicates existing PI evidence, skipped per the bloat guard.
+  Non-news sweep (Sep 2026): no patents found; CIRB training calendars name
+  him as faculty but too thin to cite; CIRB ongoing-projects page is JS-gated
+  (snippet-only, and duplicates PI evidence); a Vidwan-listed 2019 popular
+  article ("10 years after the birth of India's first cloned farm animal")
+  has no identifiable venue, so it stays out.
