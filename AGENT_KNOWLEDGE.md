@@ -693,4 +693,10 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft.
+  director title must never enter the draft. Event-centric queries then surfaced
+  ePashupalan's Aug 2019 NASC brainstorming report (Yadav presenting CIRB-NDRI
+  joint cloning results beside DG ICAR — approved as a national-expert career
+  fact; niche outlet kept on manual provenance, not the registry). AR 2022's
+  18,211-dose/62-progeny figures were deliberately left out: three fresher
+  press dose claims already render, and a fourth dose sentence is bloat, not
+  evidence.
