@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.1.0 · generated 2026-08-28 17:59 UTC · sha d578fd2 · host instance-20260819-0844 -->
+<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-09 04:45 UTC · sha 7a8a2f8 · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -124,6 +124,16 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - ⚡ Core Rules & Directives
     - 🔍 Investigation Workflow
     - 📋 Required Audit Output
+- `.agents/skills/ui-ux-craft/SKILL.md`
+  - UI/UX Craft & Frontend Engineering Guard
+    - ⚡ The 4 Mandatory UI States (The "Never Skip" Law)
+    - ♿ Semantic HTML & Accessibility (A11y / WCAG 2.1 AA)
+    - 📱 Responsive & Defensive CSS
+    - 🔒 Defensive Interaction & Idempotency
+    - 🎬 Motion Physics & Micro-Interaction Craft (Emil Kowalski Laws)
+    - 🔍 UI/UX Craft Audit Checklist
+    - 📋 Required Audit Output
+      - 🎨 UI/UX Craft & Frontend Stability Report
 
 ## docs/
 - `docs/AFC_REVIEW_AND_HARDENING.md`
