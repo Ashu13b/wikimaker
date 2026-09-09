@@ -693,7 +693,11 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Hindi-variant sweep (Sep 2026)
+  director title must never enter the draft. Exhaustive sweep (Sep 2026):
+  IE/Hindu/Scroll/Wire/Quint carry only NDRI-2009 or unrelated stories —
+  none ever covered Yadav; PIB/DD News have nothing. AR 2019-20 read from the
+  full PDF first-hand (project team + "first report of its kind" + 25
+  progenies) as dossier corroboration. Hindi-variant sweep (Sep 2026)
   found Bhaskar Dec 2025 on Hisar Gaurav 2.0 (born 28 Nov 2025, unveiled 18 Dec
   2025): unlike the earlier Jagran/Amar Ujala reports it DOES credit P.S. Yadav
   as a contributor — but project lead is Dharmendra Kumar and Yadav retired Apr
