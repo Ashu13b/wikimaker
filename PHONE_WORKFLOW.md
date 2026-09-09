@@ -68,6 +68,13 @@ restart at that geometry plus browser relaunch restores it (server restart
 kills ports first per `start.sh` convention; session survives on disk —
 resume it after).
 
+Touch gestures (patched noVNC — one finger works like a phone browser):
+tap = click, **one-finger swipe = scroll**, long-press = right-click,
+two-finger swipe = scroll, pinch = zoom viewport. Stock noVNC maps
+one-finger drag to text-select dragging; `scripts/novnc-touch-scroll.patch`
+remaps it to wheel events (re-apply to `/tmp/opencode/novnc/core/rfb.js`
+after a fresh noVNC download, then hard-refresh the phone page).
+
 ## The gated-fetch loop (who does what)
 
 1. **Agent drives** the shared Chromium via `/browser/*` API (navigate, read,

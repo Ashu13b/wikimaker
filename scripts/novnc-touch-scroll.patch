@@ -1,0 +1,67 @@
+--- /tmp/opencode/novnc-pristine/core/rfb.js	2024-06-18 12:05:35.000000000 +0000
++++ /tmp/opencode/novnc/core/rfb.js	2026-09-09 12:54:18.380223543 +0000
+@@ -1272,8 +1272,11 @@
+                         this._handleTapEvent(ev, 0x2);
+                         break;
+                     case 'drag':
++                        // Mobile-friendly: one-finger drag scrolls (like a
++                        // phone browser) instead of text-select dragging.
++                        this._oneFingerDrag = { x: pos.x, y: pos.y,
++                                                accX: 0, accY: 0 };
+                         this._fakeMouseMove(ev, pos.x, pos.y);
+-                        this._handleMouseButton(pos.x, pos.y, true, 0x1);
+                         break;
+                     case 'longpress':
+                         this._fakeMouseMove(ev, pos.x, pos.y);
+@@ -1299,10 +1302,40 @@
+                     case 'twotap':
+                     case 'threetap':
+                         break;
+-                    case 'drag':
+                     case 'longpress':
+                         this._fakeMouseMove(ev, pos.x, pos.y);
+                         break;
++                    case 'drag': {
++                        this._fakeMouseMove(ev, pos.x, pos.y);
++                        const d = this._oneFingerDrag || { x: pos.x, y: pos.y,
++                                                           accX: 0, accY: 0 };
++                        d.accX += pos.x - d.x;
++                        d.accY += pos.y - d.y;
++                        d.x = pos.x;
++                        d.y = pos.y;
++                        while (d.accY > GESTURE_SCRLSENS) {
++                            this._handleMouseButton(pos.x, pos.y, true, 0x8);
++                            this._handleMouseButton(pos.x, pos.y, false, 0x8);
++                            d.accY -= GESTURE_SCRLSENS;
++                        }
++                        while (d.accY < -GESTURE_SCRLSENS) {
++                            this._handleMouseButton(pos.x, pos.y, true, 0x10);
++                            this._handleMouseButton(pos.x, pos.y, false, 0x10);
++                            d.accY += GESTURE_SCRLSENS;
++                        }
++                        while (d.accX > GESTURE_SCRLSENS) {
++                            this._handleMouseButton(pos.x, pos.y, true, 0x20);
++                            this._handleMouseButton(pos.x, pos.y, false, 0x20);
++                            d.accX -= GESTURE_SCRLSENS;
++                        }
++                        while (d.accX < -GESTURE_SCRLSENS) {
++                            this._handleMouseButton(pos.x, pos.y, true, 0x40);
++                            this._handleMouseButton(pos.x, pos.y, false, 0x40);
++                            d.accX += GESTURE_SCRLSENS;
++                        }
++                        this._oneFingerDrag = d;
++                        break;
++                    }
+                     case 'twodrag':
+                         // Always scroll in the same position.
+                         // We don't know if the mouse was moved so we need to move it
+@@ -1362,8 +1395,7 @@
+                     case 'twodrag':
+                         break;
+                     case 'drag':
+-                        this._fakeMouseMove(ev, pos.x, pos.y);
+-                        this._handleMouseButton(pos.x, pos.y, false, 0x1);
++                        this._oneFingerDrag = null;
+                         break;
+                     case 'longpress':
+                         this._fakeMouseMove(ev, pos.x, pos.y);
