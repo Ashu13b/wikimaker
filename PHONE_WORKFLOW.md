@@ -39,7 +39,11 @@ nohup ssh -p 8022 -o BatchMode=yes -o ExitOnForwardFailure=yes \
 Phone browser then opens **http://127.0.0.1:3890** (same origin serves `/api`
 and the companion browser at `/browser/`). No public exposure, no auth needed.
 
-## Live shared desktop (replaces screenshot polling)
+## Live shared desktop (default pathway; screenshot UI retired)
+
+`browser_ui.html` is deleted (git history archives it); `/browser/` now serves
+a landing page linking to the desktop, and the HubPage companion card embeds
+the noVNC desktop directly. All `/browser/*` automation endpoints unchanged.
 
 The `/browser/` page is screenshot polling (600ms JPEGs) — usable but laggy.
 The live path is **noVNC on phone port 6901**, sharing the exact Xvfb display

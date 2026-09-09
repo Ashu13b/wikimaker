@@ -1,17 +1,17 @@
-<!-- context-kit CODE_MAP · v0.2.0 · generated 2026-09-09 06:55 UTC · sha e88f342 · host instance-20260819-0844 -->
+<!-- context-kit CODE_MAP · v0.2.0 · generated 2026-09-09 13:02 UTC · sha 4c13b00 · host instance-20260819-0844 -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 57 files · 602 symbols
+- Python — 57 files · 601 symbols
 - TypeScript — 29 files · 189 symbols
-- HTML — 2 files · 31 symbols
+- HTML — 2 files · 3 symbols
 - JavaScript — 1 files · 0 symbols
 - CSS — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 91 files · 822 symbols across 6 languages._
+_Total: 91 files · 793 symbols across 6 languages._
 
 
 ## Compartments
@@ -20,8 +20,8 @@ _Total: 91 files · 822 symbols across 6 languages._
 Run `ck compartment <name>` to load a compartment's warm symbol index.
 
 ### ./
-- `browser_server.py` — PROFILE_DIR, XVFB_DISPLAY, PORT, _UA, def looks_like_wall, class _Cmd, _q, _headed, _running, _xvfb, def _dispatch, def browser_link_status, def _page_link_status, def _try_start_xvfb, def _browser_thread, def lifespan, app, def screenshot, class NavReq, def navigate, def info, class ViewportReq, def set_viewport, class ClickReq, def click, class TypeReq, def type_text, class KeyReq, def press_key, class ScrollReq, def scroll, def go_back, def go_forward, def reload, def get_content, def status, def index, def _browser_html, def start_browser, def stop_browser
-- `browser_ui.html` — #toolbar, #btn-back, #btn-fwd, #btn-reload, #url-bar, #go-btn, #viewport, #screen, #overlay, #loading-msg, #url-status, #bottom, #type-input, #btn-send, #btn-enter, #btn-bs, #wiki-btn, #toast, syncViewport, startPoll, refreshShot, refreshInfo, navigate, setLoading, navAction, tapToImageCoords, sendType, sendKey, sendToWikimaker, toast
+- `browser_home.html` — #status, #open-desktop
+- `browser_server.py` — PROFILE_DIR, XVFB_DISPLAY, PORT, _UA, def looks_like_wall, class _Cmd, _q, _headed, _running, _xvfb, def _dispatch, def browser_link_status, def _page_link_status, def _try_start_xvfb, def _browser_thread, def lifespan, app, def screenshot, class NavReq, def navigate, def info, class ViewportReq, def set_viewport, class ClickReq, def click, class TypeReq, def type_text, class KeyReq, def press_key, class ScrollReq, def scroll, def go_back, def go_forward, def reload, def get_content, def status, def index, def start_browser, def stop_browser
 ### backend/
 - `backend/main.py` — api_app, def lifespan, app, FRONTEND_DIST
 - `backend/pipelines.py` — def _add_sd_article, def _add_sd_author_profile

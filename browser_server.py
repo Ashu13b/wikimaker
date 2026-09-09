@@ -373,17 +373,14 @@ def status():
     return _dispatch("status")
 
 
-# ── Embedded single-page UI ────────────────────────────────────────────────────
+# ── Landing page ───────────────────────────────────────────────────────────────
+# The live shared desktop (noVNC, port 6901) is the default phone pathway;
+# the old screenshot-polling UI (browser_ui.html) is retired — git history
+# is its archive. All /browser/* automation endpoints are unchanged.
 
 @app.get("/")
 def index():
-    return HTMLResponse(_browser_html())
-
-
-def _browser_html() -> str:
-    """The embedded companion-browser UI, kept in browser_ui.html so the
-    module stays about browser automation instead of ~13k chars of HTML."""
-    return (Path(__file__).parent / "browser_ui.html").read_text()
+    return HTMLResponse((Path(__file__).parent / "browser_home.html").read_text())
 
 
 def start_browser() -> None:

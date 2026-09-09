@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shared Browser</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #18181b; color: #e4e4e7;
+         display: flex; flex-direction: column; align-items: center; justify-content: center;
+         height: 100vh; margin: 0; gap: 14px; text-align: center; padding: 0 20px; }
+  a.btn { background: #3b82f6; color: white; padding: 14px 28px; border-radius: 10px;
+          font-size: 16px; font-weight: 700; text-decoration: none; }
+  .meta { color: #71717a; font-size: 13px; }
+  code { background: #27272a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+  <div style="font-size: 15px; font-weight: 700;">Shared Browser</div>
+  <div class="meta" id="status">checking status…</div>
+  <a class="btn" id="open-desktop" href="#">Open live desktop</a>
+  <div class="meta">Same session the agent drives via <code>/browser/*</code> API.<br>
+  Screenshot UI retired — see PHONE_WORKFLOW.md.</div>
+<script>
+  const host = window.location.hostname;
+  document.getElementById('open-desktop').href =
+    `http://${host}:6901/vnc.html?host=${host}&port=6901&path=websockify&autoconnect=true&resize=scale&quality=5&reconnect=true`;
+  fetch('./status').then(r => r.json()).then(d => {
+    document.getElementById('status').textContent =
+      d.running ? `running ${d.headed ? '(headed)' : '(headless)'} · ${d.url || 'no page yet'}`
+                : 'browser idle — it starts on first use';
+  }).catch(() => {
+    document.getElementById('status').textContent = 'status unavailable';
+  });
+</script>
+</body>
+</html>

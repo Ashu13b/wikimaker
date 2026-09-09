@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-09 12:50 UTC · sha 08ab039 · host instance-20260819-0844 -->
+<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-09 13:02 UTC · sha 4c13b00 · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -24,7 +24,7 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
   - 2. Keep the phone awake
   - 3. Reverse tunnel: phone loopback 3890 -> VM 3890
   - 4. Verify from the phone side
-    - Live shared desktop (replaces screenshot polling)
+    - Live shared desktop (default pathway; screenshot UI retired)
   - x11vnc shares :99 as VNC :1 (port 5901); websockify bridges to 6901 with client
   - second reverse forward next to the 3890 one
     - The gated-fetch loop (who does what)

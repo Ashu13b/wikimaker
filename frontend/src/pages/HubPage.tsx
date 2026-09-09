@@ -334,9 +334,9 @@ export default function HubPage({ initialProfile, wikiStatus, resumedSession, on
               </button>
             </div>
             <iframe
-              src="/browser/"
+              src={`http://${window.location.hostname}:6901/vnc.html?host=${window.location.hostname}&port=6901&path=websockify&autoconnect=true&resize=scale&quality=5&reconnect=true`}
               style={{ width: "100%", flex: 1, border: "none" }}
-              title="Companion Remote Browser"
+              title="Shared Browser (live desktop)"
             />
           </div>
         )}
