@@ -84,10 +84,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: 12px;
   font-weight: 600;
 }
-.tag-rs { background: #dcfce7; color: var(--success); }
-.tag-primary { background: #dbeafe; color: var(--primary); }
-.tag-unreliable { background: #fee2e2; color: var(--danger); }
-.tag-self { background: #fef9c3; color: var(--warning); }
+.tag-rs { background: #dcfce7; color: #15803d; }
+.tag-primary { background: #dbeafe; color: #1d4ed8; }
+.tag-unreliable { background: #fee2e2; color: #b91c1c; }
+.tag-self { background: #fef9c3; color: #854d0e; }
 
 .subject-start-page {
   width: min(100% - 32px, 580px);

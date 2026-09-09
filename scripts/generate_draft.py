@@ -2,11 +2,12 @@
 import sys
 import os
 import json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
-sys.path.insert(0, os.path.dirname(__file__))
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(root_dir, "backend"))
+sys.path.insert(0, root_dir)
 
-from engine.models import PersonProfile
-from wiki.draft import audit_profile, render_draft
+from engine.models import PersonProfile  # noqa: E402
+from wiki.draft import audit_profile, render_draft  # noqa: E402
 
 session_file = sys.argv[1] if len(sys.argv) > 1 else "prem_yadav_session.json"
 

@@ -167,6 +167,7 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
                   </button>
                   <button onClick={() => setDeleteConfirm(s.file)} disabled={deleteLoading === s.file}
                     title="Delete session"
+                    aria-label={`Delete session for ${s.name}`}
                     style={{ padding: "8px 10px", fontSize: 14, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
                     ✕
                   </button>
@@ -199,38 +200,38 @@ export default function IdentifyPage({ onConfirmed, onResume }: Props) {
       {view === "form" && (
         <div className="card">
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 14 }}>Name</label>
-            <input value={name} onChange={e => setName(e.target.value)}
+            <label htmlFor="identify-name" style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 14 }}>Name</label>
+            <input id="identify-name" value={name} onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. Prem Singh Yadav" autoFocus />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+            <label htmlFor="identify-field" style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
               Field / profession <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional)</span>
             </label>
-            <input value={field} onChange={e => setField(e.target.value)}
+            <input id="identify-field" value={field} onChange={e => setField(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. Animal biotechnology, Buffalo cloning" />
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+            <label htmlFor="identify-affiliation" style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
               Institution <span style={{ color: "var(--muted)", fontWeight: 400 }}>(optional — helps find the right person)</span>
             </label>
-            <input value={affiliation} onChange={e => setAffiliation(e.target.value)}
+            <input id="identify-affiliation" value={affiliation} onChange={e => setAffiliation(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleConfirm()}
               placeholder="e.g. ICAR-CIRB, Hisar, Haryana" />
           </div>
           <details className="optional-subject-details">
             <summary>More optional details</summary>
             <div style={{ marginTop: 14, marginBottom: 14 }}>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Nationality</label>
-              <input value={nationality} onChange={e => setNationality(e.target.value)}
+              <label htmlFor="identify-nationality" style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Nationality</label>
+              <input id="identify-nationality" value={nationality} onChange={e => setNationality(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleConfirm()}
                 placeholder="e.g. Indian" />
             </div>
             <div style={{ marginBottom: 4 }}>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photo URL</label>
-              <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
+              <label htmlFor="identify-photourl" style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Photo URL</label>
+              <input id="identify-photourl" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleConfirm()}
                 placeholder="https://…/photo.jpg" />
             </div>

@@ -17,6 +17,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
   const [editText, setEditText] = useState("");
   const [loading, setLoading] = useState<number | null>(null);
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<FilterTab>(() => claims.some(c => c.verification === "unverified") ? "review" : "all");
 
   const draftCount = claims.filter(c => c.draft_approved).length;
@@ -36,7 +37,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
     : claims.filter(c => c.verification === "unverified");
 
   const tabs: { id: FilterTab; label: string; count: number }[] = [
-    { id: "all", label: "All", count: claims.length },
+    { id: "all", label: "All facts", count: claims.length },
     { id: "review", label: "Needs review", count: needsReviewCount },
     { id: "draft", label: "In draft", count: draftCount },
     { id: "dossier", label: "Dossier only", count: dossierCount },
@@ -50,24 +51,28 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
 
   async function doVerify(globalIndex: number, action: "confirm" | "edit" | "skip" | "approve_draft" | "remove_draft" | "edit_draft_text", text?: string) {
     setLoading(globalIndex);
+    setError(null);
     try {
       const resp = await verifyClaim(profileRef(profile), globalIndex, action, text);
       const updated = [...allClaims];
       updated[globalIndex] = resp.claim;
       onProfileUpdate({ ...profile, claims: updated });
-    } catch { /* silently ignore */ }
+    } catch (e: any) {
+      setError(e?.message || "Failed to update claim. Please check network or try again.");
+    }
     finally { setLoading(null); setEditingIndex(null); }
   }
 
   async function handleBatchAction(action: "approve_all_usable" | "confirm_all" | "skip_unverified") {
     setBatchLoading(action);
+    setError(null);
     try {
       const resp = await batchVerifyClaims(profileRef(profile), action);
       if (resp.profile) {
         onProfileUpdate(resp.profile);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      setError(e?.message || "Failed to batch verify claims. Please check network or try again.");
     } finally {
       setBatchLoading(null);
     }
@@ -84,6 +89,30 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
 
   return (
     <div>
+      {error && (
+        <div style={{
+          background: "#fee2e2",
+          color: "#991b1b",
+          border: "1px solid #f87171",
+          borderRadius: 8,
+          padding: "8px 12px",
+          fontSize: 13,
+          marginBottom: 12,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <span>⚠️ {error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            style={{ background: "none", border: "none", color: "#991b1b", cursor: "pointer", fontWeight: "bold", fontSize: 14 }}
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", paddingBottom: 12 }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
@@ -303,8 +332,8 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                     + Draft
                   </ActionBtn>
                   <ActionBtn onClick={() => doVerify(globalIndex, "confirm")} disabled={isLoading} color="var(--primary)" title="Confirm for research dossier only">✓ Dossier</ActionBtn>
-                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--muted)" title="Edit">✎</ActionBtn>
-                  <ActionBtn onClick={() => doVerify(globalIndex, "skip")} disabled={isLoading} color="var(--danger)" title="Skip">✗</ActionBtn>
+                  <ActionBtn onClick={() => { setEditingIndex(globalIndex); setEditText(claim.text); }} disabled={isLoading} color="var(--muted)" title="Edit" aria-label="Edit claim">✎</ActionBtn>
+                  <ActionBtn onClick={() => doVerify(globalIndex, "skip")} disabled={isLoading} color="var(--danger)" title="Skip" aria-label="Skip claim">✗</ActionBtn>
                 </div>
               )}
               {/* For confirmed/edited, allow toggling draft inclusion or editing */}
@@ -318,6 +347,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                     disabled={isLoading}
                     color="var(--primary)"
                     title={claim.draft_approved ? "Edit draft paraphrase wording" : "Edit claim text"}
+                    aria-label={claim.draft_approved ? "Edit draft paraphrase wording" : "Edit claim text"}
                   >
                     ✎
                   </ActionBtn>
@@ -341,7 +371,7 @@ export default function ClaimsReview({ claims, allClaims, profile, onProfileUpda
                   >
                     ✓ Save
                   </ActionBtn>
-                  <ActionBtn onClick={() => setEditingIndex(null)} disabled={isLoading} color="var(--muted)" title="Cancel">✗</ActionBtn>
+                  <ActionBtn onClick={() => setEditingIndex(null)} disabled={isLoading} color="var(--muted)" title="Cancel" aria-label="Cancel editing">✗</ActionBtn>
                 </div>
               )}
             </div>

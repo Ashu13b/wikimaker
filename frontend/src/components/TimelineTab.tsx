@@ -346,6 +346,9 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
               return (
                 <div
                   key={`heatmap-gap-${idx}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Jump to career gap from ${gap.startYear} to ${gap.endYear}`}
                   title={`Gap: ${gap.startYear}-${gap.endYear} (${gap.gapYears} years)`}
                   style={{
                     position: "absolute",
@@ -361,6 +364,13 @@ export default function TimelineTab({ profile, onProfileUpdate, onLoadSuggestion
                   onClick={() => {
                     const el = document.getElementById(`gap-card-${gap.startYear}-${gap.endYear}`);
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      const el = document.getElementById(`gap-card-${gap.startYear}-${gap.endYear}`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                   }}
                 />
               );
