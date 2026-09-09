@@ -27,7 +27,7 @@ INDEPENDENT_NEWS_DOMAINS: set[str] = {
     "ft.com", "theatlantic.com", "economist.com",
     # Indian National & Business Press
     "thehindu.com", "thehindubusinessline.com", "indianexpress.com",
-    "timesofindia.indiatimes.com", "timesofindia.com", "hindustantimes.com",
+    "timesofindia.indiatimes.com", "timesofindia.com", "indiatimes.com", "hindustantimes.com",
     "business-standard.com", "moneycontrol.com", "livemint.com",
     "ndtv.com", "theprint.in", "scroll.in", "thewire.in", "thequint.com",
     "firstpost.com", "theweek.in", "financialexpress.com", "outlookindia.com",

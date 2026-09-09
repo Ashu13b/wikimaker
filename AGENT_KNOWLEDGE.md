@@ -697,6 +697,9 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   ePashupalan's Aug 2019 NASC brainstorming report (Yadav presenting CIRB-NDRI
   joint cloning results beside DG ICAR — approved as a national-expert career
   fact; niche outlet kept on manual provenance, not the registry). AR 2022's
-  18,211-dose/62-progeny figures were deliberately left out: three fresher
+  18,211-dose/62-progeny   figures were deliberately left out: three fresher
   press dose claims already render, and a fourth dose sentence is bloat, not
-  evidence.
+  evidence. Round 4 (Sep 2026) added Indiatimes English (Mar 2018 Sach-Gaurav
+  feature naming Yadav team head, approved significant; indiatimes.com joined
+  the registry). IRINS/Vidwan profile unreachable from all fetch paths, so it
+  stays out — search snippets alone never support a citation.
