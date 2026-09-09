@@ -107,6 +107,9 @@ def _page_link_status(page: Any, urls: list[str]) -> dict[str, dict]:
             resp = page.goto(u, wait_until="domcontentloaded", timeout=20_000)
             code = resp.status if resp else 200
             final = page.url
+            if not is_safe_public_url(final):
+                out[u] = {"status": "unknown", "status_code": None, "final_url": final}
+                continue
             body = page.evaluate("document.body ? document.body.innerText : ''") or ""
             if code in (403, 429, 503) and _WALL_SIGNALS.search(body.lower()):
                 out[u] = {"status": "blocked", "status_code": code, "final_url": final}
@@ -185,6 +188,8 @@ def _browser_thread():
                     if not is_safe_public_url(url):
                         raise ValueError(f"Disallowed URL target: {url}")
                     page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                    if not is_safe_public_url(page.url):
+                        raise ValueError(f"Disallowed redirect target: {page.url}")
                     cmd.result = {"url": page.url, "title": page.title()}
                 elif a == "stop":
                     try:

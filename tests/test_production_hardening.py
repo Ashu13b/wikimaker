@@ -28,6 +28,21 @@ def test_fetch_url_and_liveness_reject_unsafe_urls():
     assert _direct_fetch("http://localhost:9000/dump") is None
 
 
+def test_liveness_rejects_redirect_to_private_ip(monkeypatch):
+    from engine import fetcher
+
+    class _Resp:
+        status_code = 200
+        url = "http://192.168.1.1/internal"
+
+    def _fake_get(url, **kwargs):
+        return _Resp()
+
+    monkeypatch.setattr(fetcher.requests, "get", _fake_get)
+    # Original url resolves safe, but the fetched (redirected) url is private.
+    assert check_liveness("https://example.com/safe") == ("unknown", None)
+
+
 def test_atomic_session_save(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "SESSIONS_DIR", tmp_path)
     sid = "py-hardening-test-1234"

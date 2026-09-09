@@ -64,6 +64,9 @@ def check_liveness(url: str) -> tuple[str, str | None]:
         return "unknown", None
     try:
         resp = requests.get(url, headers=HEADERS, timeout=12, allow_redirects=True, stream=True)
+        final_url = getattr(resp, "url", url)
+        if final_url != url and not is_safe_public_url(final_url):
+            return "unknown", None
         code = resp.status_code
     except requests.RequestException:
         return "unknown", None

@@ -1,17 +1,17 @@
-<!-- context-kit CODE_MAP · v0.2.0 · generated 2026-09-06 19:21 UTC · sha d578fd2 · host instance-20260819-0844 -->
+<!-- context-kit CODE_MAP · v0.2.0 · generated 2026-09-09 06:14 UTC · sha 1fe8aa6 · host instance-20260819-0844 -->
 
 # CODE_MAP
 
 Symbol index (skim-grade). Consult before Grep/Read.
 
 ## Composition
-- Python — 57 files · 600 symbols
+- Python — 57 files · 601 symbols
 - TypeScript — 29 files · 189 symbols
 - HTML — 2 files · 31 symbols
 - JavaScript — 1 files · 0 symbols
 - CSS — 1 file (unindexed)
 - Shell Script — 1 file (unindexed)
-_Total: 91 files · 820 symbols across 6 languages._
+_Total: 91 files · 821 symbols across 6 languages._
 
 
 ## Compartments
@@ -94,7 +94,7 @@ Run `ck compartment <name>` to load a compartment's warm symbol index.
 - `tests/test_liveness.py` — def test_check_liveness_live, def test_check_liveness_dead_looks_up_wayback, def test_check_liveness_blocked, def test_get_wayback_url_parses_snapshot, def test_audit_excludes_dead_unarchived_source, def test_renderer_cites_wayback_url_for_dead_archived_source
 - `tests/test_llm.py` — def test_extract_claims_is_noop_under_stub, def test_get_provider_uses_vertex_when_available, def test_get_provider_falls_back_to_agent_when_vertex_unavailable
 - `tests/test_multilingual_search.py` — def test_detect_languages, def test_transliterate_name, def test_get_regional_news_outlets, def test_build_bilingual_queries_hindi, def test_build_bilingual_queries_carries_date_and_event_hint_into_hindi, def test_build_bilingual_queries_french, def test_build_bilingual_queries_german
-- `tests/test_production_hardening.py` — def test_is_safe_public_url_blocks_private_and_loopback, def test_is_safe_public_url_allows_public_https, def test_fetch_url_and_liveness_reject_unsafe_urls, def test_atomic_session_save, def test_cite_value_escapes_wikitext_template_braces, def test_citation_with_curly_braces, def test_resume_and_delete_session_block_path_traversal, def test_browser_server_navigate_blocks_unsafe_urls
+- `tests/test_production_hardening.py` — def test_is_safe_public_url_blocks_private_and_loopback, def test_is_safe_public_url_allows_public_https, def test_fetch_url_and_liveness_reject_unsafe_urls, def test_liveness_rejects_redirect_to_private_ip, def test_atomic_session_save, def test_cite_value_escapes_wikitext_template_braces, def test_citation_with_curly_braces, def test_resume_and_delete_session_block_path_traversal, def test_browser_server_navigate_blocks_unsafe_urls
 - `tests/test_provenance.py` — def test_domain_trust_classification, def test_source_provenance_classification, def test_academic_indexes_never_count_as_independent_news, def test_search_discovery_does_not_make_unknown_site_independent, def test_claim_trust_evaluation, def test_strict_notability_independence, def test_notability_requires_confirmed_claims_and_deduplicates_outlets, def test_notability_keeps_unassessed_candidates_out_of_score, def test_notability_deduplicates_syndicated_editorial_origins, def test_icar_and_cirb_reports_are_institutional_primary_sources, def test_record_registries_are_primary_and_non_independent, def test_meaningful_redirect_detection, def test_fetch_url_source_flags_silent_redirect_trap, def test_fetch_url_source_ignores_normal_redirects, def test_source_assessment_requires_verification_and_persists
 - `tests/test_researcher.py` — def _result, def test_disambiguator_drops_institutional_stopwords, def test_news_sweep_issues_site_restricted_and_hindi_queries, def test_news_sweep_deduplicates_across_queries, def test_news_sweep_respects_limit, def test_targeted_award_search_never_falls_back_to_education_queries, def test_try_browser_server_probes_unified_mount_first, def test_try_browser_server_returns_none_when_no_browser_running, def test_junk_source_url_filter, def test_pick_author_id_returns_none_when_nothing_validates
 - `tests/test_researcher_ids.py` — def _profile, def test_find_ids_removes_an_orcid_that_fails_identity_validation, def test_refresh_rejects_an_unvalidated_orcid, def test_validated_new_ids_drops_wrong_person_orcid, def test_validated_new_ids_keeps_verified_orcid, def test_research_start_drops_orcid_from_source_url_when_validation_fails, def test_research_start_keeps_orcid_when_validation_passes, def test_validate_s2_author_accepts_matching_profile, def test_validate_s2_author_rejects_namesake_and_missing, def test_validated_new_ids_drops_wrong_semantic_scholar_id
