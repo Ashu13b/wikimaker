@@ -702,4 +702,7 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   evidence. Round 4 (Sep 2026) added Indiatimes English (Mar 2018 Sach-Gaurav
   feature naming Yadav team head, approved significant; indiatimes.com joined
   the registry). IRINS/Vidwan profile unreachable from all fetch paths, so it
-  stays out — search snippets alone never support a citation.
+  stays out — search snippets alone never support a citation. Round 5 (Sep 2026):
+  ISSRF's own 2026 awardee list (verified first-hand) names Yadav for the
+  Guraya Memorial Oration — dossier corroboration for the BHU-cited draft
+  claim. Germany/DAAD and NADS searches keep drawing blank; NADS stays out.
