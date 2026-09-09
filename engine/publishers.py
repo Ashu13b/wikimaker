@@ -40,6 +40,7 @@ INDEPENDENT_NEWS_DOMAINS: set[str] = {
     "abplive.com", "aajtak.in", "zeenews.india.com", "india.com",
     "patrika.com", "navbharattimes.indiatimes.com", "etvbharat.com",
     "kisantak.in", "devdiscourse.com", "livevns.news",
+    "webdunia.com", "krishijagran.com", "krishakjagat.org",
     # Entertainment & Trade Press (Independent Editorial)
     "variety.com", "hollywoodreporter.com", "billboard.com",
     "rollingstone.com", "pitchfork.com", "allmusic.com", "filmfare.com",

@@ -679,3 +679,13 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   under cloning in-charge Dr P.S. Yadav received it with a Rs 5 lakh prize for
   the eight clones — this is the independent press leg for the Criterion-2
   award claim (ICAR citation remains the authoritative team-leader source).
+  Sweep round 2 (Sep 2026) added Webdunia-Hindi (PTI/भाषा Sach-Gaurav wire,
+  dossier corroboration), Krishi Jagran Hindi Jan 2018 (original project-head
+  interview, approved significant), Krishak Jagat Jan 2023 (Veer Gaurav team
+  list, dossier corroboration), and upgraded the Bhaskar Dec 2024 10th-birthday
+  piece (PI currency to retirement eve + 22,000-dose economics, approved).
+  New-press rule learned: wire copies (PTI/भाषा/हि.स.) get the shared
+  editorial_origin and stay dossier-only; only original bylined reporting earns
+  draft approval. Added webdunia.com, krishijagran.com, krishakjagat.org to
+  INDEPENDENT_NEWS_DOMAINS (exact/subdomain matcher, so krishijagran does not
+  collide with jagran.com).
