@@ -736,7 +736,13 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   him as faculty but too thin to cite; CIRB ongoing-projects page is JS-gated
   (snippet-only, and duplicates PI evidence); a Vidwan-listed 2019 popular
   article ("10 years after the birth of India's first cloned farm animal")
-  has no identifiable venue, so it stays out. ISSRF oration statutes page
+  has no identifiable venue, so it stays out. Outlet-exhaustion sweeps (Sep
+  2026): UNI/Tribune-Hindi/NIE/IndiaTV/Patrika carry nothing; DTE/Mint/FE
+  only NDRI stories; CIRB awards page names only Selokar/Dharmendra-era
+  awards. Bhaskar story-version (Dec 2024) added the Yadav-attributed China
+  semen-demand fact to the draft; Bhaskar Dec 2019 "China invited Dr Yadav"
+  has a JS-gated body on all paths — session lead for human phone-reading,
+  never cited. ISSRF oration statutes page
   (verified first-hand) documents the Rs 25,000 + medal + citation and 45+
   stature — dossier-only; the 9th Asian Buffalo Congress (CIRB Hisar, Feb
   2018) names no Yadav role anywhere, so no link.
