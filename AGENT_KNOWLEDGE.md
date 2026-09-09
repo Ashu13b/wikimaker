@@ -693,7 +693,12 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Operating loop (Sep 2026): the AI
+  director title must never enter the draft. Publication adjudication rule (Sep
+  2026): employer-institute attribution (CIRB's own publication list naming
+  its PS Yadav) settles identity without CrossRef — applied to two 2024
+  Current Science papers (Veer Gaurav OPU-IVF; Nuh dissemination, Yadav first
+  author), dossier-only since draft publications already cover representative
+  works. Operating loop (Sep 2026): the AI
   drives the companion browser itself via /browser/navigate + /content and
   only calls the human for a genuine CAPTCHA solve — the phone /browser/ view
   is the solve station, not the driving seat. Proven on NDTV + Zee (both
