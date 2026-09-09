@@ -693,7 +693,12 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   insider-authored and add nothing citable). It caught one live error instead:
   Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
   IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
-  director title must never enter the draft. Unreachable verdicts (Sep 2026):
+  director title must never enter the draft. Ops lesson (Sep 2026): the shell
+  session can leak WIKIMAKER_HEADLESS=1 into uvicorn, silently flipping the
+  browser headless — NDTV then serves "Access Denied" (headless UA + no
+  stealth on request contexts). Always start with WIKIMAKER_HEADLESS=0
+  explicit and confirm headed:true via /browser/status after any restart.
+  Unreachable verdicts (Sep 2026):
   IRINS is doubly dead — vapt6 host DNS-unresolvable (staging, decommissioned)
   and the live cirb.irins.org Angular app crashes our tab (third such crash;
   memory is fine, renderer vs heavy-JS suspected). Snippet numbers stay OUT of
