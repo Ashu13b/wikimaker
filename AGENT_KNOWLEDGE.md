@@ -706,3 +706,8 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   ISSRF's own 2026 awardee list (verified first-hand) names Yadav for the
   Guraya Memorial Oration — dossier corroboration for the BHU-cited draft
   claim. Germany/DAAD and NADS searches keep drawing blank; NADS stays out.
+  Round 6 (Sep 2026) negative: Germany yields only paper-authorship records
+  (no press); a Vidwan "Fellow, National Academy of Dairy Science" hit belongs
+  to a different scientist (NDRI biochemist, not Yadav); ISBD award pages
+  confirm the society award is real but add no Yadav evidence; AR 2021's
+  NASF-PI listing duplicates existing PI evidence, skipped per the bloat guard.
