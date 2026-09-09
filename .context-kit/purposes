@@ -4,3 +4,4 @@ engine: Domain services for identity, discovery, extraction, classification, and
 frontend: React presentation, client API adapters, and user-workflow interaction.
 wiki: Wikimedia status checks and wikitext rendering policy.
 tests: Unit, integration, and regression test suites.
+scripts: Operational CLI utilities and offline automation scripts.
