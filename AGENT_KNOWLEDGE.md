@@ -741,8 +741,9 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   only NDRI stories; CIRB awards page names only Selokar/Dharmendra-era
   awards. Bhaskar story-version (Dec 2024) added the Yadav-attributed China
   semen-demand fact to the draft; Bhaskar Dec 2019 "China invited Dr Yadav"
-  has a JS-gated body on all paths — session lead for human phone-reading,
-  never cited. ISSRF oration statutes page
+  has a JS-gated body on all paths — human VNC scroll confirmed photo +
+  headline only, REJECTED as citation (record kept so it is never re-searched).
+  ISSRF oration statutes page
   (verified first-hand) documents the Rs 25,000 + medal + citation and 45+
   stature — dossier-only; the 9th Asian Buffalo Congress (CIRB Hisar, Feb
   2018) names no Yadav role anywhere, so no link.
