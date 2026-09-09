@@ -660,3 +660,18 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
     strictly in the dossier no longer gets stuck prompting the user to "Review claims".
   - DraftReadinessCard now includes diagnostic accordion breakdown of excluded
     claims so users immediately understand why any fact was omitted.
+- Yadav evidence pass (Sep 2026): re-audit showed three independent claims
+  (Tribune Dec 2018, Business Standard Jul 2021, Zee Jul 2020) excluded by the
+  `research_claim_has_no_subject_action` rule — fixed by rewording claim
+  draft_text into neutral subject-action sentences, not by widening the verb
+  list (attribution verbs like "said" stay out deliberately). TOI Jul 2020 on
+  the seven-clones milestone does NOT name Yadav (quotes Director/DG only) —
+  it is event corroboration only and must never carry role attribution. Amar
+  Ujala Jul 2020 names Yadav as the project's chief scientist with direct
+  quotes and is the strongest independent role evidence. Veer Gaurav (ICAR
+  node 17212, Hindi release) was dropped by an earlier cleanup and restored
+  after first-hand verification; it names P.S. Yadav as a team member, not
+  lead. citytehelka 10th-birthday URL is 404 with no Wayback snapshot, so its
+  claim is excluded as `source_url_dead`. Renderer fix: birth facts rendered
+  under `==Education==` — sections split into Early life (birth_*) and
+  Education (education only).

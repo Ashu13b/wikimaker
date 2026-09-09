@@ -252,6 +252,24 @@ def test_infobox_only_emits_fields_with_draft_approved_evidence():
     assert "| field = Animal biotechnology" in wikitext
 
 
+def test_renderer_places_birth_facts_under_early_life_not_education():
+    profile = _ready_profile()
+    birth_source = _source("https://news.example.test/birth-record")
+    profile.sources.append(birth_source)
+    profile.claims.append(Claim(
+        field="birth_place",
+        text="Born in Example Village in 1963",
+        source_url=birth_source.url,
+        verification=VerificationState.confirmed,
+        draft_approved=True,
+    ))
+
+    wikitext = render_draft(profile)
+
+    assert "==Early life==" in wikitext
+    assert "==Education==" not in wikitext
+
+
 def test_renderer_surfaces_curated_award_in_lead_without_repeating_section():
     profile = _ready_profile()
     award_source = _source("https://news.example.test/national-award")

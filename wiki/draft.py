@@ -482,7 +482,8 @@ def render_draft(profile: PersonProfile, audit: DraftAudit | None = None) -> str
     lines.extend(lead_parts)
 
     sections = (
-        ("Education", ("birth_date", "birth_place", "education"), None, False),
+        ("Early life", ("birth_date", "birth_place"), None, False),
+        ("Education", ("education",), None, False),
         ("Career", ("career", "affiliation", "position"), None, False),
         ("Research", ("known_for", "achievement"), 20, False),
         ("Selected publications", ("publication",), 10, True),
