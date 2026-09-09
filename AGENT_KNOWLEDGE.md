@@ -688,4 +688,9 @@ status, and save timestamp. In-memory session dictionaries mirror loaded work.
   editorial_origin and stay dossier-only; only original bylined reporting earns
   draft approval. Added webdunia.com, krishijagran.com, krishakjagat.org to
   INDEPENDENT_NEWS_DOMAINS (exact/subdomain matcher, so krishijagran does not
-  collide with jagran.com).
+  collide with jagran.com). Sweep round 3 (Sep 2026) was a deliberate negative:
+  no new addable sources (State Times already in session; IJMR/PMC reviews are
+  insider-authored and add nothing citable). It caught one live error instead:
+  Business Standard's 2021 opinion piece mislabels Yadav "CIRB Director" —
+  IRINS lists T.K. Datta as Director and Yadav as Principal Scientist, so the
+  director title must never enter the draft.
