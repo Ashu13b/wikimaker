@@ -2,24 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shared Browser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Wikimaker Shared Browser</title>
 <style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: system-ui, sans-serif; background: #18181b; color: #e4e4e7;
          display: flex; flex-direction: column; align-items: center; justify-content: center;
-         height: 100vh; margin: 0; gap: 14px; text-align: center; padding: 0 20px; }
-  a.btn { background: #3b82f6; color: white; padding: 14px 28px; border-radius: 10px;
-          font-size: 16px; font-weight: 700; text-decoration: none; }
-  .meta { color: #71717a; font-size: 13px; }
-  code { background: #27272a; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+         height: 100vh; margin: 0; gap: 16px; text-align: center; padding: 0 16px; }
+  .card { background: #27272a; border: 1px solid #3f3f46; border-radius: 12px;
+          padding: 20px 16px; width: 100%; max-width: 360px; }
+  h1 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+  .status { color: #71717a; font-size: 13px; margin: 0 0 16px; min-height: 20px; }
+  .btn { display: inline-block; background: #3b82f6; color: white; padding: 14px 24px;
+         border-radius: 10px; font-size: 16px; font-weight: 700; text-decoration: none; }
+  .btn:active { opacity: 0.85; }
+  .note { color: #71717a; font-size: 12px; margin-top: 12px; line-height: 1.5; }
+  code { background: #27272a; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
 </style>
 </head>
 <body>
-  <div style="font-size: 15px; font-weight: 700;">Shared Browser</div>
-  <div class="meta" id="status">checking status…</div>
-  <a class="btn" id="open-desktop" href="#">Open live desktop</a>
-  <div class="meta">Same session the agent drives via <code>/browser/*</code> API.<br>
-  Screenshot UI retired — see PHONE_WORKFLOW.md.</div>
+  <div class="card">
+    <h1>Wikimaker Browser</h1>
+    <div class="status" id="status">connecting…</div>
+    <a class="btn" id="open-desktop" href="#">Open Live Desktop</a>
+    <div class="note">Same session the agent drives via <code>/browser/*</code> API.<br>
+    Tap to open the live VNC desktop. Swipe = scroll, pinch = zoom.</div>
+  </div>
 <script>
   const host = window.location.hostname;
   document.getElementById('open-desktop').href =
@@ -27,7 +38,7 @@
   fetch('./status').then(r => r.json()).then(d => {
     document.getElementById('status').textContent =
       d.running ? `running ${d.headed ? '(headed)' : '(headless)'} · ${d.url || 'no page yet'}`
-                : 'browser idle — it starts on first use';
+                : 'browser idle — starts on first use';
   }).catch(() => {
     document.getElementById('status').textContent = 'status unavailable';
   });

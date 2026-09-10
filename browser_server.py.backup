@@ -144,15 +144,12 @@ def _try_start_xvfb() -> bool:
 def _browser_thread():
     """Owner of the Playwright context. Processes _q commands sequentially."""
     global _headed, _running
-    print("[DEBUG] _browser_thread starting", flush=True)
     force_headless = os.environ.get("WIKIMAKER_HEADLESS", "0") == "1"
-    print(f"[DEBUG] force_headless={force_headless}", flush=True)
     _headed = _try_start_xvfb() if not force_headless else False
-    print(f"[DEBUG] _headed={_headed}", flush=True)
     if _headed:
         os.environ["DISPLAY"] = XVFB_DISPLAY
     mode = "headed (Xvfb)" if _headed else "headless"
-    print(f"[browser] {mode} mode", flush=True)
+    print(f"[browser] {mode} mode")
 
     from playwright.sync_api import sync_playwright
     from playwright_stealth import Stealth
@@ -163,6 +160,7 @@ def _browser_thread():
             headless=not _headed,
             user_agent=_UA,
             args=["--no-sandbox", "--disable-dev-shm-usage",
+                  "--disable-setuid-sandbox",
                   "--disable-blink-features=AutomationControlled"],
             viewport={"width": 390, "height": 844},
         )
@@ -170,7 +168,6 @@ def _browser_thread():
         page = live[0] if live else ctx.new_page()
         stealth.apply_stealth_sync(page)
         _running = True
-        print("[DEBUG] Browser thread ready, _running=True", flush=True)
 
         while True:
             try:
