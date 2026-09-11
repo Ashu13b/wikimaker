@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-09 13:02 UTC · sha 4c13b00 · host instance-20260819-0844 -->
+<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-11 12:00 UTC · sha a32c852 · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -31,6 +31,7 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Notifying the human
     - What the phone is good for here
     - Gotchas
+    - Native Companion App (External Helper: `../android-browser/`)
 - `README.md`
   - Wikimaker
     - Key Features

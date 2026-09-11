@@ -128,3 +128,8 @@ browser, draft QA finished.
   stale listener first (`./phone_ctl.sh kill 3890` from `../termux/`).
 - Plain `scp` never works to the phone (truncates); use `nx cp` — see
   `../termux/AGENTS.md`.
+
+## Native Companion App (External Helper: `../android-browser/`)
+
+A dedicated native Android APK (`../android-browser/app`) exists as an external mobile browsing and agent-bridge helper across projects. It supports native touch browsing routed through the VM's proxy, one-tap export to Wikimaker dossiers (`/api/research/add-source`), and on-device CAPTCHA resolution. Ongoing development of that app is maintained in its own workspace at `/home/ubuntu/Expeei/android-browser/`.
+

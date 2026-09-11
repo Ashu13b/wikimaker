@@ -162,13 +162,86 @@ def _browser_thread():
             str(PROFILE_DIR),
             headless=not _headed,
             user_agent=_UA,
-            args=["--no-sandbox", "--disable-dev-shm-usage",
-                  "--disable-blink-features=AutomationControlled"],
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins,site-per-process",
+                "--disable-web-security",
+                "--allow-running-insecure-content",
+                "--disable-component-extensions-with-background-pages",
+                "--disable-background-networking",
+                "--disable-background-timer-throttling",
+                "--disable-renderer-backgrounding",
+                "--disable-ipc-flooding-protection",
+                "--enable-automation=false",
+                "--disable-infobars",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--no-pings",
+                "--password-store=basic",
+                "--use-mock-keychain",
+                "--disable-extensions-except=",
+                "--disable-component-extensions-with-background-pages",
+                "--disable-background-mode",
+                "--disable-client-side-phishing-detection",
+                "--disable-sync",
+                "--disable-translate",
+                "--disable-background-downloads",
+                "--disable-default-apps",
+                "--disable-hang-monitor",
+                "--disable-prompt-on-repost",
+                "--disable-domain-reliability",
+                "--disable-breakpad",
+                "--disable-component-update",
+                "--disable-dev-tools",
+                "--disable-extensions",
+                "--disable-plugins-discovery",
+                "--disable-print-preview",
+                "--disable-speech-api",
+                "--disable-permissions-api",
+                "--disable-remote-fonts",
+                "--disable-web-resources",
+                "--disable-features=TranslateUI,BlinkGenPropertyTrees",
+                "--metrics-recording-only",
+                "--no-report-upload",
+                "--enable-features=NetworkService,NetworkServiceInProcess",
+                "--force-color-profile=srgb",
+                "--use-gl=swiftshader",
+                "--enable-gpu-rasterization",
+                "--ignore-gpu-blocklist",
+                "--disable-software-rasterizer",
+            ],
             viewport={"width": 390, "height": 844},
+            device_scale_factor=1,
+            is_mobile=True,
+            has_touch=True,
+            locale="en-US",
+            timezone_id="Asia/Kolkata",
+            geolocation={"latitude": 26.9124, "longitude": 75.7873},
+            permissions=["geolocation"],
+            color_scheme="light",
+            reduced_motion="reduce",
+            forced_colors="none",
         )
         live = [p for p in ctx.pages if not p.is_closed()]
         page = live[0] if live else ctx.new_page()
         stealth.apply_stealth_sync(page)
+        
+        # Additional stealth: inject scripts to hide automation
+        page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5]
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['en-US', 'en', 'hi']
+            });
+        """)
+        
         _running = True
         print("[DEBUG] Browser thread ready, _running=True", flush=True)
 
