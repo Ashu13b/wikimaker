@@ -223,8 +223,15 @@ def add_source(req: AddSourceRequest) -> dict:
     if is_sd_author_url(url):
         return pipelines._add_sd_author_profile(profile, url)
 
-    # ── Normal URL fetch ──────────────────────────────────────────────────────
-    source, blocked = fetch_url_source(url, profile.name)
+    # ── Source fetch (direct paste or network) ────────────────────────────────
+    if req.text:
+        source = fetch_url_source_with_paste(url, req.text)
+        if req.title:
+            source.title = req.title
+        source.fetched_by = "browser"
+        blocked = False
+    else:
+        source, blocked = fetch_url_source(url, profile.name)
     [source] = _enrich_and_flag_sources([source], profile.name, profile.field or "", profile.affiliation or "")
     source.liveness = "blocked" if blocked else "alive"
 

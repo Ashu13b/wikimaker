@@ -129,7 +129,36 @@ browser, draft QA finished.
 - Plain `scp` never works to the phone (truncates); use `nx cp` — see
   `../termux/AGENTS.md`.
 
-## Native Companion App (External Helper: `../android-browser/`)
+## Native Companion App Workflow (`../android-browser/`)
 
-A dedicated native Android APK (`../android-browser/app`) exists as an external mobile browsing and agent-bridge helper across projects. It supports native touch browsing routed through the VM's proxy, one-tap export to Wikimaker dossiers (`/api/research/add-source`), and on-device CAPTCHA resolution. Ongoing development of that app is maintained in its own workspace at `/home/ubuntu/Expeei/android-browser/`.
+In addition to the live noVNC desktop stream (:6901), a dedicated native Android browser (`../android-browser/app`, package `org.openscrape.browser`) provides a first-class mobile research and CAPTCHA bypass client.
+
+### Integration Points with Wikimaker:
+1. **One-Tap Page Import (`POST /api/research/add-source`)**:
+   - Tapping the **📥 Import FAB** extracts the page URL, title, and rendered text via the native JavaScript bridge (`OpenScrapeBridge.getContent()`).
+   - The payload sends `url`, `title`, and `text` directly to Wikimaker. Because text is pre-rendered on the phone past bot walls/Cloudflare, Wikimaker ingests it via `fetch_url_source_with_paste` without triggering server-side bot blocks.
+2. **Sourced Claim Capture (`POST /api/research/add-sourced-claim`)**:
+   - Highlight any sentence or paragraph in the mobile WebView.
+   - Tapping the **📋 Capture FAB** extracts the selected text (`OpenScrapeBridge.getSelection()`) and posts it directly to `/api/research/add-sourced-claim`, creating an instantly confirmed claim linked to the active session.
+3. **Toggle VM Headed Companion**:
+   - Tapping **Menu (⋮) → VM Companion Mode** switches the mobile WebView to `http://127.0.0.1:3890/browser/`, allowing direct inspection of the VM's headless/headed browser tabs without third-party VNC apps.
+4. **Internet Proxy Routing**:
+   - WebView routes all mobile traffic through the VM's proxy port (`127.0.0.1:8888`), ensuring all browsing originates from the VM's public IP.
+
+### Operational Step-by-Step:
+```bash
+# 1. Start Wikimaker on VM
+nohup bash start.sh > /tmp/opencode/wikimaker_start.log 2>&1 &
+
+# 2. Establish reverse tunnels to the phone
+nohup ssh -p 8022 -o BatchMode=yes -o ExitOnForwardFailure=yes \
+  -N -R 3890:127.0.0.1:3890 -R 8888:127.0.0.1:8888 \
+  u0_a509@100.72.202.86 > /tmp/opencode/reverse_tunnel_3890.log 2>&1 &
+
+# 3. Open OpenScrape Browser on the phone
+#    - Browse gated sources natively
+#    - Solve any Cloudflare / bot challenges with real mobile touch
+#    - Tap 📥 (Import) to add the source to the active session
+#    - Highlight facts & tap 📋 (Capture) to add confirmed claims
+```
 

@@ -1,4 +1,4 @@
-<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-11 12:00 UTC · sha a32c852 · host instance-20260819-0844 -->
+<!-- context-kit DOCS_MAP · v0.2.0 · generated 2026-09-11 17:25 UTC · sha ff3031a · host instance-20260819-0844 -->
 
 # DOCS_MAP
 
@@ -31,7 +31,16 @@ Index of existing docs (headings only). Load the full file on demand. Oversized/
     - Notifying the human
     - What the phone is good for here
     - Gotchas
-    - Native Companion App (External Helper: `../android-browser/`)
+    - Native Companion App Workflow (`../android-browser/`)
+      - Integration Points with Wikimaker:
+      - Operational Step-by-Step:
+  - 1. Start Wikimaker on VM
+  - 2. Establish reverse tunnels to the phone
+  - 3. Open OpenScrape Browser on the phone
+  - - Browse gated sources natively
+  - - Solve any Cloudflare / bot challenges with real mobile touch
+  - - Tap 📥 (Import) to add the source to the active session
+  - - Highlight facts & tap 📋 (Capture) to add confirmed claims
 - `README.md`
   - Wikimaker
     - Key Features

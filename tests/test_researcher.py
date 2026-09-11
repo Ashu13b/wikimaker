@@ -160,3 +160,28 @@ def test_pick_author_id_returns_none_when_nothing_validates(monkeypatch):
     )
 
     assert researcher._pick_author_id(candidates, "Some Person", "") is None
+
+
+def test_add_source_with_client_text(monkeypatch):
+    from backend.routes_research import add_source
+    from backend.schemas import AddSourceRequest
+    from engine.models import PersonProfile
+    from backend import store
+
+    profile = PersonProfile(name="Test Researcher", session_id="py-test-1234")
+    monkeypatch.setattr(store, "_sessions", {profile.session_id: profile})
+    monkeypatch.setattr(store, "_save_session", lambda *a: None)
+
+    req = AddSourceRequest(
+        profile_name="py-test-1234",
+        url="https://hindustantimes.com/article/123",
+        title="Custom Article Title",
+        text="Dr. Researcher led the breakthrough project at the institute.",
+    )
+
+    res = add_source(req)
+    assert res["blocked"] is False
+    assert len(profile.sources) == 1
+    assert profile.sources[0].title == "Custom Article Title"
+    assert profile.sources[0].fetched_by == "browser"
+    assert "breakthrough project" in profile.sources[0].snippet

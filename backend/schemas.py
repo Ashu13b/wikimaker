@@ -25,6 +25,8 @@ class ResearchRequest(BaseModel):
 class AddSourceRequest(BaseModel):
     profile_name: str
     url: str
+    title: Optional[str] = None
+    text: Optional[str] = None
 
 
 class AssessSourceRequest(BaseModel):
